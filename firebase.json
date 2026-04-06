@@ -1,0 +1,49 @@
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "beauty-user",
+          "appId": "1:1008435332908:android:da8880c87ed99390bbce89",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "ios": {
+        "default": {
+          "projectId": "beauty-user",
+          "appId": "1:1008435332908:ios:d8d68796b7a0c5aebbce89",
+          "uploadDebugSymbols": false,
+          "fileOutput": "ios/Runner/GoogleService-Info.plist"
+        }
+      },
+      "macos": {
+        "default": {
+          "projectId": "beauty-user",
+          "appId": "1:1008435332908:ios:6e1615c2b2856c97bbce89",
+          "uploadDebugSymbols": false,
+          "fileOutput": "macos/Runner/GoogleService-Info.plist"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "beauty-user",
+          "configurations": {
+            "android": "1:1008435332908:android:da8880c87ed99390bbce89",
+            "ios": "1:1008435332908:ios:d8d68796b7a0c5aebbce89",
+            "macos": "1:1008435332908:ios:6e1615c2b2856c97bbce89",
+            "web": "1:1008435332908:web:2b847bb674d0bc5cbbce89",
+            "windows": "1:1008435332908:web:a03b6b7c103c5b2ebbce89"
+          }
+        }
+      }
+    }
+  },
+  "hosting": {
+    "target": "beauty-user-app",
+    "public": "build/web",
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+    "rewrites": [
+      { "source": "**", "destination": "/index.html" }
+    ]
+  }
+}
