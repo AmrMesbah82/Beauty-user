@@ -1,13 +1,28 @@
 import 'package:beauty_user/page/home_page.dart';
+import 'package:beauty_user/page/request_page.dart';
+import 'package:beauty_user/repo/client_services/client_services_repo_imp.dart';
 import 'package:beauty_user/repo/home_repo/home_repository_impl.dart';
+import 'package:beauty_user/repo/master/master_repo_imp.dart';
+import 'package:beauty_user/repo/overview/overview_repo_imp.dart';
+import 'package:beauty_user/repo/owner_services/owner_services_repo_imp.dart';
+import 'package:beauty_user/repo/request/request_demo_repo_imp.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:beauty_user/controller/home/home_cubit.dart';
 import 'package:beauty_user/controller/home/lang_state.dart';
 
+import 'controller/client_services/client_services_cubit.dart';
+import 'controller/contact_us/contacu_us_location_cubit.dart';
+import 'controller/gender/gender_cubit.dart';
+import 'controller/master/master_cubit.dart';
+import 'controller/overview/overview_cubit.dart';
+import 'controller/owner_services/owner_services_cubit.dart';
+import 'controller/request/request_demo_cubit.dart';
 import 'firebase_options.dart';
 
 Size _getDesignSize({
@@ -23,11 +38,23 @@ Size _getDesignSize({
   return isLandscape ? const Size(812, 375) : const Size(375, 812);
 }
 
+
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  if (kIsWeb) {
+    FirebaseFirestore.instance.settings = const Settings(
+      persistenceEnabled: false,
+      sslEnabled: true,
+      webExperimentalForceLongPolling: true,  // ← ADD THIS
+      webExperimentalAutoDetectLongPolling: false, // ← ADD THIS
+    );
+  }
+
   runApp(const MyApp());
 }
 
@@ -60,14 +87,41 @@ class MyApp extends StatelessWidget {
                 repository: HomeRepositoryImpl(),
               )..load(),
             ),
+            BlocProvider<MasterCmsCubit>(
+              create: (_) => MasterCmsCubit(
+                MasterRepoImp(),
+              )..load(),
+            ),
+            BlocProvider<OverviewCmsCubit>(
+              create: (_) => OverviewCmsCubit(
+                OverviewRepoImp(),
+              ),
+            ),
+            BlocProvider<ClientServicesCmsCubit>(
+              create: (_) => ClientServicesCmsCubit(
+                ClientServicesRepoImp(),
+              ),
+            ),
+            BlocProvider<OwnerServicesCmsCubit>(
+              create: (_) => OwnerServicesCmsCubit(
+                OwnerServicesRepoImp(),
+              ),
+            ),
+            BlocProvider(create: (_) => GenderCubit()),
+
+            BlocProvider<ContactUsCmsCubit>(  // ← ADD THIS
+              create: (_) => ContactUsCmsCubit()..load(),
+            ),
+            BlocProvider(
+              create: (_) => RequestDemoCmsCubit(RequestDemoRepoImp())..load(),
+              child: const RequestDemoPage(gender: 'female'),
+            )
+
           ],
           child: MaterialApp(
             title: 'Beauty User',
             debugShowCheckedModeBanner: false,
-
-            // ✅ Tag the root route as '/' so ModalRoute.of(context)?.settings.name
-            //    returns '/' on HomePage — required for navbar active state
-            //    and for popUntil(isFirst) to land on the correct named route.
+            navigatorObservers: [routeObserver], // ← Add this line
             initialRoute: '/',
             onGenerateRoute: (settings) {
               return MaterialPageRoute(

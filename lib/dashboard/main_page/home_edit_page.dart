@@ -13,6 +13,8 @@
 ///          so footer links deep-link directly into the correct About Us tab.
 /// UPDATED: Removed _isSaving + full-screen overlay. CircularProgressIndicator
 ///          now shows only inside the publish confirm dialog while saving.
+/// ADDED:   "Download the App" section in footer editor with iOS/Android URL
+///          fields and visibility toggle ✅
 
 import 'dart:async';
 import 'dart:typed_data';
@@ -57,13 +59,13 @@ class _C {
 
 // ── Route dropdown used only for nav-section route picker ──────────────────
 const List<Map<String, String>> _kRoutes = [
-  {'key': '',          'value': 'None'},
-  {'key': '/',         'value': 'Home (/)'},
-  {'key': '/services', 'value': 'Services (/services)'},
-  {'key': '/about',    'value': 'About Us (/about)'},
-  {'key': '/contact',  'value': 'Contact Us (/contact)'},
-  {'key': '/careers',  'value': 'Careers (/careers)'},
-  {'key': '/jobs',     'value': 'Jobs (/jobs)'},
+  {'key': '',            'value': 'None'},
+  {'key': '/',           'value': 'Home (/)'},
+  {'key': '/services',   'value': 'Overview (/services)'},
+  {'key': '/about',      'value': 'Our Products (/about)'},
+  {'key': '/contact',    'value': 'About Us (/contact)'},
+  {'key': '/terms',      'value': 'Terms of Service (/terms)'},
+  {'key': '/contactus',  'value': 'Contact Us (/contactus)'},
 ];
 
 // ── Fixed label-destination list ─────────────────────────────────────────────
@@ -385,7 +387,6 @@ class HomeEditPage extends StatefulWidget {
 
 class _HomeEditPageState extends State<HomeEditPage> {
   bool _submitted = false;
-  // NOTE: _isSaving removed — loading state now lives inside the dialog
 
   // ── Headings ──────────────────────────────────────────────────────────────
   final _titleEn     = TextEditingController();
@@ -436,10 +437,15 @@ class _HomeEditPageState extends State<HomeEditPage> {
   String? _engFont = 'Cairo';
   String? _arFont  = 'Cairo';
 
+  // ── Download the App ✅ NEW ───────────────────────────────────────────────
+  final _iosUrlCtrl     = TextEditingController();
+  final _androidUrlCtrl = TextEditingController();
+  bool  _downloadAppVisibility = true;
+
   // ── Accordion open/close ──────────────────────────────────────────────────
   final Map<String, bool> _open = {
     'theme': true, 'header': true, 'footer': true, 'links': true,
-    'headings': true, 'navBtn': true,
+    'headings': true, 'navBtn': true, 'downloadApp': true,
     's1': true, 's2': true, 's3': true, 's4': true,
   };
 
@@ -563,6 +569,8 @@ class _HomeEditPageState extends State<HomeEditPage> {
       ...d.sections.map((s) => s.imageUrl + s.iconUrl),
       ...d.socialLinks.map((s) => s.iconUrl),
       d.branding.logoUrl,
+      d.appDownloadLinks.iosUrl,     // ✅ include in hash
+      d.appDownloadLinks.androidUrl, // ✅ include in hash
     ]);
 
     print('[HomeEditPage] _seedFromModel: '
@@ -698,6 +706,11 @@ class _HomeEditPageState extends State<HomeEditPage> {
         ? _PickedImage(url: d.branding.logoUrl)
         : const _PickedImage();
 
+    // ── Download the App ✅ NEW ──────────────────────────────────────────
+    _iosUrlCtrl.text          = d.appDownloadLinks.iosUrl;
+    _androidUrlCtrl.text      = d.appDownloadLinks.androidUrl;
+    _downloadAppVisibility    = d.appDownloadLinks.visibility;
+
     print('[HomeEditPage] _seedFromModel: ✅ DONE');
   }
 
@@ -748,12 +761,12 @@ class _HomeEditPageState extends State<HomeEditPage> {
     _secondaryColor.dispose();
     _bgColor.dispose();
     _headerFooterColor.dispose();
+    _iosUrlCtrl.dispose();      // ✅ NEW
+    _androidUrlCtrl.dispose();  // ✅ NEW
     super.dispose();
   }
 
   // ─── Save / Publish ───────────────────────────────────────────────────────
-  // Returns Future<void> so the dialog can await it and show its own loader.
-  // No _isSaving state needed here anymore.
   Future<void> _save(HomeCmsCubit cubit,
       {String publishStatus = 'published'}) async {
     setState(() => _submitted = true);
@@ -881,12 +894,18 @@ class _HomeEditPageState extends State<HomeEditPage> {
       cubit.updateEnglishFont(_engFont ?? 'Cairo');
       cubit.updateArabicFont(_arFont  ?? 'Cairo');
 
+      // ── Download the App ✅ NEW ────────────────────────────────────────────
+      cubit.updateAppDownloadLinks(
+        iosUrl:     _iosUrlCtrl.text,
+        androidUrl: _androidUrlCtrl.text,
+        visibility: _downloadAppVisibility,
+      );
+
       await cubit.save(publishStatus: publishStatus);
       Get.forceAppUpdate();
       html.window.location.reload();
     } catch (e, st) {
       print('[HomeEditPage] _save: ❌ ERROR: $e\n$st');
-      // Re-throw so the dialog's finally block still fires correctly
       rethrow;
     }
   }
@@ -939,7 +958,6 @@ class _HomeEditPageState extends State<HomeEditPage> {
           );
         }
 
-        // No Stack needed anymore — the saving overlay is gone
         return Scaffold(
           backgroundColor: _C.back,
           body: Container(
@@ -987,6 +1005,10 @@ class _HomeEditPageState extends State<HomeEditPage> {
 
                                   // ── Footer ───────────────────────────────
                                   _footerSection(cubit),
+                                  _gap(),
+
+                                  // ── Download the App ✅ NEW ──────────────
+                                  _downloadAppSection(),
                                   _gap(),
 
                                   // ── Social Links ─────────────────────────
@@ -1041,7 +1063,6 @@ class _HomeEditPageState extends State<HomeEditPage> {
   }
 
   // ─── Bottom buttons ───────────────────────────────────────────────────────
-  // Publish button is always normal — no loading state here anymore.
   Widget _bottomActions(HomeCmsCubit cubit) => Row(
     children: [
       Expanded(
@@ -1065,7 +1086,6 @@ class _HomeEditPageState extends State<HomeEditPage> {
       Expanded(
         child: GestureDetector(
           onTap: () {
-            // Open dialog — loading spinner is handled inside the dialog
             showPublishConfirmDialog(
               context: context,
               onConfirm: () => _save(cubit, publishStatus: 'published'),
@@ -1235,7 +1255,7 @@ class _HomeEditPageState extends State<HomeEditPage> {
             ),
             child: Row(children: [
               Expanded(
-                  child: Text('Header',  // ✅ Changed from 'Navigation Items'
+                  child: Text('Header',
                       style: StyleText.fontSize14Weight600
                           .copyWith(color: Colors.white))),
               Icon(
@@ -1259,11 +1279,11 @@ class _HomeEditPageState extends State<HomeEditPage> {
                 final btn    = _navBtns.removeAt(oldIndex);
                 final route  = _navRoutes.removeAt(oldIndex);
                 final status = _navStatus.removeAt(oldIndex);
-                final icon   = _navIcons.removeAt(oldIndex);  // ✅ sync icons
+                final icon   = _navIcons.removeAt(oldIndex);
                 _navBtns.insert(newIndex, btn);
                 _navRoutes.insert(newIndex, route);
                 _navStatus.insert(newIndex, status);
-                _navIcons.insert(newIndex, icon);  // ✅ sync icons
+                _navIcons.insert(newIndex, icon);
               });
             },
             itemBuilder: (context, i) =>
@@ -1285,7 +1305,6 @@ class _HomeEditPageState extends State<HomeEditPage> {
         children: [
           SizedBox(height: 15.h),
 
-          // ✅ Icon label + picker
           _sectionLabel('Icon'),
           SizedBox(height: 6.h),
           _imgBox(
@@ -1299,7 +1318,6 @@ class _HomeEditPageState extends State<HomeEditPage> {
           ),
           SizedBox(height: 10.h),
 
-          // ✅ Title + Status row
           Stack(
             children: [
               Row(
@@ -1375,6 +1393,7 @@ class _HomeEditPageState extends State<HomeEditPage> {
       ),
     );
   }
+
   // ─── Header ────────────────────────────────────────────────────────────────
   Widget _headerSection() {
     final isOpen = _open['header'] ?? true;
@@ -1765,6 +1784,121 @@ class _HomeEditPageState extends State<HomeEditPage> {
       ),
     );
   }
+
+  // ─── Download the App ✅ NEW ───────────────────────────────────────────────
+  Widget _downloadAppSection() => _accordion(
+    key: 'downloadApp',
+    title: 'Download the App',
+    children: [
+      Padding(
+        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ── Visibility toggle ──────────────────────────────────────────
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Show "Download the App" in footer',
+                    style: StyleText.fontSize12Weight500
+                        .copyWith(color: _C.labelText)),
+                FlutterSwitch(
+                  width: 38.sp,
+                  height: 22.sp,
+                  padding: 3.sp,
+                  borderRadius: 20.sp,
+                  toggleSize: 16.sp,
+                  activeColor: _C.primary,
+                  inactiveColor: Colors.grey.withOpacity(.16),
+                  value: _downloadAppVisibility,
+                  onToggle: (val) =>
+                      setState(() => _downloadAppVisibility = val),
+                ),
+              ],
+            ),
+            SizedBox(height: 14.h),
+
+            // ── iOS App Store URL ──────────────────────────────────────────
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                // iOS icon preview
+                Container(
+                  width: 40.w, height: 40.w,
+                  decoration: BoxDecoration(
+                    border: Border.all(color: _C.border),
+                    borderRadius: BorderRadius.circular(8.r),
+                  ),
+                  child: Center(
+                    child: SvgPicture.asset(
+                      'assets/footer/ios_logo.svg',
+                      width: 22.w, height: 22.w,
+                      fit: BoxFit.contain,
+                      colorFilter: ColorFilter.mode(
+                          _resolvedPrimaryColor, BlendMode.srcIn),
+                    ),
+                  ),
+                ),
+                SizedBox(width: 10.w),
+                Expanded(
+                  child: CustomValidatedTextFieldMaster(
+                    label: 'iOS App Store URL',
+                    fillColor: Colors.white,
+                    hint: 'https://apps.apple.com/...',
+                    controller: _iosUrlCtrl,
+                    height: 36,
+                    submitted: false,
+                    textDirection: TextDirection.ltr,
+                    textAlign: TextAlign.left,
+                    primaryColor: _resolvedPrimaryColor,
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 14.h),
+
+            // ── Android Google Play URL ────────────────────────────────────
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                // Android icon preview
+                Container(
+                  width: 40.w, height: 40.w,
+                  decoration: BoxDecoration(
+                    border: Border.all(color: _C.border),
+                    borderRadius: BorderRadius.circular(8.r),
+                  ),
+                  child: Center(
+                    child: SvgPicture.asset(
+                      'assets/footer/android_logo.svg',
+                      width: 22.w, height: 22.w,
+                      fit: BoxFit.contain,
+                      colorFilter: ColorFilter.mode(
+                          _resolvedPrimaryColor, BlendMode.srcIn),
+                    ),
+                  ),
+                ),
+                SizedBox(width: 10.w),
+                Expanded(
+                  child: CustomValidatedTextFieldMaster(
+                    label: 'Android Google Play URL',
+                    fillColor: Colors.white,
+                    hint: 'https://play.google.com/store/apps/...',
+                    controller: _androidUrlCtrl,
+                    height: 36,
+                    submitted: false,
+                    textDirection: TextDirection.ltr,
+                    textAlign: TextAlign.left,
+                    primaryColor: _resolvedPrimaryColor,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    ],
+  );
 
   // ─── Social Links ──────────────────────────────────────────────────────────
   Widget _linksSection() => _accordion(

@@ -1,35 +1,31 @@
 // ******************* FILE INFO *******************
 // File Name: app_navbar.dart
-// UPDATED: Navbar background now reads from model.branding.headerFooterColor ✅
-//          Nav items are driven by HomeCmsCubit (navButtons from CMS model).
-//          Items with status=false are filtered out and never rendered.
-//          Labels come from the model's BiText (en/ar) instead of hardcoded
-//          localisation strings, so CMS name edits are reflected immediately.
-//          onItemTap callback preserved for admin/dashboard override.
-//          FIX: Removed go_router entirely — all navigation uses Navigator.push ✅
-//          FIX: Added /our-products route to _navigate and _kSvgMap ✅
-//          FIX: Added /terms + /terms-of-service route for TermsOfServicePage ✅
-//          FIX: Added /careers + /jobs route for CareersPage ✅
-//
-//          Design sizes (ScreenUtil):
-//          Desktop (≥1366) → 1366×768, Tablet (768–1365) → 1024×768,
-//          Mobile  (<768)  → 375×812
-//          Primary color driven by HomeCmsCubit → HomePageModel.branding.primaryColor
-//          Navbar background driven by HomeCmsCubit → HomePageModel.branding.headerFooterColor
+// UPDATED: Fixed navigation for all 6 navbar items using direct Navigator.push
+//          Index 0: Home (/)
+//          Index 1: Overview (/services)
+//          Index 2: Our Products (/about)
+//          Index 3: About Us (/contact)
+//          Index 4: Terms Services (/terms)
+//          Index 5: Contact Us (/contactus)
+// UPDATED: _getVisibleNavItems now returns iconUrl from NavButtonModel
+// ADDED:   _NavIcon widget — shows Firebase iconUrl if set, falls back to local SVG asset
+// UPDATED: _FullScreenDrawer and _NavItem both use _NavIcon
+// ADDED:   Gender toggle connected to GenderCubit — switches data across all page cubits
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_svg/svg.dart';
+import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
+import '../controller/gender/gender_cubit.dart';
+import '../controller/gender/gender_state.dart';
 import '../controller/home/home_cubit.dart';
 import '../controller/home/home_state.dart';
 import '../controller/home/lang_state.dart';
 import '../model/home/home_model.dart';
 import '../page/contact_page.dart';
-import '../page/contact_us_page.dart';
-import '../page/home_page.dart';
 import '../page/about_page.dart';
 import '../page/our_products_page.dart';
 import '../page/overview_page.dart';
@@ -49,63 +45,48 @@ class _BP {
   static const double tablet = 1024;
 }
 
-const Map<String, String> _kSvgMap = {
-  '/':                  'assets/drawer/home_drawer.svg',
-  '/services':          'assets/drawer/services_drawer.svg',
-  '/overview':          'assets/drawer/services_drawer.svg',
-  '/our-products':      'assets/drawer/services_drawer.svg',
-  '/about':             'assets/drawer/services_drawer.svg',
-  '/contact':           'assets/drawer/about_us_drawer.svg',
-  '/contactus':         'assets/drawer/about_us_drawer.svg',  // ✅ ADD THIS
-  '/careers':           'assets/drawer/career_drawer.svg',
-  '/jobs':              'assets/drawer/career_drawer.svg',
-  '/terms':             'assets/drawer/services_drawer.svg',
-  '/terms-of-service':  'assets/drawer/services_drawer.svg',
-};
-
 void _navigate(BuildContext context, String route) {
   print('🚀 _navigate called with route: $route');
 
-  final homeCubit = context.read<HomeCmsCubit>();
-  final langCubit = context.read<LanguageCubit>();
+  final homeCubit   = context.read<HomeCmsCubit>();
+  final langCubit   = context.read<LanguageCubit>();
+  final genderCubit = context.read<GenderCubit>();
 
   Widget page;
+
   switch (route) {
     case '/':
       Navigator.of(context).popUntil((r) => r.isFirst);
       return;
 
-    case '/overview':
     case '/services':
+      print('✅ Navigating to OverviewPage');
       page = const OverviewPage();
       break;
 
-    case '/our-products':
-    case '/about':           // ✅ FIX: /about → OurProductsPage (matches CMS)
+    case '/about':
+      print('✅ Navigating to OurProductsPage');
       page = const OurProductsPage();
       break;
 
-    case '/about-us':
-    case '/contact':         // ✅ FIX: /contact → AboutPage (was in wrong case)
+    case '/contact':
+      print('✅ Navigating to AboutPage');
       page = const AboutPage();
       break;
 
-    case '/contactus':       // ✅ FIX: was missing entirely — fell to default
+    case '/terms':
+      print('✅ Navigating to TermsOfServicePage');
+      page = const TermsOfServicePage();
+      break;
+
+    case '/contactus':
+      print('✅ Navigating to ContactPage');
       page = const ContactPage();
       break;
 
-    case '/terms':
-    case '/terms-of-service':
-      page = const TermsOfServicePage();
-      break;
-
-    case '/careers':
-    case '/jobs':
-      page = const TermsOfServicePage();
-      break;
-
     default:
-      print('❌ unknown route: $route — returning');
+      print('❌ unknown route: $route — returning to home');
+      Navigator.of(context).popUntil((r) => r.isFirst);
       return;
   }
 
@@ -117,12 +98,26 @@ void _navigate(BuildContext context, String route) {
         providers: [
           BlocProvider.value(value: homeCubit),
           BlocProvider.value(value: langCubit),
+          BlocProvider.value(value: genderCubit),
         ],
         child: page,
       ),
     ),
   );
 }
+
+const Map<String, String> _kSvgMap = {
+  '/':          'assets/drawer/home_drawer.svg',
+  '/services':  'assets/drawer/services_drawer.svg',
+  '/about':     'assets/drawer/services_drawer.svg',
+  '/contact':   'assets/drawer/services_drawer.svg',
+  '/terms':     'assets/drawer/services_drawer.svg',
+  '/contactus': 'assets/drawer/about_us_drawer.svg',
+};
+
+// Gender icons
+const String _kMaleIcon   = 'assets/male.svg';
+
 
 Color _primaryFromState(HomeCmsState state) {
   final String hex = switch (state) {
@@ -152,11 +147,19 @@ Color _hexColor(String hex, Color fallback) {
 
 Color _lightTint(Color primary) => primary.withOpacity(0.12);
 
-List<({String label, String route, String svgAsset})> _getVisibleNavItems(
-    String languageCode, HomeCmsState cmsState) {
+// ─────────────────────────────────────────────────────────────────────────────
+// Nav item record — now includes iconUrl from Firebase
+// ─────────────────────────────────────────────────────────────────────────────
 
-  // Routes to always hide regardless of CMS status
-  const Set<String> _hiddenRoutes = {'/careers', '/jobs'};
+typedef _NavItemData = ({
+String label,
+String route,
+String svgAsset,
+String iconUrl,
+});
+
+List<_NavItemData> _getVisibleNavItems(
+    String languageCode, HomeCmsState cmsState) {
 
   final List<NavButtonModel> navButtons = switch (cmsState) {
     HomeCmsLoaded(:final data) => data.navButtons,
@@ -169,15 +172,56 @@ List<({String label, String route, String svgAsset})> _getVisibleNavItems(
   return navButtons
       .where((btn) => btn.status)
       .where((btn) => btn.route.isNotEmpty)
-      .where((btn) => !_hiddenRoutes.contains(btn.route)) // ✅ hide careers
       .map((btn) => (
   label: isAr
       ? (btn.name.ar.isNotEmpty ? btn.name.ar : btn.name.en)
       : (btn.name.en.isNotEmpty ? btn.name.en : btn.name.ar),
   route:    btn.route,
   svgAsset: _kSvgMap[btn.route] ?? 'assets/drawer/home_drawer.svg',
+  iconUrl:  btn.iconUrl,
   ))
       .toList();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// _NavIcon — shows Firebase iconUrl when available, falls back to local SVG
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _NavIcon extends StatelessWidget {
+  final String iconUrl;   // Firebase URL — may be empty
+  final String svgAsset;  // local asset fallback
+  final Color  color;
+  final double size;
+
+  const _NavIcon({
+    required this.iconUrl,
+    required this.svgAsset,
+    required this.color,
+    this.size = 24,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colorFilter = ColorFilter.mode(color, BlendMode.srcIn);
+
+    if (iconUrl.isNotEmpty) {
+      return SvgPicture.network(
+        iconUrl,
+        width:              size.w,
+        height:             size.w,
+        colorFilter:        colorFilter,
+        placeholderBuilder: (_) => _localSvg(colorFilter),
+      );
+    }
+    return _localSvg(colorFilter);
+  }
+
+  Widget _localSvg(ColorFilter colorFilter) => SvgPicture.asset(
+    svgAsset,
+    width:       size.w,
+    height:      size.w,
+    colorFilter: colorFilter,
+  );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -257,46 +301,46 @@ class _NavbarDesktop extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final double contentW = (248.w * 4) + (8.w * 3);
-
     return BlocBuilder<LanguageCubit, LanguageState>(
       builder: (context, langState) {
         final navItems = _getVisibleNavItems(langState.locale.languageCode, cmsState);
         final isRtl    = langState.isArabic;
-
+        var isMobile = context.isPhone;
         return Directionality(
           textDirection: isRtl ? TextDirection.rtl : TextDirection.ltr,
-          child: Padding(
-            padding: EdgeInsets.only(
-              left: ((MediaQuery.of(context).size.width - contentW) / 2)
-                  .clamp(16.0, double.infinity),
-              right: ((MediaQuery.of(context).size.width - contentW) / 2)
-                  .clamp(16.0, double.infinity),
-              top: 20.h,
-            ),
-            child: Container(
-              padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 12.h),
-              decoration: BoxDecoration(
-                color:        navbarBg,
-                borderRadius: BorderRadius.circular(8.r),
-              ),
+          child: Container(
+            width: double.infinity,
+            color: navbarBg,
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 12.h),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   const _BayanatzLogo(),
-                  Row(
-                    children: navItems
-                        .map((e) => _NavItem(
-                      key:          ValueKey('${e.route}_${langState.locale.languageCode}'),
-                      label:        e.label,
-                      route:        e.route,
-                      currentRoute: currentRoute,
-                      primary:      primary,
-                      onItemTap:    onItemTap,
-                    ))
-                        .toList(),
+                  Expanded(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: navItems
+                          .map((e) => _NavItem(
+                        key:          ValueKey('${e.route}_${langState.locale.languageCode}'),
+                        label:        e.label,
+                        route:        e.route,
+                        svgAsset:     e.svgAsset,
+                        iconUrl:      e.iconUrl,
+                        currentRoute: currentRoute,
+                        primary:      primary,
+                        onItemTap:    onItemTap,
+                      ))
+                          .toList(),
+                    ),
                   ),
-                  _LanguageToggle(primary: primary),
+                  Row(
+                    children: [
+                      _GenderToggle(primary: primary),
+                      SizedBox(width: 12.w),
+                      _LanguageToggle(primary: primary),
+                    ],
+                  ),
                 ],
               ),
             ),
@@ -334,32 +378,35 @@ class _NavbarMobile extends StatelessWidget {
 
         return Directionality(
           textDirection: isRtl ? TextDirection.rtl : TextDirection.ltr,
-          child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
-            child: Container(
-              decoration: BoxDecoration(
-                color:        navbarBg,
-                borderRadius: BorderRadius.circular(6.r),
-              ),
-              child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: 0.w, vertical: 8.h),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const _BayanatzLogo(rawSize: true),
-                    GestureDetector(
-                      onTap: () => _openDrawer(context),
-                      child: Container(
-                        width:  36.w,
-                        height: 36.w,
-                        decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(8.r)),
-                        child: Icon(Icons.menu_rounded,
-                            color: AppColors.textButton, size: 20.sp),
+          child: Container(
+            color: navbarBg,
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const _BayanatzLogo(rawSize: true),
+                  Row(
+                    children: [
+                      _GenderToggle(primary: primary, isCompact: true),
+                      SizedBox(width: 8.w),
+                      _LanguageToggle(primary: primary, isCompact: true),
+                      SizedBox(width: 12.w),
+                      GestureDetector(
+                        onTap: () => _openDrawer(context),
+                        child: Container(
+                          width: 36.w,
+                          height: 36.w,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(8.r),
+                          ),
+                          child: Icon(Icons.menu_rounded,
+                              color: AppColors.textButton, size: 20.sp),
+                        ),
                       ),
-                    ),
-                  ],
-                ),
+                    ],
+                  ),
+                ],
               ),
             ),
           ),
@@ -371,9 +418,9 @@ class _NavbarMobile extends StatelessWidget {
   void _openDrawer(BuildContext context) {
     Navigator.of(context, rootNavigator: true).push(
       PageRouteBuilder(
-        opaque:             false,
+        opaque:            false,
         barrierDismissible: true,
-        barrierColor:       Colors.transparent,
+        barrierColor:      Colors.transparent,
         pageBuilder: (ctx, anim, _) => _FullScreenDrawer(
           currentRoute: currentRoute,
           primary:      primary,
@@ -424,8 +471,7 @@ class _FullScreenDrawer extends StatelessWidget {
                   // ── Top bar ───────────────────────────────────────────
                   Container(
                     color: navbarBg,
-                    padding: EdgeInsets.symmetric(
-                        horizontal: 16.w, vertical: 10.h),
+                    padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.h),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -433,13 +479,13 @@ class _FullScreenDrawer extends StatelessWidget {
                         GestureDetector(
                           onTap: () => Navigator.of(context).pop(),
                           child: Container(
-                            width:  36.w,
+                            width: 36.w,
                             height: 36.w,
                             decoration: BoxDecoration(
-                              color:        lightTint,
+                              color: lightTint,
                               borderRadius: BorderRadius.circular(8.r),
                             ),
-                            child: Icon(Icons.menu_rounded,
+                            child: Icon(Icons.close,
                                 color: primary, size: 20.sp),
                           ),
                         ),
@@ -449,93 +495,77 @@ class _FullScreenDrawer extends StatelessWidget {
 
                   SizedBox(height: 10.h),
 
-                  Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 16.w),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [_LanguageToggle(primary: primary)],
-                    ),
-                  ),
-
-                  SizedBox(height: 10.h),
-
                   // ── Nav list ──────────────────────────────────────────
                   Expanded(
                     child: ListView(
-                      key:     ValueKey(langState.locale.languageCode),
-                      padding: EdgeInsets.symmetric(horizontal: 16.w),
+                      key: ValueKey(langState.locale.languageCode),
+                      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
                       children: [
-                        ...navItems.map((e) {
+                        ...navItems.asMap().entries.map((entry) {
+                          final index    = entry.key;
+                          final e        = entry.value;
                           final bool isActive = currentRoute == e.route;
-                          return GestureDetector(
-                            onTap: () {
-                              Navigator.of(context).pop();
-                              if (onItemTap != null) {
-                                onItemTap!(e.route);
-                              } else {
-                                _navigate(context, e.route);
-                              }
-                            },
-                            child: Container(
-                              key: ValueKey(
-                                  '${e.route}_${langState.locale.languageCode}'),
-                              width:   double.infinity,
-                              margin:  EdgeInsets.only(bottom: 6.h),
-                              padding: EdgeInsets.symmetric(
-                                  vertical: 12.h, horizontal: 16.w),
-                              decoration: BoxDecoration(
-                                color: isActive ? primary : Colors.transparent,
-                                borderRadius: BorderRadius.circular(10.r),
-                              ),
-                              child: Row(
-                                children: [
-                                  SvgPicture.asset(
-                                    e.svgAsset,
-                                    width:  20.w,
-                                    height: 20.w,
-                                    colorFilter: ColorFilter.mode(
-                                      isActive
-                                          ? Colors.white
-                                          : AppColors.textButton,
-                                      BlendMode.srcIn,
-                                    ),
-                                  ),
-                                  SizedBox(width: 14.w),
-                                  Text(
-                                    e.label,
-                                    textDirection: isRtl
-                                        ? TextDirection.rtl
-                                        : TextDirection.ltr,
-                                    style: GoogleFonts.cairo(
-                                      fontSize:   14.sp,
-                                      fontWeight: isActive
-                                          ? AppFontWeights.semiBold
-                                          : AppFontWeights.regular,
-                                      color: isActive
-                                          ? Colors.white
-                                          : AppColors.text,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        }),
 
-                        // ── Terms & Conditions static link ────────────────
-                        _DrawerTermsLink(
-                          currentRoute: currentRoute,
-                          primary:      primary,
-                          isRtl:        isRtl,
-                          onTap: () {
-                            Navigator.of(context).pop();
-                            if (onItemTap != null) {
-                              onItemTap!('/terms-of-service');
-                            } else {
-                              _navigate(context, '/terms-of-service');
-                            }
-                          },
-                        ),
+                          return Column(
+                            children: [
+                              GestureDetector(
+                                onTap: () {
+                                  Navigator.of(context).pop();
+                                  if (onItemTap != null) {
+                                    onItemTap!(e.route);
+                                  } else {
+                                    _navigate(context, e.route);
+                                  }
+                                },
+                                child: Container(
+                                  key: ValueKey('${e.route}_${langState.locale.languageCode}'),
+                                  width: double.infinity,
+                                  padding: EdgeInsets.symmetric(
+                                      vertical: 16.h, horizontal: 16.w),
+                                  decoration: BoxDecoration(
+                                    color: isActive ? primary : Colors.transparent,
+                                    borderRadius: BorderRadius.circular(10.r),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      // ✅ Firebase icon with local SVG fallback
+                                      _NavIcon(
+                                        iconUrl:  e.iconUrl,
+                                        svgAsset: e.svgAsset,
+                                        color: isActive
+                                            ? Colors.white
+                                            : AppColors.textButton,
+                                        size: 24,
+                                      ),
+                                      SizedBox(width: 14.w),
+                                      Text(
+                                        e.label,
+                                        textDirection: isRtl
+                                            ? TextDirection.rtl
+                                            : TextDirection.ltr,
+                                        style: GoogleFonts.cairo(
+                                          fontSize: 16.sp,
+                                          fontWeight: isActive
+                                              ? AppFontWeights.semiBold
+                                              : AppFontWeights.regular,
+                                          color: isActive
+                                              ? Colors.white
+                                              : AppColors.text,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              if (index < navItems.length - 1)
+                                Divider(
+                                  height: 1.h,
+                                  thickness: 1,
+                                  color: Colors.grey.withOpacity(0.2),
+                                ),
+                            ],
+                          );
+                        }).toList(),
                       ],
                     ),
                   ),
@@ -545,67 +575,6 @@ class _FullScreenDrawer extends StatelessWidget {
           ),
         );
       },
-    );
-  }
-}
-
-// ─── Terms link row shown at the bottom of the mobile drawer ─────────────────
-
-class _DrawerTermsLink extends StatelessWidget {
-  final String       currentRoute;
-  final Color        primary;
-  final bool         isRtl;
-  final VoidCallback onTap;
-
-  const _DrawerTermsLink({
-    required this.currentRoute,
-    required this.primary,
-    required this.isRtl,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    // active for both slug variants
-    final bool isActive =
-        currentRoute == '/terms' || currentRoute == '/terms-of-service';
-
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width:   double.infinity,
-        margin:  EdgeInsets.only(bottom: 6.h),
-        padding: EdgeInsets.symmetric(vertical: 12.h, horizontal: 16.w),
-        decoration: BoxDecoration(
-          color:        isActive ? primary : Colors.transparent,
-          borderRadius: BorderRadius.circular(10.r),
-        ),
-        child: Row(
-          children: [
-            SvgPicture.asset(
-              'assets/drawer/services_drawer.svg',
-              width:  20.w,
-              height: 20.w,
-              colorFilter: ColorFilter.mode(
-                isActive ? Colors.white : AppColors.textButton,
-                BlendMode.srcIn,
-              ),
-            ),
-            SizedBox(width: 14.w),
-            Text(
-              isRtl ? 'الشروط والأحكام' : 'Terms & Conditions',
-              textDirection: isRtl ? TextDirection.rtl : TextDirection.ltr,
-              style: GoogleFonts.cairo(
-                fontSize:   14.sp,
-                fontWeight: isActive
-                    ? AppFontWeights.semiBold
-                    : AppFontWeights.regular,
-                color: isActive ? Colors.white : AppColors.text,
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }
@@ -628,33 +597,53 @@ class _BayanatzLogo extends StatelessWidget {
           _                          => '',
         };
 
-        final Widget logoWidget = logoUrl.isNotEmpty
-            ? SvgPicture.network(
-          logoUrl,
-          width:  sz,
-          height: sz,
-          fit:    BoxFit.fill,
-          placeholderBuilder: (_) => Image(
-            image:  const AssetImage("assets/images/logo.jpg"),
-            width:  sz,
-            height: sz,
-            fit:    BoxFit.fill,
-          ),
-        )
-            : Image(
-          image:  const AssetImage("assets/images/logo.jpg"),
-          width:  sz,
-          height: sz,
-          fit:    BoxFit.fill,
-        );
+        // ── Still loading (no data yet) → show empty box, no fallback logo
+        if (state is HomeCmsLoading || state is HomeCmsInitial) {
+          return GestureDetector(
+            onTap: () => _navigate(context, '/'),
+            child: MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: SizedBox(width: sz, height: sz),
+            ),
+          );
+        }
 
+        // ── Data loaded but no logoUrl → show local asset
+        if (logoUrl.isEmpty) {
+          return GestureDetector(
+            onTap: () => _navigate(context, '/'),
+            child: MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8.r),
+                child: Image(
+                  image: const AssetImage("assets/images/logo.jpg"),
+                  width: sz,
+                  height: sz,
+                  fit: BoxFit.fill,
+                ),
+              ),
+            ),
+          );
+        }
+
+        // ── Data loaded + logoUrl exists → show network logo, NO local fallback flash
         return GestureDetector(
-          onTap: () => _navigate(context, '/'),
+          onTap: () {
+            print('🖱️ Logo tapped - navigating to home');
+            _navigate(context, '/');
+          },
           child: MouseRegion(
             cursor: SystemMouseCursors.click,
             child: ClipRRect(
               borderRadius: BorderRadius.circular(8.r),
-              child: logoWidget,
+              child: SvgPicture.network(
+                logoUrl,
+                width: sz,
+                height: sz,
+                fit: BoxFit.fill,
+                placeholderBuilder: (_) => SizedBox(width: sz, height: sz),
+              ),
             ),
           ),
         );
@@ -666,20 +655,24 @@ class _BayanatzLogo extends StatelessWidget {
 // ─── Nav Item ─────────────────────────────────────────────────────────────────
 
 class _NavItem extends StatefulWidget {
-  final String                       label;
-  final String                       route;
-  final String                       currentRoute;
-  final Color                        primary;
-  final bool                         compact;
+  final String label;
+  final String route;
+  final String svgAsset;
+  final String iconUrl;
+  final String currentRoute;
+  final Color  primary;
+  final bool   compact;
   final void Function(String route)? onItemTap;
 
   const _NavItem({
     super.key,
     required this.label,
     required this.route,
+    required this.svgAsset,
+    required this.iconUrl,
     required this.currentRoute,
     required this.primary,
-    this.compact   = false,
+    this.compact  = false,
     this.onItemTap,
   });
 
@@ -694,7 +687,7 @@ class _NavItemState extends State<_NavItem> {
   @override
   Widget build(BuildContext context) {
     final Color hoverBg = _lightTint(widget.primary);
-
+    var isMobile = context.isPhone;
     return BlocBuilder<LanguageCubit, LanguageState>(
       builder: (context, langState) {
         return MouseRegion(
@@ -703,6 +696,7 @@ class _NavItemState extends State<_NavItem> {
           cursor:  SystemMouseCursors.click,
           child: GestureDetector(
             onTap: () {
+              print('🖱️ Nav item tapped: ${widget.label} -> route: ${widget.route}');
               if (widget.onItemTap != null) {
                 widget.onItemTap!(widget.route);
               } else {
@@ -710,28 +704,55 @@ class _NavItemState extends State<_NavItem> {
               }
             },
             child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              margin: EdgeInsets.symmetric(
-                  horizontal: widget.compact ? 2.w : 3.w),
-              padding: EdgeInsets.symmetric(
-                horizontal: widget.compact ? 8.w  : 12.w,
-                vertical:   widget.compact ? 6.h  : 7.h,
-              ),
+              duration:  const Duration(milliseconds: 200),
+              margin:    EdgeInsets.symmetric(horizontal: 4.w),
+              padding:   EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
               decoration: BoxDecoration(
                 color: _isActive
                     ? widget.primary
-                    : (_hovered ? hoverBg : hoverBg.withOpacity(0)),
+                    : (_hovered ? hoverBg : Colors.transparent),
                 borderRadius: BorderRadius.circular(8.r),
               ),
-              child: Text(
+              child:    isMobile ?  Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (widget.iconUrl.isNotEmpty || true)
+                    ...[
+                      _NavIcon(
+                        iconUrl:  widget.iconUrl,
+                        svgAsset: widget.svgAsset,
+                        color: _isActive
+                            ? Colors.white
+                            : (_hovered ? widget.primary : AppColors.textButton),
+                        size: 18,
+                      ),
+                      SizedBox(width: 6.w),
+                    ],
+                  Text(
+                    widget.label,
+                    textDirection: langState.isArabic
+                        ? TextDirection.rtl
+                        : TextDirection.ltr,
+                    style: GoogleFonts.cairo(
+                      fontSize:   14.sp,
+                      fontWeight: _isActive
+                          ? AppFontWeights.semiBold
+                          : AppFontWeights.regular,
+                      color: _isActive
+                          ? Colors.white
+                          : (_hovered ? widget.primary : AppColors.text),
+                    ),
+                  ),
+                ],
+              ) :   Text(
                 widget.label,
                 textDirection: langState.isArabic
                     ? TextDirection.rtl
                     : TextDirection.ltr,
                 style: GoogleFonts.cairo(
-                  fontSize:   widget.compact ? 11.sp : 13.sp,
+                  fontSize:   14.sp,
                   fontWeight: _isActive
-                      ? AppFontWeights.medium
+                      ? AppFontWeights.semiBold
                       : AppFontWeights.regular,
                   color: _isActive
                       ? Colors.white
@@ -746,11 +767,62 @@ class _NavItemState extends State<_NavItem> {
   }
 }
 
+// ─── Gender Toggle — connected to GenderCubit ─────────────────────────────────
+
+// ─── Gender Toggle — connected to GenderCubit ─────────────────────────────────
+
+class _GenderToggle extends StatelessWidget {
+  final Color primary;
+  final bool isCompact;
+
+  const _GenderToggle({
+    required this.primary,
+    this.isCompact = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<GenderCubit, GenderState>(
+      builder: (context, genderState) {
+        return MouseRegion(
+          cursor: SystemMouseCursors.click,
+          child: GestureDetector(
+            onTap: () {
+              context.read<GenderCubit>().toggle();
+            },
+            child: Container(
+              decoration: BoxDecoration(
+                color: primary.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              padding: EdgeInsets.all(isCompact ? 8.w : 10.w),
+              child: SvgPicture.asset(
+                _kMaleIcon,
+                width: isCompact ? 18.w : 20.w,
+                height: isCompact ? 18.w : 20.w,
+                colorFilter: ColorFilter.mode(
+                  genderState.isMale ? primary : AppColors.secondaryText,
+                  BlendMode.srcIn,
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
 // ─── Language Toggle ──────────────────────────────────────────────────────────
 
 class _LanguageToggle extends StatelessWidget {
   final Color primary;
-  const _LanguageToggle({required this.primary});
+  final bool isCompact;
+
+  const _LanguageToggle({
+    required this.primary,
+    this.isCompact = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -759,27 +831,26 @@ class _LanguageToggle extends StatelessWidget {
         return Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(6.r),
-            color:        AppColors.secondaryText.withOpacity(.1),
+            color: AppColors.secondaryText.withOpacity(.1),
           ),
           child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 8.h),
+            padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 4.h),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              mainAxisSize:      MainAxisSize.max,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 _LangBtn(
-                  label:   'AR',
-                  active:  state.isArabic,
+                  label:  'AR',
+                  active: state.isArabic,
                   primary: primary,
-                  onTap:   () =>
-                      context.read<LanguageCubit>().setLanguage('ar'),
+                  onTap: () => context.read<LanguageCubit>().setLanguage('ar'),
                 ),
+                SizedBox(width: 4.w),
                 _LangBtn(
-                  label:   'EN',
-                  active:  state.isEnglish,
+                  label:  'EN',
+                  active: state.isEnglish,
                   primary: primary,
-                  onTap:   () =>
-                      context.read<LanguageCubit>().setLanguage('en'),
+                  onTap: () => context.read<LanguageCubit>().setLanguage('en'),
                 ),
               ],
             ),
@@ -810,17 +881,17 @@ class _LangBtn extends StatelessWidget {
       child: MouseRegion(
         cursor: SystemMouseCursors.click,
         child: Container(
-          padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 4.h),
+          padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
           decoration: BoxDecoration(
-            color:        active ? primary : Colors.transparent,
+            color: active ? primary : Colors.transparent,
             borderRadius: BorderRadius.circular(5.r),
           ),
           child: Text(
             label,
             style: GoogleFonts.cairo(
-              fontSize:   11.sp,
+              fontSize:   12.sp,
               fontWeight: AppFontWeights.semiBold,
-              color:      active ? Colors.white : AppColors.secondaryBlack,
+              color: active ? Colors.white : AppColors.secondaryBlack,
             ),
           ),
         ),

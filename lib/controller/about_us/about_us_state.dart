@@ -2,7 +2,8 @@
 // File Name: about_us_state.dart
 // Created by: Amr Mesbah
 
-import 'package:beauty_user/model/about_us/about_us.dart';
+
+import '../../model/about_us/about_us.dart';
 
 // ── About Us states ───────────────────────────────────────────────────────────
 abstract class AboutState {}

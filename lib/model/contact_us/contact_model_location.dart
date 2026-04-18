@@ -1,136 +1,125 @@
 // ******************* FILE INFO *******************
-// File Name: contact_us_model.dart
-// Created by: Claude Assistant
-// UPDATED: ContactOfficeLocation now has mapLink field for Google Maps
-// FIXED: added lastUpdatedAt to ContactUsCmsModel (mirrors AboutPageModel pattern)
-
-class ContactUsCmsModel {
-  final String publishStatus;
-  final ContactBilingualText subDescription;
-  final String email;
-  final List<ContactSocialIcon> socialIcons;
-  final List<ContactOfficeLocation> officeLocations;
-  final ContactConfirmMessage confirmMessage;
-
-  /// Tracks the last time this document was saved to Firestore.
-  /// Injected by the repo after extracting the Firestore Timestamp.
-  final DateTime? lastUpdatedAt;                              // ← ADD
-
-  ContactUsCmsModel({
-    required this.publishStatus,
-    required this.subDescription,
-    required this.email,
-    required this.socialIcons,
-    required this.officeLocations,
-    required this.confirmMessage,
-    this.lastUpdatedAt,                                       // ← ADD
-  });
-
-  factory ContactUsCmsModel.fromJson(Map<String, dynamic> json) {
-    return ContactUsCmsModel(
-      publishStatus: json['publishStatus'] ?? 'draft',
-      subDescription: ContactBilingualText.fromJson(
-        json['subDescription'] ?? {'en': '', 'ar': ''},
-      ),
-      email: json['email'] ?? '',
-      socialIcons: (json['socialIcons'] as List<dynamic>?)
-          ?.map((e) => ContactSocialIcon.fromJson(e as Map<String, dynamic>))
-          .toList() ??
-          [],
-      officeLocations: (json['officeLocations'] as List<dynamic>?)
-          ?.map((e) =>
-          ContactOfficeLocation.fromJson(e as Map<String, dynamic>))
-          .toList() ??
-          [],
-      confirmMessage: ContactConfirmMessage.fromJson(
-        json['confirmMessage'] ?? {},
-      ),
-      // lastUpdatedAt intentionally omitted — injected by repo after Timestamp extraction
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'publishStatus': publishStatus,
-      'subDescription': subDescription.toJson(),
-      'email': email,
-      'socialIcons': socialIcons.map((e) => e.toJson()).toList(),
-      'officeLocations': officeLocations.map((e) => e.toJson()).toList(),
-      'confirmMessage': confirmMessage.toJson(),
-      // lastUpdatedAt is written by the repo as FieldValue.serverTimestamp()
-    };
-  }
-
-  ContactUsCmsModel copyWith({
-    String? publishStatus,
-    ContactBilingualText? subDescription,
-    String? email,
-    List<ContactSocialIcon>? socialIcons,
-    List<ContactOfficeLocation>? officeLocations,
-    ContactConfirmMessage? confirmMessage,
-    DateTime? lastUpdatedAt,                                  // ← ADD
-  }) {
-    return ContactUsCmsModel(
-      publishStatus: publishStatus ?? this.publishStatus,
-      subDescription: subDescription ?? this.subDescription,
-      email: email ?? this.email,
-      socialIcons: socialIcons ?? this.socialIcons,
-      officeLocations: officeLocations ?? this.officeLocations,
-      confirmMessage: confirmMessage ?? this.confirmMessage,
-      lastUpdatedAt: lastUpdatedAt ?? this.lastUpdatedAt,     // ← ADD
-    );
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// Bilingual Text
-// ═══════════════════════════════════════════════════════════════════════════
+// File Name: contact_model_location.dart
+// UPDATED: Complete rewrite to match new Figma design
+//          - Headings section (SVG, Title EN/AR, Short Description EN/AR)
+//          - Client Description (Description EN/AR, Reasons list with required toggle)
+//          - Owner Description (Description EN/AR, Reasons list with required toggle)
+//          - Social Media Links (list of dropdown link selections)
+//          - Removed old: email, officeLocations, confirmMessage
 
 class ContactBilingualText {
   final String en;
   final String ar;
 
-  ContactBilingualText({required this.en, required this.ar});
+  const ContactBilingualText({this.en = '', this.ar = ''});
 
-  factory ContactBilingualText.fromJson(Map<String, dynamic> json) {
-    return ContactBilingualText(
-      en: json['en'] ?? '',
-      ar: json['ar'] ?? '',
-    );
-  }
+  factory ContactBilingualText.fromJson(Map<String, dynamic> json) =>
+      ContactBilingualText(
+        en: (json['en'] as String?) ?? '',
+        ar: (json['ar'] as String?) ?? '',
+      );
 
   Map<String, dynamic> toJson() => {'en': en, 'ar': ar};
 
-  ContactBilingualText copyWith({String? en, String? ar}) {
-    return ContactBilingualText(
-      en: en ?? this.en,
-      ar: ar ?? this.ar,
-    );
-  }
+  ContactBilingualText copyWith({String? en, String? ar}) =>
+      ContactBilingualText(en: en ?? this.en, ar: ar ?? this.ar);
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// Social Icon
-// ═══════════════════════════════════════════════════════════════════════════
+// ── Reason Item (used in Client & Owner Description) ─────────────────────────
+
+class ContactReasonItem {
+  final String id;
+  final ContactBilingualText label;
+  final bool isRequired;
+
+  const ContactReasonItem({
+    required this.id,
+    this.label = const ContactBilingualText(),
+    this.isRequired = false,
+  });
+
+  factory ContactReasonItem.fromJson(Map<String, dynamic> json) =>
+      ContactReasonItem(
+        id:         (json['id'] as String?) ?? '',
+        label:      json['label'] != null
+            ? ContactBilingualText.fromJson(json['label'] as Map<String, dynamic>)
+            : const ContactBilingualText(),
+        isRequired: (json['isRequired'] as bool?) ?? false,
+      );
+
+  Map<String, dynamic> toJson() => {
+    'id':         id,
+    'label':      label.toJson(),
+    'isRequired': isRequired,
+  };
+
+  ContactReasonItem copyWith({
+    String?               id,
+    ContactBilingualText? label,
+    bool?                 isRequired,
+  }) =>
+      ContactReasonItem(
+        id:         id         ?? this.id,
+        label:      label      ?? this.label,
+        isRequired: isRequired ?? this.isRequired,
+      );
+}
+
+// ── Description Section (shared by Client & Owner) ───────────────────────────
+
+class ContactDescriptionSection {
+  final ContactBilingualText description;
+  final List<ContactReasonItem> reasons;
+
+  const ContactDescriptionSection({
+    this.description = const ContactBilingualText(),
+    this.reasons     = const [],
+  });
+
+  factory ContactDescriptionSection.fromJson(Map<String, dynamic> json) =>
+      ContactDescriptionSection(
+        description: json['description'] != null
+            ? ContactBilingualText.fromJson(json['description'] as Map<String, dynamic>)
+            : const ContactBilingualText(),
+        reasons: (json['reasons'] as List<dynamic>?)
+            ?.map((e) => ContactReasonItem.fromJson(e as Map<String, dynamic>))
+            .toList() ?? [],
+      );
+
+  Map<String, dynamic> toJson() => {
+    'description': description.toJson(),
+    'reasons':     reasons.map((r) => r.toJson()).toList(),
+  };
+
+  ContactDescriptionSection copyWith({
+    ContactBilingualText?     description,
+    List<ContactReasonItem>?  reasons,
+  }) =>
+      ContactDescriptionSection(
+        description: description ?? this.description,
+        reasons:     reasons     ?? this.reasons,
+      );
+}
+
+// ── Social Link Item ─────────────────────────────────────────────────────────
 
 class ContactSocialIcon {
   final String id;
   final String iconUrl;
   final String link;
 
-  ContactSocialIcon({
+  const ContactSocialIcon({
     required this.id,
-    required this.iconUrl,
-    required this.link,
+    this.iconUrl = '',
+    this.link    = '',
   });
 
-  factory ContactSocialIcon.fromJson(Map<String, dynamic> json) {
-    return ContactSocialIcon(
-      id:      json['id']      ?? '',
-      iconUrl: json['iconUrl'] ?? '',
-      link:    json['link']    ?? '',
-    );
-  }
+  factory ContactSocialIcon.fromJson(Map<String, dynamic> json) =>
+      ContactSocialIcon(
+        id:      (json['id']      as String?) ?? '',
+        iconUrl: (json['iconUrl'] as String?) ?? '',
+        link:    (json['link']    as String?) ?? '',
+      );
 
   Map<String, dynamic> toJson() => {
     'id':      id,
@@ -138,120 +127,116 @@ class ContactSocialIcon {
     'link':    link,
   };
 
-  ContactSocialIcon copyWith({String? id, String? iconUrl, String? link}) {
-    return ContactSocialIcon(
-      id:      id      ?? this.id,
-      iconUrl: iconUrl ?? this.iconUrl,
-      link:    link    ?? this.link,
-    );
-  }
+  ContactSocialIcon copyWith({String? id, String? iconUrl, String? link}) =>
+      ContactSocialIcon(
+        id:      id      ?? this.id,
+        iconUrl: iconUrl ?? this.iconUrl,
+        link:    link    ?? this.link,
+      );
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// Office Location  ── mapLink field for Google Maps
-// ═══════════════════════════════════════════════════════════════════════════
+// ── Headings Section ─────────────────────────────────────────────────────────
 
-class ContactOfficeLocation {
-  final String id;
-  final String iconUrl;
-  final ContactBilingualText locationName;
-  final ContactBilingualText text1;
-  final ContactBilingualText text2;
-
-  /// Google Maps URL or any link opened when the card is tapped.
-  final String mapLink;
-
-  ContactOfficeLocation({
-    required this.id,
-    required this.iconUrl,
-    required this.locationName,
-    required this.text1,
-    required this.text2,
-    this.mapLink = '',
-  });
-
-  factory ContactOfficeLocation.fromJson(Map<String, dynamic> json) {
-    return ContactOfficeLocation(
-      id:           json['id']      ?? '',
-      iconUrl:      json['iconUrl'] ?? '',
-      locationName: ContactBilingualText.fromJson(
-          json['locationName'] ?? {'en': '', 'ar': ''}),
-      text1: ContactBilingualText.fromJson(
-          json['text1'] ?? {'en': '', 'ar': ''}),
-      text2: ContactBilingualText.fromJson(
-          json['text2'] ?? {'en': '', 'ar': ''}),
-      mapLink: json['mapLink'] ?? '',
-    );
-  }
-
-  Map<String, dynamic> toJson() => {
-    'id':           id,
-    'iconUrl':      iconUrl,
-    'locationName': locationName.toJson(),
-    'text1':        text1.toJson(),
-    'text2':        text2.toJson(),
-    'mapLink':      mapLink,
-  };
-
-  ContactOfficeLocation copyWith({
-    String? id,
-    String? iconUrl,
-    ContactBilingualText? locationName,
-    ContactBilingualText? text1,
-    ContactBilingualText? text2,
-    String? mapLink,
-  }) {
-    return ContactOfficeLocation(
-      id:           id           ?? this.id,
-      iconUrl:      iconUrl      ?? this.iconUrl,
-      locationName: locationName ?? this.locationName,
-      text1:        text1        ?? this.text1,
-      text2:        text2        ?? this.text2,
-      mapLink:      mapLink      ?? this.mapLink,
-    );
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// Confirm Message
-// ═══════════════════════════════════════════════════════════════════════════
-
-class ContactConfirmMessage {
+class ContactHeadings {
   final String svgUrl;
   final ContactBilingualText title;
-  final ContactBilingualText description;
+  final ContactBilingualText shortDescription;
 
-  ContactConfirmMessage({
-    required this.svgUrl,
-    required this.title,
-    required this.description,
+  const ContactHeadings({
+    this.svgUrl           = '',
+    this.title            = const ContactBilingualText(),
+    this.shortDescription = const ContactBilingualText(),
   });
 
-  factory ContactConfirmMessage.fromJson(Map<String, dynamic> json) {
-    return ContactConfirmMessage(
-      svgUrl: json['svgUrl'] ?? '',
-      title: ContactBilingualText.fromJson(
-          json['title'] ?? {'en': '', 'ar': ''}),
-      description: ContactBilingualText.fromJson(
-          json['description'] ?? {'en': '', 'ar': ''}),
-    );
-  }
+  factory ContactHeadings.fromJson(Map<String, dynamic> json) =>
+      ContactHeadings(
+        svgUrl: (json['svgUrl'] as String?) ?? '',
+        title: json['title'] != null
+            ? ContactBilingualText.fromJson(json['title'] as Map<String, dynamic>)
+            : const ContactBilingualText(),
+        shortDescription: json['shortDescription'] != null
+            ? ContactBilingualText.fromJson(json['shortDescription'] as Map<String, dynamic>)
+            : const ContactBilingualText(),
+      );
 
   Map<String, dynamic> toJson() => {
-    'svgUrl':      svgUrl,
-    'title':       title.toJson(),
-    'description': description.toJson(),
+    'svgUrl':           svgUrl,
+    'title':            title.toJson(),
+    'shortDescription': shortDescription.toJson(),
   };
 
-  ContactConfirmMessage copyWith({
-    String? svgUrl,
+  ContactHeadings copyWith({
+    String?               svgUrl,
     ContactBilingualText? title,
-    ContactBilingualText? description,
-  }) {
-    return ContactConfirmMessage(
-      svgUrl:      svgUrl      ?? this.svgUrl,
-      title:       title       ?? this.title,
-      description: description ?? this.description,
-    );
-  }
+    ContactBilingualText? shortDescription,
+  }) =>
+      ContactHeadings(
+        svgUrl:           svgUrl           ?? this.svgUrl,
+        title:            title            ?? this.title,
+        shortDescription: shortDescription ?? this.shortDescription,
+      );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// MAIN CMS MODEL
+// ═══════════════════════════════════════════════════════════════════════════════
+
+class ContactUsCmsModel {
+  final String publishStatus;
+  final ContactHeadings headings;
+  final ContactDescriptionSection clientDescription;
+  final ContactDescriptionSection ownerDescription;
+  final List<ContactSocialIcon> socialIcons;
+  final DateTime? lastUpdatedAt;
+
+  const ContactUsCmsModel({
+    this.publishStatus      = 'draft',
+    this.headings           = const ContactHeadings(),
+    this.clientDescription  = const ContactDescriptionSection(),
+    this.ownerDescription   = const ContactDescriptionSection(),
+    this.socialIcons        = const [],
+    this.lastUpdatedAt,
+  });
+
+  factory ContactUsCmsModel.fromJson(Map<String, dynamic> json) =>
+      ContactUsCmsModel(
+        publishStatus: (json['publishStatus'] as String?) ?? 'draft',
+        headings: json['headings'] != null
+            ? ContactHeadings.fromJson(json['headings'] as Map<String, dynamic>)
+            : const ContactHeadings(),
+        clientDescription: json['clientDescription'] != null
+            ? ContactDescriptionSection.fromJson(json['clientDescription'] as Map<String, dynamic>)
+            : const ContactDescriptionSection(),
+        ownerDescription: json['ownerDescription'] != null
+            ? ContactDescriptionSection.fromJson(json['ownerDescription'] as Map<String, dynamic>)
+            : const ContactDescriptionSection(),
+        socialIcons: (json['socialIcons'] as List<dynamic>?)
+            ?.map((e) => ContactSocialIcon.fromJson(e as Map<String, dynamic>))
+            .toList() ?? [],
+      );
+
+  Map<String, dynamic> toJson() => {
+    'publishStatus':     publishStatus,
+    'headings':          headings.toJson(),
+    'clientDescription': clientDescription.toJson(),
+    'ownerDescription':  ownerDescription.toJson(),
+    'socialIcons':       socialIcons.map((s) => s.toJson()).toList(),
+  };
+
+  ContactUsCmsModel copyWith({
+    String?                     publishStatus,
+    ContactHeadings?            headings,
+    ContactDescriptionSection?  clientDescription,
+    ContactDescriptionSection?  ownerDescription,
+    List<ContactSocialIcon>?    socialIcons,
+    DateTime?                   lastUpdatedAt,
+  }) =>
+      ContactUsCmsModel(
+        publishStatus:     publishStatus     ?? this.publishStatus,
+        headings:          headings          ?? this.headings,
+        clientDescription: clientDescription ?? this.clientDescription,
+        ownerDescription:  ownerDescription  ?? this.ownerDescription,
+        socialIcons:       socialIcons       ?? this.socialIcons,
+        lastUpdatedAt:     lastUpdatedAt     ?? this.lastUpdatedAt,
+      );
 }

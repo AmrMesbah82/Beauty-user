@@ -1,7 +1,7 @@
 // ******************* FILE INFO *******************
 // File Name: terms_of_service_page.dart
 // Contains: Tab 0 (Terms and Conditions) and Tab 1 (Privacy Policy)
-// UPDATED: Split from original about_page.dart — UI unchanged
+// UPDATED: Added initialTab parameter support for direct navigation
 
 // ignore_for_file: avoid_web_libraries_in_flutter
 import 'dart:html' as html;
@@ -62,8 +62,13 @@ Color _parseColor(String hex, {required Color fallback}) {
 ({int topTab, int subTab}) _resolveTabParam(String? raw) {
   switch (raw?.toLowerCase().trim()) {
     case 'terms-and-conditions':
+    case 'terms':
+    case 'terms-of-service':
+    case 'termsofservice':
       return (topTab: 0, subTab: 0);
     case 'privacy-policy':
+    case 'privacy':
+    case 'privacypolicy':
       return (topTab: 1, subTab: 0);
     default:
       return (topTab: 0, subTab: 0);
@@ -385,20 +390,26 @@ class _SvgPulseLoaderState extends State<_SvgPulseLoader>
 // ══════════════════════════════════════════════════════════════════════════════
 
 class TermsOfServicePage extends StatelessWidget {
-  const TermsOfServicePage({super.key});
+  final String initialTab;
+
+  const TermsOfServicePage({super.key, this.initialTab = ''});
+
   @override
   Widget build(BuildContext context) {
     return MultiBlocProvider(
       providers: [
         BlocProvider(create: (_) => TermsCubit()..load()),
       ],
-      child: const _TermsOfServicePageView(),
+      child: _TermsOfServicePageView(initialTab: initialTab),  // ✅ PASS TO VIEW
     );
   }
 }
 
 class _TermsOfServicePageView extends StatefulWidget {
-  const _TermsOfServicePageView();
+  final String initialTab;  // ✅ ADDED
+
+  const _TermsOfServicePageView({this.initialTab = ''});
+
   @override
   State<_TermsOfServicePageView> createState() => _TermsOfServicePageViewState();
 }
@@ -411,12 +422,19 @@ class _TermsOfServicePageViewState extends State<_TermsOfServicePageView> {
   @override
   void initState() {
     super.initState();
+
+    // ✅ PRIORITY 1: Check constructor parameter first (for Navigator.push)
+    if (widget.initialTab.isNotEmpty) {
+      final resolved = _resolveTabParam(widget.initialTab);
+      _initialTopTab = resolved.topTab;
+    }
+
     Future.delayed(const Duration(seconds: 12), () {
       if (mounted && _showLoader) setState(() => _showLoader = false);
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<HomeCmsCubit>().load();
-      _readTabParam();
+      _readTabParam();  // Priority 2: Check GoRouter query param
     });
   }
 
@@ -428,6 +446,9 @@ class _TermsOfServicePageViewState extends State<_TermsOfServicePageView> {
 
   void _readTabParam() {
     if (!mounted) return;
+    // Skip GoRouter lookup if already resolved from constructor
+    if (_initialTopTab != null) return;
+
     try {
       final uri = GoRouterState.of(context).uri;
       final tabParam = uri.queryParameters['tab'];
@@ -440,7 +461,9 @@ class _TermsOfServicePageViewState extends State<_TermsOfServicePageView> {
           });
         }
       }
-    } catch (_) {}
+    } catch (_) {
+      // GoRouterState not available - fine, constructor param already handled
+    }
   }
 
   Future<void> _preloadAndReveal({required String logoUrl}) async {
@@ -594,6 +617,7 @@ class _TermsOfServicePageViewState extends State<_TermsOfServicePageView> {
                                     isRtl: isRtl,
                                     primaryColor: primaryColor,
                                     secondaryColor: secondaryColor,
+                                    logoUrl: logoUrl,
                                     initialTopTab: _tabParamApplied ? null : _initialTopTab,
                                     onTabApplied: () => _tabParamApplied = true,
                                   )
@@ -602,6 +626,7 @@ class _TermsOfServicePageViewState extends State<_TermsOfServicePageView> {
                                     isRtl: isRtl,
                                     primaryColor: primaryColor,
                                     secondaryColor: secondaryColor,
+                                    logoUrl: logoUrl,
                                     initialTopTab: _tabParamApplied ? null : _initialTopTab,
                                     onTabApplied: () => _tabParamApplied = true,
                                   ),
@@ -694,6 +719,7 @@ class _TermsBodyDesktop extends StatefulWidget {
   final TermsOfServiceModel termsModel;
   final bool isRtl;
   final Color primaryColor, secondaryColor;
+  final String logoUrl;
   final int? initialTopTab;
   final VoidCallback? onTabApplied;
   const _TermsBodyDesktop({
@@ -701,6 +727,7 @@ class _TermsBodyDesktop extends StatefulWidget {
     required this.isRtl,
     required this.primaryColor,
     required this.secondaryColor,
+    required this.logoUrl,
     this.initialTopTab,
     this.onTabApplied,
   });
@@ -752,6 +779,7 @@ class _TermsBodyDesktopState extends State<_TermsBodyDesktop> {
     );
   }
 
+  /// Desktop doc panel
   Widget _docPanel({
     required String description,
     required String svgUrl,
@@ -759,49 +787,77 @@ class _TermsBodyDesktopState extends State<_TermsBodyDesktop> {
     required String attachArUrl,
     required String labelEn,
     required String labelAr,
+    required String lastUpdate,
   }) {
-    return Column(
+    final String logoUrl = widget.logoUrl;
+
+    return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-          width: double.infinity,
-          padding: EdgeInsets.all(16.r),
-          decoration: BoxDecoration(
-            color: _kSurface,
-            borderRadius: BorderRadius.circular(12.r),
-          ),
-          child: Row(
+        // ── Left: full column (white card + download buttons) ──
+        Expanded(
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: Text(
-                  description,
-                  style: StyleText.fontSize14Weight400.copyWith(
-                    fontSize: 13.sp,
-                    height: 1.75,
-                  ),
+              // ── White card ──
+              Container(
+                padding: EdgeInsets.all(16.r),
+                decoration: BoxDecoration(
+                  color: _kSurface,
+                  borderRadius: BorderRadius.circular(12.r),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Logo (left) + Date (right)
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        if (logoUrl.isNotEmpty)
+                          _netImg(
+                            url: logoUrl,
+                            width: 80.w,
+                            height: 40.h,
+                            fit: BoxFit.contain,
+                          )
+                        else
+                          const SizedBox.shrink(),
+                        if (lastUpdate.isNotEmpty)
+                          Text(
+                            lastUpdate,
+                            style: TextStyle(
+                              fontFamily: 'Cairo',
+                              fontSize: 11.sp,
+                              fontWeight: FontWeight.w400,
+                              color: AppColors.secondaryBlack.withOpacity(0.6),
+                            ),
+                          ),
+                      ],
+                    ),
+                    SizedBox(height: 14.h),
+                    Text(
+                      description,
+                      style: StyleText.fontSize14Weight400.copyWith(
+                        fontSize: 13.sp,
+                        height: 1.75,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              if (svgUrl.isNotEmpty) ...[
-                SizedBox(width: 16.w),
-                _netImg(
-                  url: svgUrl,
-                  width: 180.w,
-                  height: 180.h,
-                  fit: BoxFit.contain,
-                  borderRadius: BorderRadius.circular(10.r),
-                ),
-              ],
+
+              // ── Download buttons below the card ──
+              SizedBox(height: 12.h),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  _downloadButton(labelEn, attachEnUrl),
+                  _downloadButton(labelAr, attachArUrl),
+                ],
+              ),
             ],
           ),
-        ),
-        SizedBox(height: 12.h),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            _downloadButton(labelEn, attachEnUrl),
-            _downloadButton(labelAr, attachArUrl),
-          ],
         ),
       ],
     );
@@ -821,6 +877,13 @@ class _TermsBodyDesktopState extends State<_TermsBodyDesktop> {
     final TermsSection terms = widget.termsModel.termsAndConditions,
         privacy = widget.termsModel.privacyPolicy;
 
+    final String termsLastUpdate = widget.isRtl
+        ? 'آخر تحديث: ${terms.lastUpdate ?? ''}'
+        : 'Last Update: ${terms.lastUpdate ?? ''}';
+    final String privacyLastUpdate = widget.isRtl
+        ? 'آخر تحديث: ${privacy.lastUpdate ?? ''}'
+        : 'Last Update: ${privacy.lastUpdate ?? ''}';
+
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: hPad),
       child: Column(
@@ -839,8 +902,8 @@ class _TermsBodyDesktopState extends State<_TermsBodyDesktop> {
                     : _topTabs[i].en)
                     : _topTabs[i].en;
                 final String svgAsset = switch (i) {
-                  0 => 'assets/images/about_us/Terms and Conditions.svg',
-                  _ => 'assets/images/about_us/Privacy Policy.svg',
+                  0 => terms.svgUrl,
+                  _ => privacy.svgUrl,
                 };
                 return _DesktopTopTabItem(
                   index: i,
@@ -869,6 +932,7 @@ class _TermsBodyDesktopState extends State<_TermsBodyDesktop> {
                 attachArUrl: terms.attachArUrl,
                 labelEn: 'Download PDF of Terms and Conditions (ENG)',
                 labelAr: 'Download PDF of Terms and Conditions (ARB)',
+                lastUpdate: termsLastUpdate,
               ),
             ),
 
@@ -885,6 +949,7 @@ class _TermsBodyDesktopState extends State<_TermsBodyDesktop> {
                 attachArUrl: privacy.attachArUrl,
                 labelEn: 'Download PDF of Privacy Policy (ENG)',
                 labelAr: 'Download PDF of Privacy Policy (ARB)',
+                lastUpdate: privacyLastUpdate,
               ),
             ),
 
@@ -896,7 +961,7 @@ class _TermsBodyDesktopState extends State<_TermsBodyDesktop> {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// Desktop Top Tab Item (with hover) ✅
+// Desktop Top Tab Item (with hover)
 // ══════════════════════════════════════════════════════════════════════════════
 
 class _DesktopTopTabItem extends StatefulWidget {
@@ -957,8 +1022,8 @@ class _DesktopTopTabItemState extends State<_DesktopTopTabItem> {
                   borderRadius: BorderRadius.circular(8.r),
                 ),
                 child: Center(
-                  child: SvgPicture.asset(
-                    widget.svgAsset,
+                  child: _netImg(
+                    url: widget.svgAsset,
                     width: 24.sp,
                     height: 24.sp,
                     fit: BoxFit.contain,
@@ -999,6 +1064,7 @@ class _TermsBodyMobile extends StatefulWidget {
   final TermsOfServiceModel termsModel;
   final bool isRtl;
   final Color primaryColor, secondaryColor;
+  final String logoUrl;
   final int? initialTopTab;
   final VoidCallback? onTabApplied;
   const _TermsBodyMobile({
@@ -1006,6 +1072,7 @@ class _TermsBodyMobile extends StatefulWidget {
     required this.isRtl,
     required this.primaryColor,
     required this.secondaryColor,
+    required this.logoUrl,
     this.initialTopTab,
     this.onTabApplied,
   });
@@ -1038,6 +1105,13 @@ class _TermsBodyMobileState extends State<_TermsBodyMobile> {
   Widget build(BuildContext context) {
     final TermsSection terms = widget.termsModel.termsAndConditions,
         privacy = widget.termsModel.privacyPolicy;
+
+    final String termsLastUpdate = widget.isRtl
+        ? 'آخر تحديث: ${terms.lastUpdate ?? ''}'
+        : 'Last Update: ${terms.lastUpdate ?? ''}';
+    final String privacyLastUpdate = widget.isRtl
+        ? 'آخر تحديث: ${privacy.lastUpdate ?? ''}'
+        : 'Last Update: ${privacy.lastUpdate ?? ''}';
 
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 16.w),
@@ -1080,6 +1154,8 @@ class _TermsBodyMobileState extends State<_TermsBodyMobile> {
                 labelEn: 'Download PDF of Terms and Conditions (ENG)',
                 labelAr: 'Download PDF of Terms and Conditions (ARB)',
                 primaryColor: widget.primaryColor,
+                logoUrl: widget.logoUrl,
+                lastUpdate: termsLastUpdate,
               ),
             ),
 
@@ -1097,6 +1173,8 @@ class _TermsBodyMobileState extends State<_TermsBodyMobile> {
                 labelEn: 'Download PDF of Privacy Policy (ENG)',
                 labelAr: 'Download PDF of Privacy Policy (ARB)',
                 primaryColor: widget.primaryColor,
+                logoUrl: widget.logoUrl,
+                lastUpdate: privacyLastUpdate,
               ),
             ),
 
@@ -1108,7 +1186,7 @@ class _TermsBodyMobileState extends State<_TermsBodyMobile> {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// Mobile Top Tab Item (with hover) ✅
+// Mobile Top Tab Item (with hover)
 // ══════════════════════════════════════════════════════════════════════════════
 
 class _MobileTopTabItem extends StatefulWidget {
@@ -1155,12 +1233,12 @@ class _MobileTopTabItemState extends State<_MobileTopTabItem> {
                 ? Colors.transparent
                 : (_hovered ? hoverBg : Colors.transparent),
             borderRadius: BorderRadius.circular(8.r),
-            border: Border(
-              bottom: BorderSide(
-                color: sel ? widget.primaryColor : Colors.transparent,
-                width: 2,
-              ),
-            ),
+            // border: Border(
+            //   bottom: BorderSide(
+            //     color: sel ? widget.primaryColor : Colors.transparent,
+            //     width: 2,
+            //   ),
+            // ),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -1207,11 +1285,16 @@ class _MobileTopTabItemState extends State<_MobileTopTabItem> {
   }
 }
 
-// ── Mobile Doc Panel ──
+// ══════════════════════════════════════════════════════════════════════════════
+// Mobile Doc Panel
+// ══════════════════════════════════════════════════════════════════════════════
 
 class _MobileDocPanel extends StatelessWidget {
   final String description, svgUrl, attachEnUrl, attachArUrl, labelEn, labelAr;
   final Color primaryColor;
+  final String logoUrl;
+  final String lastUpdate;
+
   const _MobileDocPanel({
     required this.description,
     required this.svgUrl,
@@ -1220,6 +1303,8 @@ class _MobileDocPanel extends StatelessWidget {
     required this.labelEn,
     required this.labelAr,
     required this.primaryColor,
+    required this.logoUrl,
+    required this.lastUpdate,
   });
 
   Widget _downloadBtn(String label, String url) {
@@ -1261,50 +1346,85 @@ class _MobileDocPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.card,
-        borderRadius: BorderRadius.circular(12.r),
-      ),
-      child: Padding(
-        padding: EdgeInsets.all(10.sp),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (svgUrl.isNotEmpty) ...[
-              Center(
-                child: _netImg(
-                  url: svgUrl,
-                  width: double.infinity,
-                  height: 200.h,
-                  fit: BoxFit.contain,
-                ),
-              ),
-              SizedBox(height: 14.h),
-            ],
-            Container(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // ── SVG image on top (full width) ──
+        if (svgUrl.isNotEmpty) ...[
+          Center(
+            child: _netImg(
+              url: svgUrl,
               width: double.infinity,
-              padding: EdgeInsets.all(14.r),
-              decoration: BoxDecoration(
-                color: _kSurface,
-                borderRadius: BorderRadius.circular(12.r),
-              ),
-              child: Text(
-                description,
-                style: TextStyle(
-                  fontFamily: 'Cairo',
-                  fontSize: 11.sp,
-                  fontWeight: FontWeight.w400,
-                  color: AppColors.secondaryBlack,
-                  height: 1.75,
-                ),
-              ),
+              height: 200.h,
+              fit: BoxFit.contain,
             ),
-            _downloadBtn(labelEn, attachEnUrl),
-            _downloadBtn(labelAr, attachArUrl),
-          ],
+          ),
+          SizedBox(height: 14.h),
+        ],
+
+        // ── White card: logo+date header + text only ──
+        Container(
+          decoration: BoxDecoration(
+            color: _kSurface,
+            borderRadius: BorderRadius.circular(12.r),
+          ),
+          child: Padding(
+            padding: EdgeInsets.all(14.r),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Logo (left) + Date (right)
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (logoUrl.isNotEmpty)
+                      _netImg(
+                        url: logoUrl,
+                        width: 70.w,
+                        height: 34.h,
+                        fit: BoxFit.contain,
+                      )
+                    else
+                      const SizedBox.shrink(),
+                    if (lastUpdate.isNotEmpty)
+                      Spacer(),
+                      Flexible(
+                        child: Text(
+                          lastUpdate,
+                          textAlign: TextAlign.end,
+                          style: TextStyle(
+                            fontFamily: 'Cairo',
+                            fontSize: 10.sp,
+                            fontWeight: FontWeight.w400,
+                            color: AppColors.secondaryBlack.withOpacity(0.6),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                SizedBox(height: 12.h),
+                // Description text only
+                Text(
+                  description,
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
+                    fontSize: 11.sp,
+                    fontWeight: FontWeight.w400,
+                    color: AppColors.secondaryBlack,
+                    height: 1.75,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
-      ),
+
+        // ── Download buttons ──
+        _downloadBtn(labelEn, attachEnUrl),
+        _downloadBtn(labelAr, attachArUrl),
+        SizedBox(height: 8.h),
+      ],
     );
   }
 }

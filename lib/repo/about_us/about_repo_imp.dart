@@ -4,10 +4,11 @@
 // UPDATED: Fixed storage paths for strategy images
 
 import 'dart:typed_data';
-import 'package:beauty_user/model/about_us/about_us.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
-import 'package:beauty_user/repo/about_us/about_repo.dart';
+
+import '../../model/about_us/about_us.dart';
+import 'about_repo.dart';
 
 class AboutRepoImpl implements AboutRepo {
   static const String _collection = 'cms';

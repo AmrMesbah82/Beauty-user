@@ -3,9 +3,8 @@
 // Description: Pure data model for the Home CMS.
 //              No packages — only dart:core types.
 // Created by: Amr Mesbah
-// FIXED: NavButtonModel now has status field to control navbar visibility
-// FIXED: SocialLinkModel now has visibility field to control footer display
-// ADDED: scheduledPublishDate field on HomePageModel for publish scheduling
+// UPDATED: AppDownloadLinksModel now has labelEn, labelAr, iosIconUrl,
+//          androidIconUrl fields for the "App Link" section ✅
 
 /// Bilingual text wrapper
 class BiText {
@@ -27,42 +26,53 @@ class BiText {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Nav Button — WITH STATUS FIELD
+// Nav Button — WITH STATUS FIELD AND ICON URL ✅
 // ─────────────────────────────────────────────────────────────────────────────
 
 class NavButtonModel {
   final String id;
   final BiText name;
   final String route;
-  final bool   status; // controls visibility in navbar
+  final String iconUrl;
+  final bool   status;
 
   const NavButtonModel({
     required this.id,
-    this.name   = const BiText(),
-    this.route  = '',
-    this.status = true,
+    this.name    = const BiText(),
+    this.route   = '',
+    this.iconUrl = '',
+    this.status  = true,
   });
 
-  NavButtonModel copyWith({String? id, BiText? name, String? route, bool? status}) =>
+  NavButtonModel copyWith({
+    String? id,
+    BiText? name,
+    String? route,
+    String? iconUrl,
+    bool? status
+  }) =>
       NavButtonModel(
-        id:     id     ?? this.id,
-        name:   name   ?? this.name,
-        route:  route  ?? this.route,
-        status: status ?? this.status,
+        id:      id      ?? this.id,
+        name:    name    ?? this.name,
+        route:   route   ?? this.route,
+        iconUrl: iconUrl ?? this.iconUrl,
+        status:  status  ?? this.status,
       );
 
   Map<String, dynamic> toMap() => {
-    'id':     id,
-    'name':   name.toMap(),
-    'route':  route,
-    'status': status,
+    'id':      id,
+    'name':    name.toMap(),
+    'route':   route,
+    'iconUrl': iconUrl,
+    'status':  status,
   };
 
   factory NavButtonModel.fromMap(Map<String, dynamic> map) => NavButtonModel(
-    id:     map['id']     ?? '',
-    name:   BiText.fromMap(map['name'] ?? {}),
-    route:  map['route']  ?? '',
-    status: map['status'] ?? true,
+    id:      map['id']      ?? '',
+    name:    BiText.fromMap(map['name'] ?? {}),
+    route:   map['route']   ?? '',
+    iconUrl: map['iconUrl'] ?? '',
+    status:  map['status']  ?? true,
   );
 }
 
@@ -75,14 +85,14 @@ class SectionCardModel {
   final String iconUrl;
   final String textBoxColor;
   final BiText description;
-  final bool   visibility; // ✅ controls whether section shows on public site
+  final bool   visibility;
 
   const SectionCardModel({
     this.imageUrl     = '',
     this.iconUrl      = '',
     this.textBoxColor = '#008037',
     this.description  = const BiText(),
-    this.visibility   = true, // ✅ default visible
+    this.visibility   = true,
   });
 
   SectionCardModel copyWith({
@@ -90,14 +100,14 @@ class SectionCardModel {
     String? iconUrl,
     String? textBoxColor,
     BiText? description,
-    bool?   visibility, // ✅
+    bool?   visibility,
   }) =>
       SectionCardModel(
         imageUrl:     imageUrl     ?? this.imageUrl,
         iconUrl:      iconUrl      ?? this.iconUrl,
         textBoxColor: textBoxColor ?? this.textBoxColor,
         description:  description  ?? this.description,
-        visibility:   visibility   ?? this.visibility, // ✅
+        visibility:   visibility   ?? this.visibility,
       );
 
   Map<String, dynamic> toMap() => {
@@ -105,7 +115,7 @@ class SectionCardModel {
     'iconUrl':      iconUrl,
     'textBoxColor': textBoxColor,
     'description':  description.toMap(),
-    'visibility':   visibility, // ✅ persisted to Firestore
+    'visibility':   visibility,
   };
 
   factory SectionCardModel.fromMap(Map<String, dynamic> map) => SectionCardModel(
@@ -113,7 +123,7 @@ class SectionCardModel {
     iconUrl:      map['iconUrl']      ?? '',
     textBoxColor: map['textBoxColor'] ?? '#008037',
     description:  BiText.fromMap(map['description'] ?? {}),
-    visibility:   map['visibility']   ?? true, // ✅ old docs default to true
+    visibility:   map['visibility']   ?? true,
   );
 }
 
@@ -242,41 +252,105 @@ class SocialLinkModel {
   final String id;
   final String iconUrl;
   final String url;
-  final bool   visibility; // ✅ controls whether icon shows in footer
+  final bool   visibility;
 
   const SocialLinkModel({
     required this.id,
     this.iconUrl    = '',
     this.url        = '',
-    this.visibility = true, // ✅ default visible
+    this.visibility = true,
   });
 
   SocialLinkModel copyWith({
     String? id,
     String? iconUrl,
     String? url,
-    bool?   visibility, // ✅
+    bool?   visibility,
   }) =>
       SocialLinkModel(
         id:         id         ?? this.id,
         iconUrl:    iconUrl    ?? this.iconUrl,
         url:        url        ?? this.url,
-        visibility: visibility ?? this.visibility, // ✅
+        visibility: visibility ?? this.visibility,
       );
 
   Map<String, dynamic> toMap() => {
     'id':         id,
     'iconUrl':    iconUrl,
     'url':        url,
-    'visibility': visibility, // ✅ persisted to Firestore
+    'visibility': visibility,
   };
 
   factory SocialLinkModel.fromMap(Map<String, dynamic> map) => SocialLinkModel(
     id:         map['id']         ?? '',
     iconUrl:    map['iconUrl']    ?? '',
     url:        map['url']        ?? '',
-    visibility: map['visibility'] ?? true, // ✅ old docs default to true
+    visibility: map['visibility'] ?? true,
   );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// App Download Links ✅ UPDATED — now has labelEn, labelAr, icon URLs
+// ─────────────────────────────────────────────────────────────────────────────
+
+class AppDownloadLinksModel {
+  final String iosUrl;
+  final String androidUrl;
+  final String labelEn;          // ✅ NEW: Navigation Label EN
+  final String labelAr;          // ✅ NEW: Navigation Label AR
+  final String iosIconUrl;       // ✅ NEW: uploaded iOS icon URL
+  final String androidIconUrl;   // ✅ NEW: uploaded Android icon URL
+  final bool   visibility;
+
+  const AppDownloadLinksModel({
+    this.iosUrl         = '',
+    this.androidUrl     = '',
+    this.labelEn        = '',
+    this.labelAr        = '',
+    this.iosIconUrl     = '',
+    this.androidIconUrl = '',
+    this.visibility     = true,
+  });
+
+  AppDownloadLinksModel copyWith({
+    String? iosUrl,
+    String? androidUrl,
+    String? labelEn,
+    String? labelAr,
+    String? iosIconUrl,
+    String? androidIconUrl,
+    bool?   visibility,
+  }) =>
+      AppDownloadLinksModel(
+        iosUrl:         iosUrl         ?? this.iosUrl,
+        androidUrl:     androidUrl     ?? this.androidUrl,
+        labelEn:        labelEn        ?? this.labelEn,
+        labelAr:        labelAr        ?? this.labelAr,
+        iosIconUrl:     iosIconUrl     ?? this.iosIconUrl,
+        androidIconUrl: androidIconUrl ?? this.androidIconUrl,
+        visibility:     visibility     ?? this.visibility,
+      );
+
+  Map<String, dynamic> toMap() => {
+    'iosUrl':         iosUrl,
+    'androidUrl':     androidUrl,
+    'labelEn':        labelEn,
+    'labelAr':        labelAr,
+    'iosIconUrl':     iosIconUrl,
+    'androidIconUrl': androidIconUrl,
+    'visibility':     visibility,
+  };
+
+  factory AppDownloadLinksModel.fromMap(Map<String, dynamic> map) =>
+      AppDownloadLinksModel(
+        iosUrl:         map['iosUrl']         ?? '',
+        androidUrl:     map['androidUrl']     ?? '',
+        labelEn:        map['labelEn']        ?? '',
+        labelAr:        map['labelAr']        ?? '',
+        iosIconUrl:     map['iosIconUrl']     ?? '',
+        androidIconUrl: map['androidIconUrl'] ?? '',
+        visibility:     map['visibility']     ?? true,
+      );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -347,79 +421,88 @@ class BrandingModel {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class HomePageModel {
-  final BiText                  title;
-  final BiText                  shortDescription;
-  final List<NavButtonModel>    navButtons;
-  final List<SectionCardModel>  sections;
-  final List<HeaderItemModel>   headerItems;
+  final BiText title;
+  final BiText shortDescription;
+  final List<NavButtonModel> navButtons;
+  final List<SectionCardModel> sections;
+  final List<HeaderItemModel> headerItems;
   final List<FooterColumnModel> footerColumns;
-  final List<SocialLinkModel>   socialLinks;
-  final BrandingModel           branding;
-  final String                  publishStatus; // 'published' | 'scheduled' | 'draft'
-  final DateTime?               lastUpdatedAt;
-  final DateTime?               scheduledPublishDate; // ✅ NEW — when to auto-publish
+  final List<SocialLinkModel> socialLinks;
+  final BrandingModel branding;
+  final AppDownloadLinksModel appDownloadLinks;
+  final String publishStatus;
+  final DateTime? lastUpdatedAt;
+  final DateTime? scheduledPublishDate;
+  final String gender;
 
   const HomePageModel({
-    this.title            = const BiText(),
+    this.title = const BiText(),
     this.shortDescription = const BiText(),
-    this.navButtons       = const [],
-    this.sections         = const [],
-    this.headerItems      = const [],
-    this.footerColumns    = const [],
-    this.socialLinks      = const [],
-    this.branding         = const BrandingModel(),
-    this.publishStatus    = 'draft',
+    this.navButtons = const [],
+    this.sections = const [],
+    this.headerItems = const [],
+    this.footerColumns = const [],
+    this.socialLinks = const [],
+    this.branding = const BrandingModel(),
+    this.appDownloadLinks = const AppDownloadLinksModel(),
+    this.publishStatus = 'draft',
     this.lastUpdatedAt,
-    this.scheduledPublishDate, // ✅ NEW
+    this.scheduledPublishDate,
+    this.gender = 'female',
   });
 
   HomePageModel copyWith({
-    BiText?                  title,
-    BiText?                  shortDescription,
-    List<NavButtonModel>?    navButtons,
-    List<SectionCardModel>?  sections,
-    List<HeaderItemModel>?   headerItems,
+    BiText? title,
+    BiText? shortDescription,
+    List<NavButtonModel>? navButtons,
+    List<SectionCardModel>? sections,
+    List<HeaderItemModel>? headerItems,
     List<FooterColumnModel>? footerColumns,
-    List<SocialLinkModel>?   socialLinks,
-    BrandingModel?           branding,
-    String?                  publishStatus,
-    DateTime?                lastUpdatedAt,
-    DateTime?                scheduledPublishDate, // ✅ NEW
-    // ✅ use this sentinel to explicitly clear the scheduled date
-    bool                     clearScheduledPublishDate = false,
+    List<SocialLinkModel>? socialLinks,
+    BrandingModel? branding,
+    AppDownloadLinksModel? appDownloadLinks,
+    String? publishStatus,
+    DateTime? lastUpdatedAt,
+    DateTime? scheduledPublishDate,
+    String? gender,
+    bool clearScheduledPublishDate = false,
   }) =>
       HomePageModel(
-        title:                title                ?? this.title,
-        shortDescription:     shortDescription     ?? this.shortDescription,
-        navButtons:           navButtons           ?? this.navButtons,
-        sections:             sections             ?? this.sections,
-        headerItems:          headerItems          ?? this.headerItems,
-        footerColumns:        footerColumns        ?? this.footerColumns,
-        socialLinks:          socialLinks          ?? this.socialLinks,
-        branding:             branding             ?? this.branding,
-        publishStatus:        publishStatus        ?? this.publishStatus,
-        lastUpdatedAt:        lastUpdatedAt        ?? this.lastUpdatedAt,
+        title: title ?? this.title,
+        shortDescription: shortDescription ?? this.shortDescription,
+        navButtons: navButtons ?? this.navButtons,
+        sections: sections ?? this.sections,
+        headerItems: headerItems ?? this.headerItems,
+        footerColumns: footerColumns ?? this.footerColumns,
+        socialLinks: socialLinks ?? this.socialLinks,
+        branding: branding ?? this.branding,
+        appDownloadLinks: appDownloadLinks ?? this.appDownloadLinks,
+        publishStatus: publishStatus ?? this.publishStatus,
+        lastUpdatedAt: lastUpdatedAt ?? this.lastUpdatedAt,
+        gender: gender ?? this.gender,
         scheduledPublishDate: clearScheduledPublishDate
             ? null
             : (scheduledPublishDate ?? this.scheduledPublishDate),
       );
 
   Map<String, dynamic> toMap() => {
-    'title':                title.toMap(),
-    'shortDescription':     shortDescription.toMap(),
-    'navButtons':           navButtons.map((e) => e.toMap()).toList(),
-    'sections':             sections.map((e) => e.toMap()).toList(),
-    'headerItems':          headerItems.map((e) => e.toMap()).toList(),
-    'footerColumns':        footerColumns.map((e) => e.toMap()).toList(),
-    'socialLinks':          socialLinks.map((e) => e.toMap()).toList(),
-    'branding':             branding.toMap(),
-    'publishStatus':        publishStatus,
-    'lastUpdatedAt':        lastUpdatedAt?.toIso8601String(),
-    'scheduledPublishDate': scheduledPublishDate?.toIso8601String(), // ✅ NEW
+    'title': title.toMap(),
+    'shortDescription': shortDescription.toMap(),
+    'navButtons': navButtons.map((e) => e.toMap()).toList(),
+    'sections': sections.map((e) => e.toMap()).toList(),
+    'headerItems': headerItems.map((e) => e.toMap()).toList(),
+    'footerColumns': footerColumns.map((e) => e.toMap()).toList(),
+    'socialLinks': socialLinks.map((e) => e.toMap()).toList(),
+    'branding': branding.toMap(),
+    'appDownloadLinks': appDownloadLinks.toMap(),
+    'publishStatus': publishStatus,
+    'lastUpdatedAt': lastUpdatedAt?.toIso8601String(),
+    'scheduledPublishDate': scheduledPublishDate?.toIso8601String(),
+    'gender': gender,
   };
 
   factory HomePageModel.fromMap(Map<String, dynamic> map) => HomePageModel(
-    title:            BiText.fromMap(map['title'] ?? {}),
+    title: BiText.fromMap(map['title'] ?? {}),
     shortDescription: BiText.fromMap(map['shortDescription'] ?? {}),
     navButtons: (map['navButtons'] as List<dynamic>? ?? [])
         .map((e) => NavButtonModel.fromMap(e as Map<String, dynamic>))
@@ -436,33 +519,39 @@ class HomePageModel {
     socialLinks: (map['socialLinks'] as List<dynamic>? ?? [])
         .map((e) => SocialLinkModel.fromMap(e as Map<String, dynamic>))
         .toList(),
-    branding:             BrandingModel.fromMap(map['branding'] ?? {}),
-    publishStatus:        map['publishStatus'] ?? 'draft',
-    lastUpdatedAt:        _parseDateTime(map['lastUpdatedAt']),
-    scheduledPublishDate: _parseDateTime(map['scheduledPublishDate']), // ✅ NEW
+    branding: BrandingModel.fromMap(map['branding'] ?? {}),
+    appDownloadLinks: AppDownloadLinksModel.fromMap(
+        map['appDownloadLinks'] ?? {}),
+    publishStatus: map['publishStatus'] ?? 'draft',
+    lastUpdatedAt: _parseDateTime(map['lastUpdatedAt']),
+    scheduledPublishDate: _parseDateTime(map['scheduledPublishDate']),
+    gender: map['gender'] ?? 'female',
   );
 
   static DateTime? _parseDateTime(dynamic value) {
     if (value == null) return null;
     if (value.runtimeType.toString().contains('Timestamp')) {
-      try { return (value as dynamic).toDate() as DateTime; } catch (_) {}
+      try {
+        return (value as dynamic).toDate() as DateTime;
+      } catch (_) {}
     }
     if (value is String) return DateTime.tryParse(value);
     return null;
   }
 
   static HomePageModel get defaultModel => HomePageModel(
-    title:            const BiText(en: 'Bayanatz', ar: 'بيانتز'),
+    title: const BiText(en: 'Bayanatz', ar: 'بيانتز'),
     shortDescription: const BiText(
       en: "MENA'S Digital Transformation Pioneers",
       ar: 'رواد التحول الرقمي في منطقة الشرق الأوسط وشمال أفريقيا',
     ),
     navButtons: const [
-      NavButtonModel(id: 'nb_1', name: BiText(en: 'Home',       ar: 'الرئيسية'), route: '/',         status: true),
-      NavButtonModel(id: 'nb_2', name: BiText(en: 'Services',   ar: 'الخدمات'),  route: '/services', status: true),
-      NavButtonModel(id: 'nb_3', name: BiText(en: 'About',      ar: 'من نحن'),   route: '/about',    status: true),
-      NavButtonModel(id: 'nb_4', name: BiText(en: 'Contact Us', ar: 'اتصل بنا'), route: '/contact',  status: true),
-      NavButtonModel(id: 'nb_5', name: BiText(en: 'Careers',    ar: 'الوظائف'),  route: '/careers',  status: true),
+      NavButtonModel(id: 'nb_1', name: BiText(en: 'Home', ar: 'الرئيسية'), route: '/', status: true),
+      NavButtonModel(id: 'nb_2', name: BiText(en: 'Overview', ar: 'نظرة عامة'), route: '/services', status: true),
+      NavButtonModel(id: 'nb_3', name: BiText(en: 'Our Products', ar: 'منتجاتنا'), route: '/about', status: true),
+      NavButtonModel(id: 'nb_4', name: BiText(en: 'About Us', ar: 'من نحن'), route: '/contact', status: true),
+      NavButtonModel(id: 'nb_5', name: BiText(en: 'Terms of Service', ar: 'شروط الخدمة'), route: '/terms', status: true),
+      NavButtonModel(id: 'nb_6', name: BiText(en: 'Contact Us', ar: 'اتصل بنا'), route: '/contactus', status: true),
     ],
     sections: List.generate(
       4,
@@ -485,28 +574,38 @@ class HomePageModel {
     footerColumns: const [
       FooterColumnModel(
         id: 'fc_1',
-        title: BiText(en: 'Services', ar: 'الخدمات'),
-        route: '/services',
+        title: BiText(en: 'Our Products', ar: 'منتجاتنا'),
+        route: '/about',
         labels: [
-          FooterLabelModel(id: 'fl_1a', label: BiText(en: 'Digital Strategy', ar: 'الاستراتيجية الرقمية')),
-          FooterLabelModel(id: 'fl_1b', label: BiText(en: 'Data Analytics',   ar: 'تحليل البيانات')),
+          FooterLabelModel(id: 'fl_1a', label: BiText(en: 'Client Services', ar: 'خدمات العملاء')),
+          FooterLabelModel(id: 'fl_1b', label: BiText(en: 'Owner Services', ar: 'خدمات المالك')),
         ],
       ),
       FooterColumnModel(
         id: 'fc_2',
         title: BiText(en: 'About Us', ar: 'من نحن'),
-        route: '/about',
+        route: '/contact',
         labels: [
-          FooterLabelModel(id: 'fl_2a', label: BiText(en: 'Mission', ar: 'الرسالة')),
-          FooterLabelModel(id: 'fl_2b', label: BiText(en: 'Vision',  ar: 'الرؤية')),
+          FooterLabelModel(id: 'fl_2a', label: BiText(en: 'Mission', ar: 'الرسالة'), route: '/about?tab=mission'),
+          FooterLabelModel(id: 'fl_2b', label: BiText(en: 'Vision', ar: 'الرؤية'), route: '/about?tab=vision'),
+          FooterLabelModel(id: 'fl_2c', label: BiText(en: 'Values', ar: 'القيم'), route: '/about?tab=values'),
         ],
       ),
       FooterColumnModel(
         id: 'fc_3',
-        title: BiText(en: 'Contact Us', ar: 'اتصل بنا'),
-        route: '/contact',
+        title: BiText(en: 'Terms of Service', ar: 'شروط الخدمة'),
+        route: '/terms',
         labels: [
-          FooterLabelModel(id: 'fl_3a', label: BiText(en: 'Contact Form', ar: 'نموذج التواصل')),
+          FooterLabelModel(id: 'fl_3a', label: BiText(en: 'Terms and Conditions', ar: 'الشروط والأحكام'), route: '/about?tab=terms-and-conditions'),
+          FooterLabelModel(id: 'fl_3b', label: BiText(en: 'Privacy Policy', ar: 'سياسة الخصوصية'), route: '/about?tab=privacy-policy'),
+        ],
+      ),
+      FooterColumnModel(
+        id: 'fc_4',
+        title: BiText(en: 'Contact Us', ar: 'اتصل بنا'),
+        route: '/contactus',
+        labels: [
+          FooterLabelModel(id: 'fl_4a', label: BiText(en: 'Contact Form', ar: 'نموذج التواصل'), route: '/contactus'),
         ],
       ),
     ],
@@ -516,9 +615,11 @@ class HomePageModel {
       SocialLinkModel(id: 'sl_2', iconUrl: '', url: '', visibility: true),
       SocialLinkModel(id: 'sl_3', iconUrl: '', url: '', visibility: true),
     ],
-    branding:             const BrandingModel(),
-    publishStatus:        'draft',
-    lastUpdatedAt:        null,
-    scheduledPublishDate: null, // ✅ NEW
+    branding: const BrandingModel(),
+    appDownloadLinks: const AppDownloadLinksModel(),
+    publishStatus: 'draft',
+    lastUpdatedAt: null,
+    scheduledPublishDate: null,
+    gender: 'female',
   );
 }

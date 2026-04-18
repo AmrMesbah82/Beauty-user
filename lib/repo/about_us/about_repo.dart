@@ -3,7 +3,8 @@
 // Created by: Amr Mesbah
 
 import 'dart:typed_data';
-import 'package:beauty_user/model/about_us/about_us.dart';
+
+import '../../model/about_us/about_us.dart';
 
 abstract class AboutRepo {
   // About Us

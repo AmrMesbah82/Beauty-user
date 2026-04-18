@@ -49,10 +49,13 @@ dependencies:
   get_storage: ^2.1.1
   shared_preferences: ^2.5.5
   file_picker: ^10.3.10
+
   dropdown_button2: ^2.3.9
   calendar_date_picker2: ^2.0.1
   flutter_switch: ^0.3.2
   twilio_flutter: ^0.9.0
+  cloud_functions: ^6.1.0
+  cached_network_image: ^3.4.1
 
 dev_dependencies:
   flutter_test:
@@ -85,7 +88,10 @@ flutter:
     - assets/images/services/
     - assets/images/job_list/
     - assets/images/about_us/
+    - assets/footer/
+    - assets/contact/
     - assets/control/
+    - assets/beauty/contact_us/
     - assets/images/contact_us/
     - assets/drawer/
     - assets/images/careers/

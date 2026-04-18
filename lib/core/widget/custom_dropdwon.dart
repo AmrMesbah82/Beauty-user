@@ -9,7 +9,7 @@ import 'package:beauty_user/theme/new_theme.dart';
 class CustomDropdownFormFieldInvMaster extends StatefulWidget {
   final String? selectedValue;
   final double? widthIcon;
-  final Color? primaryColor; // ← add this
+  final Color? primaryColor;
   final Color? dropdownColor;
   final double? heightIcon;
   final List<Map<String, String>> items;
@@ -21,7 +21,7 @@ class CustomDropdownFormFieldInvMaster extends StatefulWidget {
   final double? dropdownWidth;
   final Widget? hint;
   final String? label;
-  final String? iconPath;
+  final String? iconPath;           // ← prefix SVG icon path
   final Map<String, Color>? itemColors;
   final bool showColorDots;
   final double borderRadius;
@@ -34,7 +34,7 @@ class CustomDropdownFormFieldInvMaster extends StatefulWidget {
     required this.widthIcon,
     required this.heightIcon,
     this.validator,
-    this.primaryColor, // ← add this
+    this.primaryColor,
     this.width,
     this.height,
     this.spaceHeight,
@@ -42,7 +42,7 @@ class CustomDropdownFormFieldInvMaster extends StatefulWidget {
     this.hint,
     this.dropdownColor,
     this.label,
-    this.iconPath,
+    this.iconPath,                  // ← prefix SVG icon path
     this.itemColors,
     this.showColorDots = false,
     this.borderRadius = 8.0,
@@ -71,6 +71,14 @@ class _CustomDropdownFormFieldInvMasterState
         setState(() => _popupWidth = box.size.width);
       }
     });
+  }
+
+  @override
+  void didUpdateWidget(CustomDropdownFormFieldInvMaster oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.selectedValue != oldWidget.selectedValue) {
+      internalSelectedValue = widget.selectedValue;
+    }
   }
 
   // ── Color helper ──────────────────────────────────────────────────────────
@@ -123,6 +131,63 @@ class _CustomDropdownFormFieldInvMasterState
     color: AppColors.secondaryBlack,
   );
 
+  // ── Custom button with prefix SVG icon ───────────────────────────────────
+  Widget? _buildCustomButton(double fieldHeight) {
+    if (widget.iconPath == null) return null;
+
+    final bool hasValue = internalSelectedValue != null &&
+        widget.items.any((e) => e['key'] == internalSelectedValue);
+
+    final String displayText = hasValue
+        ? (widget.items.firstWhere(
+          (e) => e['key'] == internalSelectedValue,
+    )['value'] ??
+        '')
+        : '';
+
+    return Container(
+      height: fieldHeight.h,
+      padding: EdgeInsets.symmetric(horizontal: 8.w),
+      decoration: BoxDecoration(
+        color: widget.dropdownColor ?? const Color(0xFFF1F2ED),
+        borderRadius: BorderRadius.circular(widget.borderRadius.r),
+        border: Border.all(color: Colors.transparent),
+      ),
+      child: Row(
+        children: [
+          // ── Prefix SVG icon ──
+          SvgPicture.asset(
+            widget.iconPath!,
+            width:  (widget.widthIcon ?? 16).w,
+            height: (widget.heightIcon ?? 16).w,
+            colorFilter: ColorFilter.mode(
+              hasValue
+                  ? (widget.primaryColor ?? AppColors.primary).withOpacity(0.7)
+                  : Colors.grey.shade400,
+              BlendMode.srcIn,
+            ),
+          ),
+          SizedBox(width: 6.w),
+          // ── Selected value or hint ──
+          Expanded(
+            child: hasValue
+                ? Text(
+              displayText,
+              style: StyleText.fontSize12Weight400
+                  .copyWith(color: AppColors.text),
+              overflow: TextOverflow.ellipsis,
+            )
+                : DefaultTextStyle.merge(
+              child: widget.hint ?? const SizedBox.shrink(),
+            ),
+          ),
+          // ── Arrow ──
+          _arrowIcon(),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final double fieldHeight = widget.height ?? 36;
@@ -167,12 +232,14 @@ class _CustomDropdownFormFieldInvMasterState
                     });
                     widget.onChanged(value);
                   },
+                  // ── Custom button renders prefix icon ──
+                  customButton: _buildCustomButton(fieldHeight),
                   buttonStyleData: ButtonStyleData(
                     height: fieldHeight.h,
                     width: widget.width?.w,
                     padding: EdgeInsets.symmetric(horizontal: 8.w),
                     decoration: BoxDecoration(
-                      color: widget.dropdownColor ?? Color(0xFFF1F2ED),
+                      color: widget.dropdownColor ?? const Color(0xFFF1F2ED),
                       borderRadius:
                       BorderRadius.circular(widget.borderRadius.r),
                       border: Border.all(color: Colors.transparent),
@@ -189,7 +256,8 @@ class _CustomDropdownFormFieldInvMasterState
                       color: AppColors.background,
                       borderRadius:
                       BorderRadius.circular(widget.borderRadius.r),
-                      border: Border.all(color: Colors.grey.withOpacity(0.3)),
+                      border:
+                      Border.all(color: Colors.grey.withOpacity(0.3)),
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withOpacity(0.1),
@@ -199,8 +267,10 @@ class _CustomDropdownFormFieldInvMasterState
                       ],
                     ),
                     scrollbarTheme: ScrollbarThemeData(
-                      thumbVisibility: MaterialStateProperty.all(false),
-                      trackVisibility: MaterialStateProperty.all(false),
+                      thumbVisibility:
+                      MaterialStateProperty.all(false),
+                      trackVisibility:
+                      MaterialStateProperty.all(false),
                       thickness: MaterialStateProperty.all(0),
                       radius: Radius.zero,
                     ),
@@ -208,14 +278,22 @@ class _CustomDropdownFormFieldInvMasterState
                   menuItemStyleData: MenuItemStyleData(
                     height: fieldHeight.h,
                     padding: EdgeInsets.symmetric(horizontal: 8.w),
-                    overlayColor: MaterialStateProperty.resolveWith<Color?>((states) {
-                      if (states.contains(MaterialState.hovered)) {
-                        return (widget.primaryColor ?? AppColors.primary).withOpacity(0.1); // ← fix
-                      }
-                      return null;
-                    }),
+                    overlayColor:
+                    MaterialStateProperty.resolveWith<Color?>(
+                            (states) {
+                          if (states.contains(MaterialState.hovered)) {
+                            return (widget.primaryColor ?? AppColors.primary)
+                                .withOpacity(0.1);
+                          }
+                          return null;
+                        }),
                   ),
-                  iconStyleData: IconStyleData(icon: _arrowIcon()),
+                  iconStyleData: IconStyleData(
+                    // Hide default icon when customButton is active
+                    icon: widget.iconPath != null
+                        ? const SizedBox.shrink()
+                        : _arrowIcon(),
+                  ),
                   style: StyleText.fontSize12Weight400
                       .copyWith(color: AppColors.text),
                   items: widget.items.map((unit) {

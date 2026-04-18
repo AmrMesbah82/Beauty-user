@@ -1,8 +1,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
-
+import 'package:beauty_user/controller/contact_us/contact_otp_state.dart';
 
 import '../../repo/contact_us/twailio_repo.dart';
-import 'contact_otp_state.dart';
 
 class ContactOtpCubit extends Cubit<ContactOtpState> {
   final TwilioRepository _twilioRepo = TwilioRepository();

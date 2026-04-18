@@ -13,22 +13,17 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 
 class HomeRepositoryImpl implements HomeRepository {
-  HomeRepositoryImpl({
-    FirebaseFirestore? firestore,
-    FirebaseStorage? storage,
-  })  : _firestore = firestore ?? FirebaseFirestore.instance,
-        _storage = storage ?? FirebaseStorage.instance;
-
-  final FirebaseFirestore _firestore;
-  final FirebaseStorage _storage;
+  // ✅ Lazy getters — instance accessed only when a method is called,
+  //    never at construction time, so Settings applied in main() are
+  //    guaranteed to be in effect before the first Firestore call.
+  FirebaseFirestore get _firestore => FirebaseFirestore.instance;
+  FirebaseStorage   get _storage   => FirebaseStorage.instance;
 
   static const String _collection = 'cms';
   static const String _document   = 'home_page';
 
   DocumentReference<Map<String, dynamic>> get _docRef =>
       _firestore.collection(_collection).doc(_document);
-
-  // ── Fetch (cache-first) ──────────────────────────────────────────────────
 
   // ── Fetch (cache-first) ──────────────────────────────────────────────────
 
@@ -64,7 +59,7 @@ class HomeRepositoryImpl implements HomeRepository {
     }
   }
 
-// ── Fetch FRESH (server only, bypasses cache) ────────────────────────────
+  // ── Fetch FRESH (server only, bypasses cache) ────────────────────────────
 
   @override
   Future<HomePageModel> fetchHomePageFresh() async {
@@ -102,12 +97,10 @@ class HomeRepositoryImpl implements HomeRepository {
     }
   }
 
-// ── Sanitize raw Firestore map ────────────────────────────────────────────
+  // ── Sanitize raw Firestore map ────────────────────────────────────────────
 
   Map<String, dynamic> _sanitize(Map<String, dynamic> data) {
     final copy = Map<String, dynamic>.from(data);
-    // lastUpdatedAt comes back as a Firestore Timestamp object from Source.server
-    // but fromMap() tries to cast it as String → crash. Just drop it.
     copy.remove('lastUpdatedAt');
     print('   [Repo] _sanitize() → removed lastUpdatedAt, remaining keys = ${copy.keys.toList()}');
     return copy;

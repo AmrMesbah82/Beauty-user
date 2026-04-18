@@ -1,9 +1,11 @@
 import 'package:beauty_user/theme/appcolors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
 
 import '../theme/text.dart';
+
 
 /// A customizable segmented tabs widget that can be reused throughout the app
 ///
@@ -35,6 +37,9 @@ class CustomSegmentedTabs extends StatelessWidget {
     this.unselectedTextColor,
     this.textStyle,
     this.equalWidth = false,
+    this.tabIcons,
+    this.iconSize,
+    this.iconSpacing,
   });
 
   /// List of tab titles
@@ -82,6 +87,15 @@ class CustomSegmentedTabs extends StatelessWidget {
   /// If true, all tabs will have equal width
   final bool equalWidth;
 
+  /// Optional list of SVG asset paths for each tab
+  final List<String>? tabIcons;
+
+  /// Size of the icon
+  final double? iconSize;
+
+  /// Spacing between icon and text
+  final double? iconSpacing;
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -107,12 +121,18 @@ class CustomSegmentedTabs extends StatelessWidget {
               title: tabs[tabIndex],
               isSelected: isSelected,
               onTap: () => onTabSelected(tabIndex),
+              iconPath: tabIcons != null && tabIndex < tabIcons!.length
+                  ? tabIcons![tabIndex]
+                  : null,
             ),
           )
               : _buildTab(
             title: tabs[tabIndex],
             isSelected: isSelected,
             onTap: () => onTabSelected(tabIndex),
+            iconPath: tabIcons != null && tabIndex < tabIcons!.length
+                ? tabIcons![tabIndex]
+                : null,
           );
         }),
       ),
@@ -123,30 +143,56 @@ class CustomSegmentedTabs extends StatelessWidget {
     required String title,
     required bool isSelected,
     required VoidCallback onTap,
+    String? iconPath,
   }) {
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(4),
-          color: isSelected
-              ? (selectedColor ?? AppColors.primary)
-              : (unselectedColor ?? AppColors.field),
-        ),
-        padding: EdgeInsets.symmetric(
-          vertical: tabVerticalPadding ?? 6.sp,
-          horizontal: tabHorizontalPadding ?? 6.sp,
-        ),
-        child: Center(
-          child: FittedBox(
-            child: Text(
-              title.tr,
-              style: (textStyle ?? AppTextStyles.font14BlackSemiBoldCairo).copyWith(
-                height: 1,
-                color: isSelected
-                    ? (selectedTextColor ?? AppColors.textButton)
-                    : (unselectedTextColor ?? AppColors.secondaryBlack),
-              ),
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(4),
+            color: isSelected
+                ? (selectedColor ?? AppColors.primary)
+                : (unselectedColor ?? AppColors.field),
+          ),
+          padding: EdgeInsets.symmetric(
+            vertical: tabVerticalPadding ?? 6.sp,
+            horizontal: tabHorizontalPadding ?? 6.sp,
+          ),
+          child: Center(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (iconPath != null) ...[
+                  SvgPicture.asset(
+                    iconPath,
+                    width:  32.sp,
+                    height: 23.sp,
+                    fit: BoxFit.fill,
+                    colorFilter: ColorFilter.mode(
+                      isSelected
+                          ? (selectedTextColor ?? AppColors.textButton)
+                          : (unselectedTextColor ?? AppColors.secondaryBlack),
+                      BlendMode.srcIn,
+                    ),
+                  ),
+                  SizedBox(width: iconSpacing ?? 6.w),
+                ],
+                FittedBox(
+                  child: Text(
+                    title.tr,
+                    style: (textStyle ?? AppTextStyles.font14BlackSemiBoldCairo)
+                        .copyWith(
+                      height: 1,
+                      color: isSelected
+                          ? (selectedTextColor ?? AppColors.textButton)
+                          : (unselectedTextColor ?? AppColors.secondaryBlack),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ),
@@ -155,16 +201,23 @@ class CustomSegmentedTabs extends StatelessWidget {
   }
 }
 
+// Example Usage:
 // Container(
-// width: 130,
-// height: 40,
-// child: CustomSegmentedTabs(
-// tabs: ['نشط', 'مكتمل'],
-// selectedIndex: selectedIndex,
-// onTabSelected: (index) => setState(() => selectedIndex = index),
-// selectedColor: AppColors.secondaryPrimary,
-// unselectedColor: AppColors.background,
-// equalWidth: true,  // All tabs same width
-// spacing: 15,
-// ),
+//   width: 200,
+//   height: 40,
+//   child: CustomSegmentedTabs(
+//     tabs: ['Client', 'Owner'],
+//     tabIcons: [
+//       'assets/beauty/contact_us/client.svg',
+//       'assets/beauty/contact_us/owner.svg',
+//     ],
+//     selectedIndex: selectedIndex,
+//     onTabSelected: (index) => setState(() => selectedIndex = index),
+//     selectedColor: AppColors.secondaryPrimary,
+//     unselectedColor: AppColors.background,
+//     equalWidth: true,
+//     spacing: 8,
+//     iconSize: 16,
+//     iconSpacing: 6,
+//   ),
 // ),

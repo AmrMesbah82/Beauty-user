@@ -1,5 +1,7 @@
 {
-  "projects": {},
+  "projects": {
+    "default": "beauty-user"
+  },
   "targets": {
     "beauty-user": {
       "hosting": {
