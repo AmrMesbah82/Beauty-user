@@ -576,19 +576,19 @@ class _HomePageViewState extends State<_HomePageView> with RouteAware {
                   final bool isAr = langState.isArabic;
 
                   final heroTitle = isAr
-                      ? (masterData?.title.ar.isNotEmpty == true
-                      ? masterData!.title.ar
+                      ? (headerSection?.title.ar.isNotEmpty == true
+                      ? headerSection!.title.ar
                       : homeData.title.ar)
-                      : (masterData?.title.en.isNotEmpty == true
-                      ? masterData!.title.en
+                      : (headerSection?.title.en.isNotEmpty == true
+                      ? headerSection!.title.en
                       : homeData.title.en);
 
                   final heroSubtitle = isAr
-                      ? (masterData?.shortDescription.ar.isNotEmpty == true
-                      ? masterData!.shortDescription.ar
+                      ? (headerSection?.shortDescription.ar.isNotEmpty == true
+                      ? headerSection!.shortDescription.ar
                       : homeData.shortDescription.ar)
-                      : (masterData?.shortDescription.en.isNotEmpty == true
-                      ? masterData!.shortDescription.en
+                      : (headerSection?.shortDescription.en.isNotEmpty == true
+                      ? headerSection!.shortDescription.en
                       : homeData.shortDescription.en);
 
                   final aboutHeading = isAr

@@ -2,7 +2,10 @@
 /// File Name: client_services_repo_imp.dart
 /// Description: Firebase implementation of ClientServicesRepo.
 /// Created by: Amr Mesbah
-/// Last Update: 08/04/2026
+/// Last Update: 21/04/2026
+/// UPDATED: All field names use Capital_Underscore naming convention ✅
+/// UPDATED: ALL fields flattened — NO nested maps in Firestore ✅
+/// UPDATED: EVERY single key goes through Versioned.append() ✅
 
 import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -25,6 +28,34 @@ class ClientServicesRepoImp implements ClientServicesRepo {
   DocumentReference _docRef(String gender) =>
       _firestore.collection(_collection).doc(gender);
 
+  // ═════════════════════════════════════════════════════════════════════════
+  //  GENERIC VERSIONED SAVE
+  // ═════════════════════════════════════════════════════════════════════════
+
+  Map<String, dynamic> _buildVersionedMap(
+      ClientServicesPageModel model,
+      Map<String, dynamic> existing,
+      ) {
+    final newMap       = model.copyWith(lastUpdated: DateTime.now()).toMap();
+    final versionedMap = <String, dynamic>{};
+
+    for (final key in newMap.keys) {
+      if (key == 'Last_Updated') continue;
+      versionedMap[key] = Versioned.append(existing[key], newMap[key]);
+    }
+
+    for (final key in existing.keys) {
+      if (key == 'Last_Updated') continue;
+      if (!newMap.containsKey(key)) {
+        versionedMap[key] = FieldValue.delete();
+      }
+    }
+
+    versionedMap['Last_Updated'] = FieldValue.serverTimestamp();
+    return versionedMap;
+  }
+
+  // ── Fetch ──────────────────────────────────────────────────────────────────
   @override
   Future<ClientServicesPageModel> fetchPage({required String gender}) async {
     print('🟡 [ClientServicesRepoImp] fetchPage: gender=$gender');
@@ -38,7 +69,8 @@ class ClientServicesRepoImp implements ClientServicesRepo {
       }
       print('🟡 [ClientServicesRepoImp] fetchPage: no doc — creating default');
       final def = ClientServicesPageModel(id: gender, gender: gender);
-      await _docRef(gender).set(def.toMap());
+      final versionedDefault = _buildVersionedMap(def, {});
+      await _docRef(gender).set(versionedDefault);
       return def;
     } catch (e, st) {
       print('🔴 [ClientServicesRepoImp] fetchPage: ERROR $e\n$st');
@@ -46,20 +78,34 @@ class ClientServicesRepoImp implements ClientServicesRepo {
     }
   }
 
+  // ── Save ───────────────────────────────────────────────────────────────────
   @override
   Future<void> savePage(ClientServicesPageModel model) async {
-    print('🟡 [ClientServicesRepoImp] savePage: id=${model.id}');
+    final docGender = model.gender.isEmpty ? 'female' : model.gender;
+    print('🟡 [ClientServicesRepoImp] savePage: id=${model.id} '
+        'status=${model.status} gender=$docGender');
+
     try {
-      final data = model.copyWith(lastUpdated: DateTime.now()).toMap();
-      await _docRef(model.gender.isEmpty ? 'female' : model.gender)
-          .set(data, SetOptions(merge: true));
-      print('🟢 [ClientServicesRepoImp] savePage: ✅ DONE');
+      print('🟡 [ClientServicesRepoImp] savePage → reading existing doc...');
+      final existingSnap = await _docRef(docGender)
+          .get(const GetOptions(source: Source.server));
+      final ex =
+          (existingSnap.exists ? existingSnap.data() : null)
+          as Map<String, dynamic>? ??
+              {};
+      print('   existing keys = ${ex.keys.toList()}');
+
+      final versionedMap = _buildVersionedMap(model, ex);
+
+      await _docRef(docGender).set(versionedMap, SetOptions(merge: false));
+      print('🟢 [ClientServicesRepoImp] savePage: ✅ ALL keys versioned DONE');
     } catch (e, st) {
       print('🔴 [ClientServicesRepoImp] savePage: ERROR $e\n$st');
       rethrow;
     }
   }
 
+  // ── Upload image ───────────────────────────────────────────────────────────
   @override
   Future<String> uploadImage({
     required String path,
@@ -85,6 +131,7 @@ class ClientServicesRepoImp implements ClientServicesRepo {
     }
   }
 
+  // ── Delete image ───────────────────────────────────────────────────────────
   @override
   Future<void> deleteImage(String url) async {
     if (url.isEmpty) return;

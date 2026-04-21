@@ -1,11 +1,13 @@
 // ******************* FILE INFO *******************
 // File Name: contact_us_cms_repo_impl.dart
-// UPDATED: Rewritten for new Contact CMS model
-//          - Headings (SVG, Title, Short Description)
-//          - Client Description + Owner Description (with Reasons)
-//          - Social Media Links
-//          - Removed old officeLocations, confirmMessage, email
+// Created by: Amr Mesbah
+// Last Update: 18/04/2026
+// UPDATED: All field names use Capital_Underscore naming convention ✅
+// UPDATED: All nested maps flattened — no nested maps in Firestore ✅
+// UPDATED: save() versions each flattened field individually ✅
+// FIX: Social_Icons versioned via _versionListField() Map format ✅
 
+import 'dart:convert';
 import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
@@ -17,34 +19,28 @@ class ContactUsCmsRepoImpl implements ContactUsCmsRepo {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseStorage   _storage   = FirebaseStorage.instance;
 
-  static const String _collectionName = 'contact_us_cms';
+  static const String _collectionName = 'contactUs';
   static const String _docId          = 'main';
 
+  DocumentReference<Map<String, dynamic>> get _docRef =>
+      _firestore.collection(_collectionName).doc(_docId);
+
+  // ── Load ───────────────────────────────────────────────────────────────────
   @override
   Future<ContactUsCmsModel> load() async {
     try {
-      final doc = await _firestore
-          .collection(_collectionName)
-          .doc(_docId)
-          .get();
-
+      final doc = await _docRef.get();
       if (!doc.exists || doc.data() == null) {
         return _defaultModel();
       }
-
-      final model = ContactUsCmsModel.fromJson(doc.data()!);
-
-      // ── Extract Firestore Timestamp ──
-      final raw = doc.data()!['lastUpdatedAt'];
-      final lastUpdatedAt = raw is Timestamp ? raw.toDate() : null;
-
-      return model.copyWith(lastUpdatedAt: lastUpdatedAt);
+      return ContactUsCmsModel.fromJson(doc.data()!);
     } catch (e) {
       print('❌ ContactUsCmsRepo.load error: $e');
       rethrow;
     }
   }
 
+  // ── Save (ALL fields versioned individually) ───────────────────────────────
   @override
   Future<void> save({
     required ContactUsCmsModel model,
@@ -58,19 +54,101 @@ class ContactUsCmsRepoImpl implements ContactUsCmsRepo {
 
       final updatedModel = _updateModelWithUrls(model, uploadedUrls);
 
-      final json = updatedModel.toJson();
-      json['lastUpdatedAt'] = FieldValue.serverTimestamp();
+      // ── Step 1: read existing raw Firestore data ────────────────────────
+      print('🟡 [ContactCmsRepo] save → reading existing doc...');
+      final existingSnap = await _docRef
+          .get(const GetOptions(source: Source.server));
+      final ex = (existingSnap.exists ? existingSnap.data() : null) ?? {};
 
-      await _firestore
-          .collection(_collectionName)
-          .doc(_docId)
-          .set(json, SetOptions(merge: true));
+      // ── Step 2: plain map from model ────────────────────────────────────
+      final newMap = updatedModel.toJson();
 
-      print('✅ ContactUsCmsRepo.save: saved successfully');
+      // ── Step 3: build versioned map ─────────────────────────────────────
+      final versionedMap = <String, dynamic>{
+        // ── plain list fields (not versioned) ──────────────────────────
+        'Client_Description_Reasons': newMap['Client_Description_Reasons'],
+        'Owner_Description_Reasons':  newMap['Owner_Description_Reasons'],
+        'Last_Updated_At':            FieldValue.serverTimestamp(),
+
+        // ── versioned scalar fields ────────────────────────────────────
+        'Publish_Status': Versioned.append(
+          ex['Publish_Status'], newMap['Publish_Status'],
+        ),
+
+        // ── Headings (flattened, versioned) ────────────────────────────
+        'Headings_Svg_Url': Versioned.append(
+          ex['Headings_Svg_Url'], newMap['Headings_Svg_Url'],
+        ),
+        'Headings_Title_En': Versioned.append(
+          ex['Headings_Title_En'], newMap['Headings_Title_En'],
+        ),
+        'Headings_Title_Ar': Versioned.append(
+          ex['Headings_Title_Ar'], newMap['Headings_Title_Ar'],
+        ),
+        'Headings_Short_Description_En': Versioned.append(
+          ex['Headings_Short_Description_En'], newMap['Headings_Short_Description_En'],
+        ),
+        'Headings_Short_Description_Ar': Versioned.append(
+          ex['Headings_Short_Description_Ar'], newMap['Headings_Short_Description_Ar'],
+        ),
+
+        // ── Client Description (flattened, versioned) ──────────────────
+        'Client_Description_En': Versioned.append(
+          ex['Client_Description_En'], newMap['Client_Description_En'],
+        ),
+        'Client_Description_Ar': Versioned.append(
+          ex['Client_Description_Ar'], newMap['Client_Description_Ar'],
+        ),
+
+        // ── Owner Description (flattened, versioned) ───────────────────
+        'Owner_Description_En': Versioned.append(
+          ex['Owner_Description_En'], newMap['Owner_Description_En'],
+        ),
+        'Owner_Description_Ar': Versioned.append(
+          ex['Owner_Description_Ar'], newMap['Owner_Description_Ar'],
+        ),
+
+        // ── Social Icons (versioned via Map) ───────────────────────────
+        'Social_Icons': _versionListField(
+          ex['Social_Icons'],
+          newMap['Social_Icons'] as List<dynamic>,
+        ),
+      };
+
+      // ── Step 4: write to Firestore ──────────────────────────────────────
+      print('🟡 [ContactCmsRepo] save → writing versioned map...');
+      await _docRef.set(versionedMap, SetOptions(merge: true));
+      print('✅ ContactUsCmsRepo.save: ALL fields versioned DONE');
     } catch (e) {
       print('❌ ContactUsCmsRepo.save error: $e');
       rethrow;
     }
+  }
+
+  // ── Version a List-typed field as a Map ───────────────────────────────────
+  Map<String, dynamic> _versionListField(
+      dynamic existing,
+      List<dynamic> newValue,
+      ) {
+    final history = <String, dynamic>{};
+
+    if (existing is Map) {
+      existing.forEach((k, v) => history[k.toString()] = v);
+    } else if (existing is List) {
+      history['v0'] = existing;
+    }
+
+    if (history.isNotEmpty) {
+      final lastKey = 'v${history.length - 1}';
+      if (jsonEncode(history[lastKey]) == jsonEncode(newValue)) {
+        print('   Social_Icons unchanged — skipping version bump');
+        return history;
+      }
+    }
+
+    final nextKey = 'v${history.length}';
+    history[nextKey] = newValue;
+    return history;
   }
 
   // ── Upload images ─────────────────────────────────────────────────────────
@@ -106,14 +184,12 @@ class ContactUsCmsRepoImpl implements ContactUsCmsRepo {
       ContactUsCmsModel model,
       Map<String, String> uploadedUrls,
       ) {
-    // Update headings SVG
     String headingSvgUrl = model.headings.svgUrl;
     const headingSvgPath = 'contact_cms/headings/svg';
     if (uploadedUrls.containsKey(headingSvgPath)) {
       headingSvgUrl = uploadedUrls[headingSvgPath]!;
     }
 
-    // Update social icons
     final updatedSocialIcons = model.socialIcons.map((icon) {
       final iconPath = 'contact_cms/social_icons/${icon.id}/icon';
       if (uploadedUrls.containsKey(iconPath)) {

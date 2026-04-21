@@ -1,7 +1,10 @@
 // ******************* FILE INFO *******************
 // File Name: about_repo_impl.dart
 // Created by: Amr Mesbah
-// UPDATED: Fixed storage paths for strategy images
+// Last Update: 18/04/2026
+// UPDATED: All field names use Capital_Underscore naming convention ✅
+// UPDATED: All nested maps flattened — no nested maps in Firestore ✅
+// UPDATED: All save methods version each flattened field individually ✅
 
 import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -11,154 +14,292 @@ import '../../model/about_us/about_us.dart';
 import 'about_repo.dart';
 
 class AboutRepoImpl implements AboutRepo {
-  static const String _collection = 'cms';
-  static const String _aboutDoc    = 'about_page';
-  static const String _strategyDoc = 'our_strategy';
-  static const String _termsDoc    = 'terms_of_service';
+  static const String _aboutDoc    = 'aboutPage';
+  static const String _strategyDoc = 'ourStrategy';
+  static const String _termsDoc    = 'termsOfService';
 
   final FirebaseFirestore _db      = FirebaseFirestore.instance;
   final FirebaseStorage   _storage = FirebaseStorage.instance;
 
-  DocumentReference<Map<String, dynamic>> _ref(String doc) =>
-      _db.collection(_collection).doc(doc);
+  DocumentReference<Map<String, dynamic>> _docRef(String docId) =>
+      _db.collection(docId).doc('data');
 
+  // ── Fetch About Page ───────────────────────────────────────────────────────
   @override
   Future<AboutPageModel> fetchAboutPage() async {
     try {
-      final snap = await _ref(_aboutDoc)
+      final snap = await _docRef(_aboutDoc)
           .get(const GetOptions(source: Source.server));
       if (!snap.exists || snap.data() == null) {
         return AboutPageModel.empty();
       }
-
-      final raw = snap.data()!;
-
-      // ── Extract lastUpdatedAt BEFORE sanitize() removes it ──
-      DateTime? lastUpdatedAt;
-      final ts = raw['lastUpdatedAt'];
-      if (ts is Timestamp) {
-        lastUpdatedAt = ts.toDate();
-      } else if (ts is String) {
-        lastUpdatedAt = DateTime.tryParse(ts);
-      }
-
-      final model = AboutPageModel.fromMap(_sanitize(raw));
-      return model.copyWith(lastUpdatedAt: lastUpdatedAt); // ← inject it back
-
+      return AboutPageModel.fromMap(snap.data()!);
     } catch (e) {
       _log('🔴 [AboutRepo] fetchAboutPage ERROR: $e');
       rethrow;
     }
   }
 
+  // ── Save About Page (ALL fields versioned individually) ────────────────────
   @override
   Future<void> saveAboutPage(AboutPageModel model) async {
     try {
-      final data = model.toMap();
-      // Overwrite the ISO string from toMap() with the accurate server timestamp
-      data['lastUpdatedAt'] = FieldValue.serverTimestamp();
-      await _ref(_aboutDoc).set(data);
-      _log('🟢 [AboutRepo] saveAboutPage OK');
+      print('🟡 [AboutRepo] saveAboutPage → reading existing doc...');
+      final existingSnap = await _docRef(_aboutDoc)
+          .get(const GetOptions(source: Source.server));
+      final ex = (existingSnap.exists ? existingSnap.data() : null) ?? {};
+
+      final newMap = model.toMap();
+
+      final versionedMap = <String, dynamic>{
+        // ── plain fields (not versioned) ───────────────────────────────
+        'Values':         newMap['Values'],
+        'Last_Updated_At': FieldValue.serverTimestamp(),
+
+        // ── versioned scalar fields ────────────────────────────────────
+        'Publish_Status': Versioned.append(
+          ex['Publish_Status'], newMap['Publish_Status'],
+        ),
+        'Svg_Url': Versioned.append(
+          ex['Svg_Url'], newMap['Svg_Url'],
+        ),
+
+        // ── Title (flattened, versioned) ───────────────────────────────
+        'Title_En': Versioned.append(ex['Title_En'], newMap['Title_En']),
+        'Title_Ar': Versioned.append(ex['Title_Ar'], newMap['Title_Ar']),
+
+        // ── Navigation Label (flattened, versioned) ────────────────────
+        'Navigation_Label_Icon_Url': Versioned.append(
+          ex['Navigation_Label_Icon_Url'], newMap['Navigation_Label_Icon_Url'],
+        ),
+        'Navigation_Label_Title_En': Versioned.append(
+          ex['Navigation_Label_Title_En'], newMap['Navigation_Label_Title_En'],
+        ),
+        'Navigation_Label_Title_Ar': Versioned.append(
+          ex['Navigation_Label_Title_Ar'], newMap['Navigation_Label_Title_Ar'],
+        ),
+
+        // ── Vision (flattened, versioned) ──────────────────────────────
+        'Vision_Icon_Url': Versioned.append(
+          ex['Vision_Icon_Url'], newMap['Vision_Icon_Url'],
+        ),
+        'Vision_Svg_Url': Versioned.append(
+          ex['Vision_Svg_Url'], newMap['Vision_Svg_Url'],
+        ),
+        'Vision_Sub_Description_En': Versioned.append(
+          ex['Vision_Sub_Description_En'], newMap['Vision_Sub_Description_En'],
+        ),
+        'Vision_Sub_Description_Ar': Versioned.append(
+          ex['Vision_Sub_Description_Ar'], newMap['Vision_Sub_Description_Ar'],
+        ),
+        'Vision_Description_En': Versioned.append(
+          ex['Vision_Description_En'], newMap['Vision_Description_En'],
+        ),
+        'Vision_Description_Ar': Versioned.append(
+          ex['Vision_Description_Ar'], newMap['Vision_Description_Ar'],
+        ),
+
+        // ── Mission (flattened, versioned) ─────────────────────────────
+        'Mission_Icon_Url': Versioned.append(
+          ex['Mission_Icon_Url'], newMap['Mission_Icon_Url'],
+        ),
+        'Mission_Svg_Url': Versioned.append(
+          ex['Mission_Svg_Url'], newMap['Mission_Svg_Url'],
+        ),
+        'Mission_Sub_Description_En': Versioned.append(
+          ex['Mission_Sub_Description_En'], newMap['Mission_Sub_Description_En'],
+        ),
+        'Mission_Sub_Description_Ar': Versioned.append(
+          ex['Mission_Sub_Description_Ar'], newMap['Mission_Sub_Description_Ar'],
+        ),
+        'Mission_Description_En': Versioned.append(
+          ex['Mission_Description_En'], newMap['Mission_Description_En'],
+        ),
+        'Mission_Description_Ar': Versioned.append(
+          ex['Mission_Description_Ar'], newMap['Mission_Description_Ar'],
+        ),
+      };
+
+      await _docRef(_aboutDoc).set(versionedMap, SetOptions(merge: true));
+      _log('🟢 [AboutRepo] saveAboutPage: ✅ ALL fields versioned DONE');
     } catch (e) {
       _log('🔴 [AboutRepo] saveAboutPage ERROR: $e');
       rethrow;
     }
   }
 
+  // ── Fetch Strategy ─────────────────────────────────────────────────────────
   @override
   Future<OurStrategyModel> fetchStrategy() async {
     try {
-      final snap = await _ref(_strategyDoc)
+      final snap = await _docRef(_strategyDoc)
           .get(const GetOptions(source: Source.server));
       if (!snap.exists || snap.data() == null) {
         return OurStrategyModel.empty();
       }
-
-      final raw = snap.data()!;
-
-      // ── Extract lastUpdatedAt BEFORE _sanitize() removes it ──
-      DateTime? lastUpdatedAt;
-      final ts = raw['lastUpdatedAt'];
-      if (ts is Timestamp) {
-        lastUpdatedAt = ts.toDate();
-      } else if (ts is String) {
-        lastUpdatedAt = DateTime.tryParse(ts);
-      }
-
-      final model = OurStrategyModel.fromMap(_sanitize(raw));
-      return model.copyWith(lastUpdatedAt: lastUpdatedAt);  // ← inject back
-
+      return OurStrategyModel.fromMap(snap.data()!);
     } catch (e) {
       _log('🔴 [AboutRepo] fetchStrategy ERROR: $e');
       rethrow;
     }
   }
 
+  // ── Save Strategy (ALL fields versioned individually) ──────────────────────
   @override
   Future<void> saveStrategy(OurStrategyModel model) async {
     try {
-      final data = model.toMap()
-        ..['lastUpdatedAt'] = FieldValue.serverTimestamp();
+      print('🟡 [AboutRepo] saveStrategy → reading existing doc...');
+      final existingSnap = await _docRef(_strategyDoc)
+          .get(const GetOptions(source: Source.server));
+      final ex = (existingSnap.exists ? existingSnap.data() : null) ?? {};
 
-      _log('   [AboutRepo] saveStrategy - strategicHouseEnUrl: ${model.strategicHouseEnUrl}');
-      _log('   [AboutRepo] saveStrategy - strategicHouseArUrl: ${model.strategicHouseArUrl}');
+      final newMap = model.toMap();
 
-      await _ref(_strategyDoc).set(data);
-      _log('🟢 [AboutRepo] saveStrategy OK');
+      final versionedMap = <String, dynamic>{
+        // ── Last Updated (not versioned) ──────────────────────────────
+        'Last_Updated_At': FieldValue.serverTimestamp(),
+
+        // ── versioned scalar fields ────────────────────────────────────
+        'Publish_Status': Versioned.append(
+          ex['Publish_Status'], newMap['Publish_Status'],
+        ),
+        'Strategic_House_En_Url': Versioned.append(
+          ex['Strategic_House_En_Url'], newMap['Strategic_House_En_Url'],
+        ),
+        'Strategic_House_Ar_Url': Versioned.append(
+          ex['Strategic_House_Ar_Url'], newMap['Strategic_House_Ar_Url'],
+        ),
+
+        // ── Navigation Label (flattened, versioned) ────────────────────
+        'Navigation_Label_Icon_Url': Versioned.append(
+          ex['Navigation_Label_Icon_Url'], newMap['Navigation_Label_Icon_Url'],
+        ),
+        'Navigation_Label_Title_En': Versioned.append(
+          ex['Navigation_Label_Title_En'], newMap['Navigation_Label_Title_En'],
+        ),
+        'Navigation_Label_Title_Ar': Versioned.append(
+          ex['Navigation_Label_Title_Ar'], newMap['Navigation_Label_Title_Ar'],
+        ),
+
+        // ── Vision (flattened, versioned) ──────────────────────────────
+        'Vision_Svg_Url': Versioned.append(
+          ex['Vision_Svg_Url'], newMap['Vision_Svg_Url'],
+        ),
+        'Vision_Description_En': Versioned.append(
+          ex['Vision_Description_En'], newMap['Vision_Description_En'],
+        ),
+        'Vision_Description_Ar': Versioned.append(
+          ex['Vision_Description_Ar'], newMap['Vision_Description_Ar'],
+        ),
+      };
+
+      await _docRef(_strategyDoc).set(versionedMap, SetOptions(merge: true));
+      _log('🟢 [AboutRepo] saveStrategy: ✅ ALL fields versioned DONE');
     } catch (e) {
       _log('🔴 [AboutRepo] saveStrategy ERROR: $e');
       rethrow;
     }
   }
 
+  // ── Fetch Terms ────────────────────────────────────────────────────────────
   @override
   Future<TermsOfServiceModel> fetchTerms() async {
     try {
-      final snap = await _ref(_termsDoc)
+      final snap = await _docRef(_termsDoc)
           .get(const GetOptions(source: Source.server));
       if (!snap.exists || snap.data() == null) {
         return TermsOfServiceModel.empty();
       }
-
-      final raw = snap.data()!;
-
-      // ── Debug: print what lastUpdatedAt looks like in Firestore ──
-      print('🟡 [TermsRepo] raw lastUpdatedAt = ${raw['lastUpdatedAt']} (${raw['lastUpdatedAt']?.runtimeType})');
-
-      DateTime? lastUpdatedAt;
-      final ts = raw['lastUpdatedAt'];
-      if (ts is Timestamp) {
-        lastUpdatedAt = ts.toDate();
-        print('🟢 [TermsRepo] parsed Timestamp → $lastUpdatedAt');
-      } else if (ts is String) {
-        lastUpdatedAt = DateTime.tryParse(ts);
-        print('🟢 [TermsRepo] parsed String → $lastUpdatedAt');
-      } else {
-        print('🔴 [TermsRepo] lastUpdatedAt is null or unknown type');
-      }
-
-      final model = TermsOfServiceModel.fromMap(_sanitize(raw));
-      return model.copyWith(lastUpdatedAt: lastUpdatedAt);
-
+      return TermsOfServiceModel.fromMap(snap.data()!);
     } catch (e) {
       _log('🔴 [AboutRepo] fetchTerms ERROR: $e');
       rethrow;
     }
   }
 
+  // ── Save Terms (ALL fields versioned individually) ─────────────────────────
   @override
   Future<void> saveTerms(TermsOfServiceModel model) async {
     try {
-      final data = model.toMap()
-        ..['lastUpdatedAt'] = FieldValue.serverTimestamp();
-      await _ref(_termsDoc).set(data);
-      _log('🟢 [AboutRepo] saveTerms OK');
+      print('🟡 [AboutRepo] saveTerms → reading existing doc...');
+      final existingSnap = await _docRef(_termsDoc)
+          .get(const GetOptions(source: Source.server));
+      final ex = (existingSnap.exists ? existingSnap.data() : null) ?? {};
+
+      final newMap = model.toMap();
+
+      final versionedMap = <String, dynamic>{
+        // ── Last Updated (not versioned) ──────────────────────────────
+        'Last_Updated_At': FieldValue.serverTimestamp(),
+
+        // ── versioned scalar fields ────────────────────────────────────
+        'Publish_Status': Versioned.append(
+          ex['Publish_Status'], newMap['Publish_Status'],
+        ),
+
+        // ── Navigation Label (flattened, versioned) ────────────────────
+        'Navigation_Label_Icon_Url': Versioned.append(
+          ex['Navigation_Label_Icon_Url'], newMap['Navigation_Label_Icon_Url'],
+        ),
+        'Navigation_Label_Title_En': Versioned.append(
+          ex['Navigation_Label_Title_En'], newMap['Navigation_Label_Title_En'],
+        ),
+        'Navigation_Label_Title_Ar': Versioned.append(
+          ex['Navigation_Label_Title_Ar'], newMap['Navigation_Label_Title_Ar'],
+        ),
+
+        // ── Terms And Conditions (flattened, versioned) ────────────────
+        'Terms_And_Conditions_Svg_Url': Versioned.append(
+          ex['Terms_And_Conditions_Svg_Url'], newMap['Terms_And_Conditions_Svg_Url'],
+        ),
+        'Terms_And_Conditions_Description_En': Versioned.append(
+          ex['Terms_And_Conditions_Description_En'], newMap['Terms_And_Conditions_Description_En'],
+        ),
+        'Terms_And_Conditions_Description_Ar': Versioned.append(
+          ex['Terms_And_Conditions_Description_Ar'], newMap['Terms_And_Conditions_Description_Ar'],
+        ),
+        'Terms_And_Conditions_Attach_En_Url': Versioned.append(
+          ex['Terms_And_Conditions_Attach_En_Url'], newMap['Terms_And_Conditions_Attach_En_Url'],
+        ),
+        'Terms_And_Conditions_Attach_Ar_Url': Versioned.append(
+          ex['Terms_And_Conditions_Attach_Ar_Url'], newMap['Terms_And_Conditions_Attach_Ar_Url'],
+        ),
+        if (newMap.containsKey('Terms_And_Conditions_Last_Update'))
+          'Terms_And_Conditions_Last_Update': Versioned.append(
+            ex['Terms_And_Conditions_Last_Update'], newMap['Terms_And_Conditions_Last_Update'],
+          ),
+
+        // ── Privacy Policy (flattened, versioned) ──────────────────────
+        'Privacy_Policy_Svg_Url': Versioned.append(
+          ex['Privacy_Policy_Svg_Url'], newMap['Privacy_Policy_Svg_Url'],
+        ),
+        'Privacy_Policy_Description_En': Versioned.append(
+          ex['Privacy_Policy_Description_En'], newMap['Privacy_Policy_Description_En'],
+        ),
+        'Privacy_Policy_Description_Ar': Versioned.append(
+          ex['Privacy_Policy_Description_Ar'], newMap['Privacy_Policy_Description_Ar'],
+        ),
+        'Privacy_Policy_Attach_En_Url': Versioned.append(
+          ex['Privacy_Policy_Attach_En_Url'], newMap['Privacy_Policy_Attach_En_Url'],
+        ),
+        'Privacy_Policy_Attach_Ar_Url': Versioned.append(
+          ex['Privacy_Policy_Attach_Ar_Url'], newMap['Privacy_Policy_Attach_Ar_Url'],
+        ),
+        if (newMap.containsKey('Privacy_Policy_Last_Update'))
+          'Privacy_Policy_Last_Update': Versioned.append(
+            ex['Privacy_Policy_Last_Update'], newMap['Privacy_Policy_Last_Update'],
+          ),
+      };
+
+      await _docRef(_termsDoc).set(versionedMap, SetOptions(merge: true));
+      _log('🟢 [AboutRepo] saveTerms: ✅ ALL fields versioned DONE');
     } catch (e) {
       _log('🔴 [AboutRepo] saveTerms ERROR: $e');
       rethrow;
     }
   }
 
+  // ── Upload image ───────────────────────────────────────────────────────────
   @override
   Future<String> uploadImage({
     required Uint8List bytes,
@@ -166,8 +307,6 @@ class AboutRepoImpl implements AboutRepo {
   }) async {
     try {
       _log('🔵 [AboutRepo] uploadImage → $storagePath');
-
-      // Generate a unique filename to avoid conflicts
       final timestamp = DateTime.now().millisecondsSinceEpoch;
       final extension = _detectExtension(bytes);
       final uniquePath = storagePath.contains('.')
@@ -176,7 +315,6 @@ class AboutRepoImpl implements AboutRepo {
 
       final mime = _detectMime(bytes);
       final ref = _storage.ref(uniquePath);
-
       await ref.putData(bytes, SettableMetadata(contentType: mime));
       final url = await ref.getDownloadURL();
       _log('🟢 [AboutRepo] uploadImage → $url');
@@ -187,6 +325,7 @@ class AboutRepoImpl implements AboutRepo {
     }
   }
 
+  // ── Upload document ────────────────────────────────────────────────────────
   @override
   Future<String> uploadDocument({
     required Uint8List bytes,
@@ -209,11 +348,7 @@ class AboutRepoImpl implements AboutRepo {
     }
   }
 
-  Map<String, dynamic> _sanitize(Map<String, dynamic> raw) {
-    final copy = Map<String, dynamic>.from(raw);
-    copy.remove('lastUpdatedAt');
-    return copy;
-  }
+  // ── Helpers ────────────────────────────────────────────────────────────────
 
   String _detectMime(Uint8List bytes) {
     if (bytes.length >= 4) {

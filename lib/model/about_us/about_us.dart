@@ -1,11 +1,58 @@
 // ******************* FILE INFO *******************
 // File Name: about_us.dart  (model)
 // Created by: Amr Mesbah
-// Updated: added OurStrategyModel + TermsOfServiceModel + strategicHouse ENG/ARB image fields
-// FIXED: added lastUpdatedAt to AboutPageModel (mirrors ServicePageModel pattern)
-// UPDATED: added svgUrl to AboutPageModel for headings hero image
+// Last Update: 18/04/2026
+// UPDATED: All field names use Capital_Underscore naming convention ✅
+// UPDATED: All nested maps (AboutBilingualText, AboutNavigationLabel,
+//          AboutSection, StrategySection, TermsSection) flattened ✅
+// UPDATED: ALL fields versioned — fromMap() uses Versioned.read() ✅
 
 import 'dart:typed_data';
+import 'package:cloud_firestore/cloud_firestore.dart';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Versioned Field Helper
+// ─────────────────────────────────────────────────────────────────────────────
+
+class Versioned {
+  static T read<T>(dynamic raw, T Function(dynamic) parser) {
+    if (raw is List && raw.isNotEmpty) return parser(raw.last);
+    if (raw != null) return parser(raw);
+    return parser(null);
+  }
+
+  static List<dynamic> append(dynamic existing, dynamic newValue) {
+    final history = <dynamic>[];
+    if (existing is List) {
+      history.addAll(existing);
+    } else if (existing != null) {
+      history.add(existing);
+    }
+    if (history.isNotEmpty) {
+      final lastEncoded = _encode(history.last);
+      final newEncoded  = _encode(newValue);
+      if (lastEncoded == newEncoded) return history;
+    }
+    history.add(newValue);
+    return history;
+  }
+
+  static String _encode(dynamic value) {
+    if (value == null) return 'null';
+    if (value is Map) {
+      final sorted = Map.fromEntries(
+        (value.entries.toList()
+          ..sort((a, b) => a.key.toString().compareTo(b.key.toString())))
+            .map((e) => MapEntry(e.key.toString(), _encode(e.value))),
+      );
+      return sorted.toString();
+    }
+    if (value is List) return value.map(_encode).toList().toString();
+    return value.toString();
+  }
+}
+
+// ── Bilingual text — no toMap/fromMap, parent flattens ────────────────────────
 
 class AboutBilingualText {
   final String en;
@@ -13,21 +60,11 @@ class AboutBilingualText {
 
   const AboutBilingualText({this.en = '', this.ar = ''});
 
-  factory AboutBilingualText.fromMap(Map<String, dynamic>? map) {
-    if (map == null) return const AboutBilingualText();
-    return AboutBilingualText(
-      en: (map['en'] as String?) ?? '',
-      ar: (map['ar'] as String?) ?? '',
-    );
-  }
-
-  Map<String, dynamic> toMap() => {'en': en, 'ar': ar};
-
   AboutBilingualText copyWith({String? en, String? ar}) =>
       AboutBilingualText(en: en ?? this.en, ar: ar ?? this.ar);
 }
 
-// ── Navigation Label ──────────────────────────────────────────────────────────
+// ── Navigation Label — flattened into parent ──────────────────────────────────
 
 class AboutNavigationLabel {
   final String iconUrl;
@@ -40,19 +77,6 @@ class AboutNavigationLabel {
 
   factory AboutNavigationLabel.empty() => const AboutNavigationLabel();
 
-  factory AboutNavigationLabel.fromMap(Map<String, dynamic>? map) {
-    if (map == null) return const AboutNavigationLabel();
-    return AboutNavigationLabel(
-      iconUrl: (map['iconUrl'] as String?) ?? '',
-      title: AboutBilingualText.fromMap(map['title'] as Map<String, dynamic>?),
-    );
-  }
-
-  Map<String, dynamic> toMap() => {
-    'iconUrl': iconUrl,
-    'title': title.toMap(),
-  };
-
   AboutNavigationLabel copyWith({
     String? iconUrl,
     AboutBilingualText? title,
@@ -63,7 +87,7 @@ class AboutNavigationLabel {
       );
 }
 
-// ── Values item ───────────────────────────────────────────────────────────────
+// ── Values item (inside list — has its own toMap/fromMap) ─────────────────────
 
 class AboutValueItem {
   final String id;
@@ -83,22 +107,31 @@ class AboutValueItem {
   factory AboutValueItem.empty(String id) => AboutValueItem(id: id);
 
   factory AboutValueItem.fromMap(Map<String, dynamic> map) => AboutValueItem(
-    id: (map['id'] as String?) ?? '',
-    iconUrl: (map['iconUrl'] as String?) ?? '',
-    title:
-    AboutBilingualText.fromMap(map['title'] as Map<String, dynamic>?),
-    shortDescription: AboutBilingualText.fromMap(
-        map['shortDescription'] as Map<String, dynamic>?),
-    description: AboutBilingualText.fromMap(
-        map['description'] as Map<String, dynamic>?),
+    id:               map['Id'] ?? '',
+    iconUrl:          map['Icon_Url'] ?? '',
+    title:            AboutBilingualText(
+      en: map['Title_En'] ?? '',
+      ar: map['Title_Ar'] ?? '',
+    ),
+    shortDescription: AboutBilingualText(
+      en: map['Short_Description_En'] ?? '',
+      ar: map['Short_Description_Ar'] ?? '',
+    ),
+    description:      AboutBilingualText(
+      en: map['Description_En'] ?? '',
+      ar: map['Description_Ar'] ?? '',
+    ),
   );
 
   Map<String, dynamic> toMap() => {
-    'id': id,
-    'iconUrl': iconUrl,
-    'title': title.toMap(),
-    'shortDescription': shortDescription.toMap(),
-    'description': description.toMap(),
+    'Id':                   id,
+    'Icon_Url':             iconUrl,
+    'Title_En':             title.en,
+    'Title_Ar':             title.ar,
+    'Short_Description_En': shortDescription.en,
+    'Short_Description_Ar': shortDescription.ar,
+    'Description_En':       description.en,
+    'Description_Ar':       description.ar,
   };
 
   AboutValueItem copyWith({
@@ -117,7 +150,7 @@ class AboutValueItem {
       );
 }
 
-// ── Section (Vision / Mission) ────────────────────────────────────────────────
+// ── Section (Vision / Mission) — flattened into parent ────────────────────────
 
 class AboutSection {
   final String iconUrl;
@@ -134,25 +167,6 @@ class AboutSection {
 
   factory AboutSection.empty() => const AboutSection();
 
-  factory AboutSection.fromMap(Map<String, dynamic>? map) {
-    if (map == null) return const AboutSection();
-    return AboutSection(
-      iconUrl: (map['iconUrl'] as String?) ?? '',
-      svgUrl: (map['svgUrl'] as String?) ?? '',
-      subDescription: AboutBilingualText.fromMap(
-          map['subDescription'] as Map<String, dynamic>?),
-      description: AboutBilingualText.fromMap(
-          map['description'] as Map<String, dynamic>?),
-    );
-  }
-
-  Map<String, dynamic> toMap() => {
-    'iconUrl': iconUrl,
-    'svgUrl': svgUrl,
-    'subDescription': subDescription.toMap(),
-    'description': description.toMap(),
-  };
-
   AboutSection copyWith({
     String? iconUrl,
     String? svgUrl,
@@ -167,27 +181,24 @@ class AboutSection {
       );
 }
 
-// ── About Us Main model ───────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
+// ABOUT PAGE MODEL — ALL fields flattened & versioned
+// ═══════════════════════════════════════════════════════════════════════════════
 
 class AboutPageModel {
   final String publishStatus;
   final AboutBilingualText title;
-
-  /// ✅ NEW: SVG/image URL for the headings hero banner
   final String svgUrl;
-
   final AboutNavigationLabel navigationLabel;
   final AboutSection vision;
   final AboutSection mission;
   final List<AboutValueItem> values;
-
-  /// tracks the last time this document was saved to Firestore.
   final DateTime? lastUpdatedAt;
 
   const AboutPageModel({
     this.publishStatus = 'draft',
     this.title = const AboutBilingualText(),
-    this.svgUrl = '',                                // ← NEW
+    this.svgUrl = '',
     this.navigationLabel = const AboutNavigationLabel(),
     this.vision = const AboutSection(),
     this.mission = const AboutSection(),
@@ -197,40 +208,158 @@ class AboutPageModel {
 
   factory AboutPageModel.empty() => const AboutPageModel();
 
+  // ── fromMap — ALL fields flattened, Capital_Underscore keys ───────────────
   factory AboutPageModel.fromMap(Map<String, dynamic> map) {
-    final rawValues = map['values'] as List<dynamic>? ?? [];
+
+    // ── Values (plain list) ─────────────────────────────────────────────
+    final rawValues = map['Values'] as List<dynamic>? ?? [];
+    final valueItems = rawValues
+        .map((e) => AboutValueItem.fromMap(e as Map<String, dynamic>))
+        .toList();
+
+    // ── Last Updated (not versioned) ────────────────────────────────────
+    DateTime? lastUpdatedAt;
+    if (map['Last_Updated_At'] != null) {
+      if (map['Last_Updated_At'] is Timestamp) {
+        lastUpdatedAt = (map['Last_Updated_At'] as Timestamp).toDate();
+      } else if (map['Last_Updated_At'] is String) {
+        lastUpdatedAt = DateTime.tryParse(map['Last_Updated_At']);
+      }
+    }
+
     return AboutPageModel(
-      publishStatus: (map['publishStatus'] as String?) ?? 'draft',
-      title: AboutBilingualText.fromMap(map['title'] as Map<String, dynamic>?),
-      svgUrl: (map['svgUrl'] as String?) ?? '',      // ← NEW
-      navigationLabel: AboutNavigationLabel.fromMap(
-          map['navigationLabel'] as Map<String, dynamic>?),
-      vision: AboutSection.fromMap(map['vision'] as Map<String, dynamic>?),
-      mission: AboutSection.fromMap(map['mission'] as Map<String, dynamic>?),
-      values: rawValues
-          .map((e) => AboutValueItem.fromMap(e as Map<String, dynamic>))
-          .toList(),
-      lastUpdatedAt: map['lastUpdatedAt'] != null
-          ? DateTime.tryParse(map['lastUpdatedAt'] as String)
-          : null,
+      publishStatus: Versioned.read<String>(
+        map['Publish_Status'], (v) => v?.toString() ?? 'draft',
+      ),
+
+      // ── Title (flattened) ─────────────────────────────────────────────
+      title: AboutBilingualText(
+        en: Versioned.read<String>(
+          map['Title_En'], (v) => v?.toString() ?? '',
+        ),
+        ar: Versioned.read<String>(
+          map['Title_Ar'], (v) => v?.toString() ?? '',
+        ),
+      ),
+
+      svgUrl: Versioned.read<String>(
+        map['Svg_Url'], (v) => v?.toString() ?? '',
+      ),
+
+      // ── Navigation Label (flattened) ──────────────────────────────────
+      navigationLabel: AboutNavigationLabel(
+        iconUrl: Versioned.read<String>(
+          map['Navigation_Label_Icon_Url'], (v) => v?.toString() ?? '',
+        ),
+        title: AboutBilingualText(
+          en: Versioned.read<String>(
+            map['Navigation_Label_Title_En'], (v) => v?.toString() ?? '',
+          ),
+          ar: Versioned.read<String>(
+            map['Navigation_Label_Title_Ar'], (v) => v?.toString() ?? '',
+          ),
+        ),
+      ),
+
+      // ── Vision (flattened) ────────────────────────────────────────────
+      vision: AboutSection(
+        iconUrl: Versioned.read<String>(
+          map['Vision_Icon_Url'], (v) => v?.toString() ?? '',
+        ),
+        svgUrl: Versioned.read<String>(
+          map['Vision_Svg_Url'], (v) => v?.toString() ?? '',
+        ),
+        subDescription: AboutBilingualText(
+          en: Versioned.read<String>(
+            map['Vision_Sub_Description_En'], (v) => v?.toString() ?? '',
+          ),
+          ar: Versioned.read<String>(
+            map['Vision_Sub_Description_Ar'], (v) => v?.toString() ?? '',
+          ),
+        ),
+        description: AboutBilingualText(
+          en: Versioned.read<String>(
+            map['Vision_Description_En'], (v) => v?.toString() ?? '',
+          ),
+          ar: Versioned.read<String>(
+            map['Vision_Description_Ar'], (v) => v?.toString() ?? '',
+          ),
+        ),
+      ),
+
+      // ── Mission (flattened) ───────────────────────────────────────────
+      mission: AboutSection(
+        iconUrl: Versioned.read<String>(
+          map['Mission_Icon_Url'], (v) => v?.toString() ?? '',
+        ),
+        svgUrl: Versioned.read<String>(
+          map['Mission_Svg_Url'], (v) => v?.toString() ?? '',
+        ),
+        subDescription: AboutBilingualText(
+          en: Versioned.read<String>(
+            map['Mission_Sub_Description_En'], (v) => v?.toString() ?? '',
+          ),
+          ar: Versioned.read<String>(
+            map['Mission_Sub_Description_Ar'], (v) => v?.toString() ?? '',
+          ),
+        ),
+        description: AboutBilingualText(
+          en: Versioned.read<String>(
+            map['Mission_Description_En'], (v) => v?.toString() ?? '',
+          ),
+          ar: Versioned.read<String>(
+            map['Mission_Description_Ar'], (v) => v?.toString() ?? '',
+          ),
+        ),
+      ),
+
+      values: valueItems,
+      lastUpdatedAt: lastUpdatedAt,
     );
   }
 
+  // ── toMap — ALL fields flattened, Capital_Underscore naming ───────────────
   Map<String, dynamic> toMap() => {
-    'publishStatus': publishStatus,
-    'title': title.toMap(),
-    'svgUrl': svgUrl,                                // ← NEW
-    'navigationLabel': navigationLabel.toMap(),
-    'vision': vision.toMap(),
-    'mission': mission.toMap(),
-    'values': values.map((v) => v.toMap()).toList(),
-    'lastUpdatedAt': DateTime.now().toIso8601String(),
+    'Publish_Status': publishStatus,
+
+    // ── Title (flattened) ────────────────────────────────────────────
+    'Title_En': title.en,
+    'Title_Ar': title.ar,
+
+    'Svg_Url': svgUrl,
+
+    // ── Navigation Label (flattened) ─────────────────────────────────
+    'Navigation_Label_Icon_Url':  navigationLabel.iconUrl,
+    'Navigation_Label_Title_En':  navigationLabel.title.en,
+    'Navigation_Label_Title_Ar':  navigationLabel.title.ar,
+
+    // ── Vision (flattened) ───────────────────────────────────────────
+    'Vision_Icon_Url':            vision.iconUrl,
+    'Vision_Svg_Url':             vision.svgUrl,
+    'Vision_Sub_Description_En':  vision.subDescription.en,
+    'Vision_Sub_Description_Ar':  vision.subDescription.ar,
+    'Vision_Description_En':      vision.description.en,
+    'Vision_Description_Ar':      vision.description.ar,
+
+    // ── Mission (flattened) ──────────────────────────────────────────
+    'Mission_Icon_Url':           mission.iconUrl,
+    'Mission_Svg_Url':            mission.svgUrl,
+    'Mission_Sub_Description_En': mission.subDescription.en,
+    'Mission_Sub_Description_Ar': mission.subDescription.ar,
+    'Mission_Description_En':     mission.description.en,
+    'Mission_Description_Ar':     mission.description.ar,
+
+    // ── Values (list) ────────────────────────────────────────────────
+    'Values': values.map((v) => v.toMap()).toList(),
+
+    // ── Last Updated ─────────────────────────────────────────────────
+    'Last_Updated_At': DateTime.now().toIso8601String(),
   };
 
   AboutPageModel copyWith({
     String? publishStatus,
     AboutBilingualText? title,
-    String? svgUrl,                                  // ← NEW
+    String? svgUrl,
     AboutNavigationLabel? navigationLabel,
     AboutSection? vision,
     AboutSection? mission,
@@ -240,7 +369,7 @@ class AboutPageModel {
       AboutPageModel(
         publishStatus: publishStatus ?? this.publishStatus,
         title: title ?? this.title,
-        svgUrl: svgUrl ?? this.svgUrl,               // ← NEW
+        svgUrl: svgUrl ?? this.svgUrl,
         navigationLabel: navigationLabel ?? this.navigationLabel,
         vision: vision ?? this.vision,
         mission: mission ?? this.mission,
@@ -250,10 +379,9 @@ class AboutPageModel {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// OUR STRATEGY MODEL
+// STRATEGY SECTION — flattened into OurStrategyModel (no standalone toMap)
 // ═══════════════════════════════════════════════════════════════════════════════
 
-/// A single section inside Our Strategy (e.g. "Vision" accordion item)
 class StrategySection {
   final String svgUrl;
   final AboutBilingualText description;
@@ -265,20 +393,6 @@ class StrategySection {
 
   factory StrategySection.empty() => const StrategySection();
 
-  factory StrategySection.fromMap(Map<String, dynamic>? map) {
-    if (map == null) return const StrategySection();
-    return StrategySection(
-      svgUrl: (map['svgUrl'] as String?) ?? '',
-      description: AboutBilingualText.fromMap(
-          map['description'] as Map<String, dynamic>?),
-    );
-  }
-
-  Map<String, dynamic> toMap() => {
-    'svgUrl': svgUrl,
-    'description': description.toMap(),
-  };
-
   StrategySection copyWith({
     String? svgUrl,
     AboutBilingualText? description,
@@ -288,6 +402,10 @@ class StrategySection {
         description: description ?? this.description,
       );
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// OUR STRATEGY MODEL — ALL fields flattened & versioned
+// ═══════════════════════════════════════════════════════════════════════════════
 
 class OurStrategyModel {
   final String publishStatus;
@@ -308,21 +426,80 @@ class OurStrategyModel {
 
   factory OurStrategyModel.empty() => const OurStrategyModel();
 
-  factory OurStrategyModel.fromMap(Map<String, dynamic> map) => OurStrategyModel(
-    publishStatus: (map['publishStatus'] as String?) ?? 'draft',
-    navigationLabel: AboutNavigationLabel.fromMap(
-        map['navigationLabel'] as Map<String, dynamic>?),
-    vision: StrategySection.fromMap(map['vision'] as Map<String, dynamic>?),
-    strategicHouseEnUrl: (map['strategicHouseEnUrl'] as String?) ?? '',
-    strategicHouseArUrl: (map['strategicHouseArUrl'] as String?) ?? '',
-  );
+  // ── fromMap — ALL fields flattened, Capital_Underscore keys ───────────────
+  factory OurStrategyModel.fromMap(Map<String, dynamic> map) {
 
+    DateTime? lastUpdatedAt;
+    if (map['Last_Updated_At'] != null) {
+      if (map['Last_Updated_At'] is Timestamp) {
+        lastUpdatedAt = (map['Last_Updated_At'] as Timestamp).toDate();
+      } else if (map['Last_Updated_At'] is String) {
+        lastUpdatedAt = DateTime.tryParse(map['Last_Updated_At']);
+      }
+    }
+
+    return OurStrategyModel(
+      publishStatus: Versioned.read<String>(
+        map['Publish_Status'], (v) => v?.toString() ?? 'draft',
+      ),
+
+      // ── Navigation Label (flattened) ──────────────────────────────────
+      navigationLabel: AboutNavigationLabel(
+        iconUrl: Versioned.read<String>(
+          map['Navigation_Label_Icon_Url'], (v) => v?.toString() ?? '',
+        ),
+        title: AboutBilingualText(
+          en: Versioned.read<String>(
+            map['Navigation_Label_Title_En'], (v) => v?.toString() ?? '',
+          ),
+          ar: Versioned.read<String>(
+            map['Navigation_Label_Title_Ar'], (v) => v?.toString() ?? '',
+          ),
+        ),
+      ),
+
+      // ── Vision (flattened) ────────────────────────────────────────────
+      vision: StrategySection(
+        svgUrl: Versioned.read<String>(
+          map['Vision_Svg_Url'], (v) => v?.toString() ?? '',
+        ),
+        description: AboutBilingualText(
+          en: Versioned.read<String>(
+            map['Vision_Description_En'], (v) => v?.toString() ?? '',
+          ),
+          ar: Versioned.read<String>(
+            map['Vision_Description_Ar'], (v) => v?.toString() ?? '',
+          ),
+        ),
+      ),
+
+      strategicHouseEnUrl: Versioned.read<String>(
+        map['Strategic_House_En_Url'], (v) => v?.toString() ?? '',
+      ),
+      strategicHouseArUrl: Versioned.read<String>(
+        map['Strategic_House_Ar_Url'], (v) => v?.toString() ?? '',
+      ),
+
+      lastUpdatedAt: lastUpdatedAt,
+    );
+  }
+
+  // ── toMap — ALL fields flattened, Capital_Underscore naming ───────────────
   Map<String, dynamic> toMap() => {
-    'publishStatus': publishStatus,
-    'navigationLabel': navigationLabel.toMap(),
-    'vision': vision.toMap(),
-    'strategicHouseEnUrl': strategicHouseEnUrl,
-    'strategicHouseArUrl': strategicHouseArUrl,
+    'Publish_Status': publishStatus,
+
+    // ── Navigation Label (flattened) ─────────────────────────────────
+    'Navigation_Label_Icon_Url': navigationLabel.iconUrl,
+    'Navigation_Label_Title_En': navigationLabel.title.en,
+    'Navigation_Label_Title_Ar': navigationLabel.title.ar,
+
+    // ── Vision (flattened) ───────────────────────────────────────────
+    'Vision_Svg_Url':        vision.svgUrl,
+    'Vision_Description_En': vision.description.en,
+    'Vision_Description_Ar': vision.description.ar,
+
+    'Strategic_House_En_Url': strategicHouseEnUrl,
+    'Strategic_House_Ar_Url': strategicHouseArUrl,
   };
 
   OurStrategyModel copyWith({
@@ -344,59 +521,43 @@ class OurStrategyModel {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// TERMS OF SERVICE MODEL
+// TERMS SECTION — flattened into TermsOfServiceModel (no standalone toMap)
 // ═══════════════════════════════════════════════════════════════════════════════
 
-/// Holds an SVG, bilingual description, and two optional document URLs
 class TermsSection {
   final String svgUrl;
   final AboutBilingualText description;
   final String attachEnUrl;
   final String attachArUrl;
-  final String? lastUpdate; // ← ADD THIS
+  final String? lastUpdate;
 
   const TermsSection({
     this.svgUrl = '',
     this.description = const AboutBilingualText(),
     this.attachEnUrl = '',
     this.attachArUrl = '',
-    this.lastUpdate,      // ← ADD THIS
+    this.lastUpdate,
   });
-
-  factory TermsSection.fromMap(Map<String, dynamic>? map) {
-    if (map == null) return const TermsSection();
-    return TermsSection(
-      svgUrl: (map['svgUrl'] as String?) ?? '',
-      description: AboutBilingualText.fromMap(map['description'] as Map<String, dynamic>?),
-      attachEnUrl: (map['attachEnUrl'] as String?) ?? '',
-      attachArUrl: (map['attachArUrl'] as String?) ?? '',
-      lastUpdate: map['lastUpdate'] as String?,  // ← ADD THIS
-    );
-  }
-
-  Map<String, dynamic> toMap() => {
-    'svgUrl': svgUrl,
-    'description': description.toMap(),
-    'attachEnUrl': attachEnUrl,
-    'attachArUrl': attachArUrl,
-    if (lastUpdate != null) 'lastUpdate': lastUpdate, // ← ADD THIS
-  };
 
   TermsSection copyWith({
     String? svgUrl,
     AboutBilingualText? description,
     String? attachEnUrl,
     String? attachArUrl,
-    String? lastUpdate,   // ← ADD THIS
+    String? lastUpdate,
   }) =>
       TermsSection(
         svgUrl: svgUrl ?? this.svgUrl,
         description: description ?? this.description,
         attachEnUrl: attachEnUrl ?? this.attachEnUrl,
         attachArUrl: attachArUrl ?? this.attachArUrl,
-        lastUpdate: lastUpdate ?? this.lastUpdate, // ← ADD THIS
+        lastUpdate: lastUpdate ?? this.lastUpdate,
       );
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// TERMS OF SERVICE MODEL — ALL fields flattened & versioned
+// ═══════════════════════════════════════════════════════════════════════════════
 
 class TermsOfServiceModel {
   final String publishStatus;
@@ -415,22 +576,116 @@ class TermsOfServiceModel {
 
   factory TermsOfServiceModel.empty() => const TermsOfServiceModel();
 
-  factory TermsOfServiceModel.fromMap(Map<String, dynamic> map) =>
-      TermsOfServiceModel(
-        publishStatus: (map['publishStatus'] as String?) ?? 'draft',
-        navigationLabel: AboutNavigationLabel.fromMap(
-            map['navigationLabel'] as Map<String, dynamic>?),
-        termsAndConditions: TermsSection.fromMap(
-            map['termsAndConditions'] as Map<String, dynamic>?),
-        privacyPolicy: TermsSection.fromMap(
-            map['privacyPolicy'] as Map<String, dynamic>?),
-      );
+  // ── fromMap — ALL fields flattened, Capital_Underscore keys ───────────────
+  factory TermsOfServiceModel.fromMap(Map<String, dynamic> map) {
 
+    DateTime? lastUpdatedAt;
+    if (map['Last_Updated_At'] != null) {
+      if (map['Last_Updated_At'] is Timestamp) {
+        lastUpdatedAt = (map['Last_Updated_At'] as Timestamp).toDate();
+      } else if (map['Last_Updated_At'] is String) {
+        lastUpdatedAt = DateTime.tryParse(map['Last_Updated_At']);
+      }
+    }
+
+    return TermsOfServiceModel(
+      publishStatus: Versioned.read<String>(
+        map['Publish_Status'], (v) => v?.toString() ?? 'draft',
+      ),
+
+      // ── Navigation Label (flattened) ──────────────────────────────────
+      navigationLabel: AboutNavigationLabel(
+        iconUrl: Versioned.read<String>(
+          map['Navigation_Label_Icon_Url'], (v) => v?.toString() ?? '',
+        ),
+        title: AboutBilingualText(
+          en: Versioned.read<String>(
+            map['Navigation_Label_Title_En'], (v) => v?.toString() ?? '',
+          ),
+          ar: Versioned.read<String>(
+            map['Navigation_Label_Title_Ar'], (v) => v?.toString() ?? '',
+          ),
+        ),
+      ),
+
+      // ── Terms And Conditions (flattened) ──────────────────────────────
+      termsAndConditions: TermsSection(
+        svgUrl: Versioned.read<String>(
+          map['Terms_And_Conditions_Svg_Url'], (v) => v?.toString() ?? '',
+        ),
+        description: AboutBilingualText(
+          en: Versioned.read<String>(
+            map['Terms_And_Conditions_Description_En'], (v) => v?.toString() ?? '',
+          ),
+          ar: Versioned.read<String>(
+            map['Terms_And_Conditions_Description_Ar'], (v) => v?.toString() ?? '',
+          ),
+        ),
+        attachEnUrl: Versioned.read<String>(
+          map['Terms_And_Conditions_Attach_En_Url'], (v) => v?.toString() ?? '',
+        ),
+        attachArUrl: Versioned.read<String>(
+          map['Terms_And_Conditions_Attach_Ar_Url'], (v) => v?.toString() ?? '',
+        ),
+        lastUpdate: Versioned.read<String?>(
+          map['Terms_And_Conditions_Last_Update'], (v) => v?.toString(),
+        ),
+      ),
+
+      // ── Privacy Policy (flattened) ────────────────────────────────────
+      privacyPolicy: TermsSection(
+        svgUrl: Versioned.read<String>(
+          map['Privacy_Policy_Svg_Url'], (v) => v?.toString() ?? '',
+        ),
+        description: AboutBilingualText(
+          en: Versioned.read<String>(
+            map['Privacy_Policy_Description_En'], (v) => v?.toString() ?? '',
+          ),
+          ar: Versioned.read<String>(
+            map['Privacy_Policy_Description_Ar'], (v) => v?.toString() ?? '',
+          ),
+        ),
+        attachEnUrl: Versioned.read<String>(
+          map['Privacy_Policy_Attach_En_Url'], (v) => v?.toString() ?? '',
+        ),
+        attachArUrl: Versioned.read<String>(
+          map['Privacy_Policy_Attach_Ar_Url'], (v) => v?.toString() ?? '',
+        ),
+        lastUpdate: Versioned.read<String?>(
+          map['Privacy_Policy_Last_Update'], (v) => v?.toString(),
+        ),
+      ),
+
+      lastUpdatedAt: lastUpdatedAt,
+    );
+  }
+
+  // ── toMap — ALL fields flattened, Capital_Underscore naming ───────────────
   Map<String, dynamic> toMap() => {
-    'publishStatus': publishStatus,
-    'navigationLabel': navigationLabel.toMap(),
-    'termsAndConditions': termsAndConditions.toMap(),
-    'privacyPolicy': privacyPolicy.toMap(),
+    'Publish_Status': publishStatus,
+
+    // ── Navigation Label (flattened) ─────────────────────────────────
+    'Navigation_Label_Icon_Url': navigationLabel.iconUrl,
+    'Navigation_Label_Title_En': navigationLabel.title.en,
+    'Navigation_Label_Title_Ar': navigationLabel.title.ar,
+
+    // ── Terms And Conditions (flattened) ─────────────────────────────
+    'Terms_And_Conditions_Svg_Url':        termsAndConditions.svgUrl,
+    'Terms_And_Conditions_Description_En': termsAndConditions.description.en,
+    'Terms_And_Conditions_Description_Ar': termsAndConditions.description.ar,
+    'Terms_And_Conditions_Attach_En_Url':  termsAndConditions.attachEnUrl,
+    'Terms_And_Conditions_Attach_Ar_Url':  termsAndConditions.attachArUrl,
+    if (termsAndConditions.lastUpdate != null)
+      'Terms_And_Conditions_Last_Update':  termsAndConditions.lastUpdate,
+
+    // ── Privacy Policy (flattened) ───────────────────────────────────
+    'Privacy_Policy_Svg_Url':        privacyPolicy.svgUrl,
+    'Privacy_Policy_Description_En': privacyPolicy.description.en,
+    'Privacy_Policy_Description_Ar': privacyPolicy.description.ar,
+    'Privacy_Policy_Attach_En_Url':  privacyPolicy.attachEnUrl,
+    'Privacy_Policy_Attach_Ar_Url':  privacyPolicy.attachArUrl,
+    if (privacyPolicy.lastUpdate != null)
+      'Privacy_Policy_Last_Update':  privacyPolicy.lastUpdate,
   };
 
   TermsOfServiceModel copyWith({
