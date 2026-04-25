@@ -9,7 +9,8 @@
 //              /services → OverviewPage
 //              /about    → OurProductsPage
 //              /contact  → AboutPage
-//              /terms    → TermsOfServicePage ✅ NEW
+//              /terms    → TermsOfServicePage
+//              /contactus → ContactPage
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -22,73 +23,36 @@ import '../page/contact_page.dart';
 import '../page/home_page.dart';
 import '../page/our_products_page.dart';
 import '../page/overview_page.dart';
-import '../page/terms_of_service_page.dart'; // ✅ NEW
+import '../page/terms_of_service_page.dart';
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// SLIDE + ANGLE + FADE PAGE TRANSITION
+// PURE FADE PAGE TRANSITION
 // ═══════════════════════════════════════════════════════════════════════════════
 
-enum SlideDirection { fromRight, fromLeft, fromBottom }
-
-CustomTransitionPage<T> animatedPage<T>({
+CustomTransitionPage<T> fadePage<T>({
   required LocalKey key,
   required Widget child,
-  SlideDirection slideDirection = SlideDirection.fromRight,
-  Duration duration = const Duration(milliseconds: 650),
-  Curve curve = Curves.easeOutCubic,
+  Duration duration = const Duration(milliseconds: 400),
 }) {
   return CustomTransitionPage<T>(
     key: key,
     child: child,
     transitionDuration: duration,
-    reverseTransitionDuration: const Duration(milliseconds: 400),
+    reverseTransitionDuration: const Duration(milliseconds: 300),
     transitionsBuilder: (context, animation, secondaryAnimation, pageChild) {
-      final Offset beginOffset = switch (slideDirection) {
-        SlideDirection.fromRight  => const Offset(0.12, 0.0),
-        SlideDirection.fromLeft   => const Offset(-0.12, 0.0),
-        SlideDirection.fromBottom => const Offset(0.0, 0.08),
-      };
-
-      final slideAnim = Tween<Offset>(begin: beginOffset, end: Offset.zero)
-          .animate(CurvedAnimation(parent: animation, curve: curve));
-
-      final fadeAnim = Tween<double>(begin: 0.0, end: 1.0).animate(
-        CurvedAnimation(
-          parent: animation,
-          curve: const Interval(0.0, 0.55, curve: Curves.easeIn),
-        ),
+      final fadeIn = Tween<double>(begin: 0.0, end: 1.0).animate(
+        CurvedAnimation(parent: animation, curve: Curves.easeInOut),
       );
 
-      final skewSign = slideDirection == SlideDirection.fromLeft ? 1.0 : -1.0;
-      final skewAnim = Tween<double>(begin: skewSign * 0.05, end: 0.0)
-          .animate(CurvedAnimation(parent: animation, curve: curve));
-
-      final scaleAnim = Tween<double>(begin: 0.97, end: 1.0)
-          .animate(CurvedAnimation(parent: animation, curve: curve));
-
-      final exitFade = Tween<double>(begin: 1.0, end: 0.92).animate(
-        CurvedAnimation(parent: secondaryAnimation, curve: Curves.easeIn),
+      final fadeOut = Tween<double>(begin: 1.0, end: 0.0).animate(
+        CurvedAnimation(parent: secondaryAnimation, curve: Curves.easeInOut),
       );
 
       return FadeTransition(
-        opacity: exitFade,
+        opacity: fadeOut,
         child: FadeTransition(
-          opacity: fadeAnim,
-          child: SlideTransition(
-            position: slideAnim,
-            child: AnimatedBuilder(
-              animation: animation,
-              builder: (_, child) => Transform(
-                transform: Matrix4.identity()
-                  ..setEntry(3, 2, 0.0008)
-                  ..rotateY(skewAnim.value)
-                  ..scale(scaleAnim.value),
-                alignment: Alignment.center,
-                child: child,
-              ),
-              child: pageChild,
-            ),
-          ),
+          opacity: fadeIn,
+          child: pageChild,
         ),
       );
     },
@@ -122,58 +86,58 @@ class AppRouter {
       GoRoute(
         path: '/',
         name: 'home',
-        pageBuilder: (context, state) => animatedPage(
-          key:   state.pageKey,
+        pageBuilder: (context, state) => fadePage(
+          key: state.pageKey,
           child: _withBlocs(context, const HomePage()),
         ),
       ),
 
-      // ── /services → OverviewPage (CMS label: "Overview") ──────────────────
+      // ── /services → OverviewPage ───────────────────────────────────────────
       GoRoute(
         path: '/services',
         name: 'overview',
-        pageBuilder: (context, state) => animatedPage(
-          key:   state.pageKey,
+        pageBuilder: (context, state) => fadePage(
+          key: state.pageKey,
           child: _withBlocs(context, const OverviewPage()),
         ),
       ),
 
-      // ── /about → OurProductsPage (CMS label: "Our Products") ──────────────
+      // ── /about → OurProductsPage ───────────────────────────────────────────
       GoRoute(
         path: '/about',
         name: 'our-products',
-        pageBuilder: (context, state) => animatedPage(
-          key:   state.pageKey,
+        pageBuilder: (context, state) => fadePage(
+          key: state.pageKey,
           child: _withBlocs(context, const OurProductsPage()),
         ),
       ),
 
-      // ── /contact → AboutPage (CMS label: "About Us") ──────────────────────
+      // ── /contact → AboutPage ───────────────────────────────────────────────
       GoRoute(
         path: '/contact',
         name: 'about-us',
-        pageBuilder: (context, state) => animatedPage(
-          key:   state.pageKey,
+        pageBuilder: (context, state) => fadePage(
+          key: state.pageKey,
           child: _withBlocs(context, const AboutPage()),
         ),
       ),
 
-      // ── /terms → TermsOfServicePage ✅ NEW ───────────────────────────────
+      // ── /terms → TermsOfServicePage ────────────────────────────────────────
       GoRoute(
         path: '/terms',
         name: 'terms',
-        pageBuilder: (context, state) => animatedPage(
-          key:   state.pageKey,
+        pageBuilder: (context, state) => fadePage(
+          key: state.pageKey,
           child: _withBlocs(context, const TermsOfServicePage()),
         ),
       ),
 
-
+      // ── /contactus → ContactPage ───────────────────────────────────────────
       GoRoute(
         path: '/contactus',
         name: 'contactus',
-        pageBuilder: (context, state) => animatedPage(
-          key:   state.pageKey,
+        pageBuilder: (context, state) => fadePage(
+          key: state.pageKey,
           child: _withBlocs(context, const ContactPage()),
         ),
       ),

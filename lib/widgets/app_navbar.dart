@@ -11,6 +11,7 @@
 // ADDED:   _NavIcon widget — shows Firebase iconUrl if set, falls back to local SVG asset
 // UPDATED: _FullScreenDrawer and _NavItem both use _NavIcon
 // ADDED:   Gender toggle connected to GenderCubit — switches data across all page cubits
+// UPDATED: Navigation uses FadeRoute for smooth fade transitions
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -43,6 +44,36 @@ class _WebColors {
 class _BP {
   static const double mobile = 600;
   static const double tablet = 1024;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FadeRoute — smooth fade transition between pages
+// ─────────────────────────────────────────────────────────────────────────────
+
+class FadeRoute extends PageRouteBuilder {
+  final Widget page;
+  final String routeName;
+  final Duration duration;
+
+  FadeRoute({
+    required this.page,
+    required this.routeName,
+    this.duration = const Duration(milliseconds: 300),
+  }) : super(
+    settings: RouteSettings(name: routeName),
+    transitionDuration: duration,
+    reverseTransitionDuration: duration,
+    pageBuilder: (_, __, ___) => page,
+    transitionsBuilder: (_, animation, __, child) {
+      return FadeTransition(
+        opacity: CurvedAnimation(
+          parent: animation,
+          curve: Curves.easeInOut,
+        ),
+        child: child,
+      );
+    },
+  );
 }
 
 void _navigate(BuildContext context, String route) {
@@ -92,9 +123,9 @@ void _navigate(BuildContext context, String route) {
 
   print('➡️ pushing route: $route');
   Navigator.of(context).push(
-    MaterialPageRoute(
-      settings: RouteSettings(name: route),
-      builder: (_) => MultiBlocProvider(
+    FadeRoute(
+      routeName: route,
+      page: MultiBlocProvider(
         providers: [
           BlocProvider.value(value: homeCubit),
           BlocProvider.value(value: langCubit),
@@ -766,8 +797,6 @@ class _NavItemState extends State<_NavItem> {
     );
   }
 }
-
-// ─── Gender Toggle — connected to GenderCubit ─────────────────────────────────
 
 // ─── Gender Toggle — connected to GenderCubit ─────────────────────────────────
 

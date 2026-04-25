@@ -1,4 +1,3 @@
-import 'package:beauty_user/page/home_page.dart';
 import 'package:beauty_user/page/request_page.dart';
 import 'package:beauty_user/repo/client_services/client_services_repo_imp.dart';
 import 'package:beauty_user/repo/home_repo/home_repository_impl.dart';
@@ -6,12 +5,12 @@ import 'package:beauty_user/repo/master/master_repo_imp.dart';
 import 'package:beauty_user/repo/overview/overview_repo_imp.dart';
 import 'package:beauty_user/repo/owner_services/owner_services_repo_imp.dart';
 import 'package:beauty_user/repo/request/request_demo_repo_imp.dart';
+import 'package:beauty_user/router/app_router.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:beauty_user/controller/home/home_cubit.dart';
 import 'package:beauty_user/controller/home/lang_state.dart';
@@ -38,8 +37,6 @@ Size _getDesignSize({
   return isLandscape ? const Size(812, 375) : const Size(375, 812);
 }
 
-
-
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
@@ -50,8 +47,8 @@ Future<void> main() async {
     FirebaseFirestore.instance.settings = const Settings(
       persistenceEnabled: false,
       sslEnabled: true,
-      webExperimentalForceLongPolling: true,  // ← ADD THIS
-      webExperimentalAutoDetectLongPolling: false, // ← ADD THIS
+      webExperimentalForceLongPolling: true,
+      webExperimentalAutoDetectLongPolling: false,
     );
   }
 
@@ -107,28 +104,20 @@ class MyApp extends StatelessWidget {
                 OwnerServicesRepoImp(),
               ),
             ),
-            BlocProvider(create: (_) => GenderCubit()),
-
-            BlocProvider<ContactUsCmsCubit>(  // ← ADD THIS
+            BlocProvider(
+              create: (_) => GenderCubit(),
+            ),
+            BlocProvider<ContactUsCmsCubit>(
               create: (_) => ContactUsCmsCubit()..load(),
             ),
             BlocProvider(
               create: (_) => RequestDemoCmsCubit(RequestDemoRepoImp())..load(),
-              child: const RequestDemoPage(gender: 'female'),
-            )
-
+            ),
           ],
-          child: MaterialApp(
-            title: 'Beauty User',
+          child: MaterialApp.router(
+            title: 'Beauty', // ← fixed from 'Beauty User'
             debugShowCheckedModeBanner: false,
-            navigatorObservers: [routeObserver], // ← Add this line
-            initialRoute: '/',
-            onGenerateRoute: (settings) {
-              return MaterialPageRoute(
-                settings: settings, // ✅ preserves the route name
-                builder: (_) => const HomePage(),
-              );
-            },
+            routerConfig: AppRouter.router,
           ),
         );
       },
