@@ -1,13 +1,56 @@
 {
-  "name": "Beauty",
-  "short_name": "Beauty",
+  "name": "SpaCareTime",
+  "short_name": "SpaCareTime",
   "start_url": ".",
   "display": "standalone",
   "background_color": "#0175C2",
   "theme_color": "#0175C2",
-  "description": "A new Flutter project.",
+  "description": "SpaCareTime connects clients with their favorite beauty and wellness services while giving businesses the tools to manage everything effortlessly in one place. From seamless booking experiences to smart business insights, it creates a smoother journey for clients and stronger growth for providers.",
   "orientation": "portrait-primary",
   "prefer_related_applications": false,
+  "categories": ["beauty", "health", "lifestyle", "shopping"],
+  "lang": "en",
+  "dir": "ltr",
+  "scope": "/",
+  "screenshots": [
+    {
+      "src": "icons/screenshot-wide.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "SpaCareTime – Home Screen"
+    },
+    {
+      "src": "icons/screenshot-narrow.png",
+      "sizes": "640x1136",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "SpaCareTime – Mobile View"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Book a Session",
+      "short_name": "Book",
+      "description": "Quickly book a spa or beauty session",
+      "url": "/book",
+      "icons": [{ "src": "icons/Icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Our Services",
+      "short_name": "Services",
+      "description": "Browse all available beauty and wellness services",
+      "url": "/services",
+      "icons": [{ "src": "icons/Icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Offers & Deals",
+      "short_name": "Offers",
+      "description": "View current offers and seasonal packages",
+      "url": "/offers",
+      "icons": [{ "src": "icons/Icon-192.png", "sizes": "192x192" }]
+    }
+  ],
   "icons": [
     {
       "src": "icons/Icon-192.png",

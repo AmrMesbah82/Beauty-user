@@ -14,6 +14,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter/foundation.dart';
 import 'package:beauty_user/controller/home/home_cubit.dart';
 import 'package:beauty_user/controller/home/lang_state.dart';
+import 'package:flutter_web_plugins/url_strategy.dart';
 
 import 'controller/client_services/client_services_cubit.dart';
 import 'controller/contact_us/contacu_us_location_cubit.dart';
@@ -39,6 +40,7 @@ Size _getDesignSize({
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  usePathUrlStrategy(); // ← add this line
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
@@ -115,7 +117,7 @@ class MyApp extends StatelessWidget {
             ),
           ],
           child: MaterialApp.router(
-            title: 'Beauty', // ← fixed from 'Beauty User'
+            title: 'SpaCareTime',
             debugShowCheckedModeBanner: false,
             routerConfig: AppRouter.router,
           ),

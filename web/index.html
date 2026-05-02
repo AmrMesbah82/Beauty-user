@@ -5,30 +5,119 @@
 
     <meta charset="UTF-8">
     <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-    <meta name="description" content="A new Flutter project.">
+    <meta name="description" content="SpaCareTime connects clients with their favorite beauty and wellness services while giving businesses the tools to manage everything effortlessly in one place. From seamless booking experiences to smart business insights, it creates a smoother journey for clients and stronger growth for providers.">
 
     <!-- iOS / Safari meta tags -->
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black">
-    <meta name="apple-mobile-web-app-title" content="Beauty">
+    <meta name="apple-mobile-web-app-title" content="SpaCareTime">
 
-    <!-- Apple touch icon (Safari bookmarks & iOS home screen) -->
+    <!-- Open Graph (for social sharing previews) -->
+    <meta property="og:title" content="SpaCareTime – Beauty & Wellness Booking">
+    <meta property="og:description" content="Book premium spa, beauty, and wellness services near you.">
+    <meta property="og:url" content="https://www.spacaretime.com/">
+    <meta property="og:type" content="website">
+    <meta property="og:image" content="https://www.spacaretime.com/icons/web-app-manifest-512x512.png">
+
+    <!-- Apple touch icon -->
     <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png">
 
-    <!-- Favicon for all browsers -->
+    <!-- Favicon -->
     <link rel="icon" type="image/x-icon" href="favicon.ico">
     <link rel="icon" type="image/png" sizes="96x96" href="icons/favicon-96x96.png">
-
-    <!-- Firefox (SVG — scales perfectly at any size) -->
     <link rel="icon" type="image/svg+xml" href="icons/favicon.svg">
-
-    <!-- Android Chrome / PWA -->
     <link rel="icon" type="image/png" sizes="192x192" href="icons/web-app-manifest-192x192.png">
     <link rel="icon" type="image/png" sizes="512x512" href="icons/web-app-manifest-512x512.png">
 
-    <title>Beauty</title>
+    <title>SpaCareTime – Beauty & Wellness Booking</title>
     <link rel="manifest" href="manifest.json">
+
+    <!-- ✅ JSON-LD: WebSite structured data (enables sitelinks + search box in Google) -->
+    <script type="application/ld+json">
+        {
+            "@context": "https://schema.org",
+            "@type": "WebSite",
+            "name": "SpaCareTime",
+            "url": "https://www.spacaretime.com/",
+            "description": "Book premium spa, beauty, and wellness services near you.",
+            "potentialAction": {
+                "@type": "SearchAction",
+                "target": {
+                    "@type": "EntryPoint",
+                    "urlTemplate": "https://www.spacaretime.com/search?q={search_term_string}"
+                },
+                "query-input": "required name=search_term_string"
+            }
+        }
+    </script>
+
+    <!-- ✅ JSON-LD: Organization (shows your brand info in knowledge panel) -->
+    <script type="application/ld+json">
+        {
+            "@context": "https://schema.org",
+            "@type": "Organization",
+            "name": "SpaCareTime",
+            "url": "https://www.spacaretime.com/",
+            "logo": "https://www.spacaretime.com/icons/web-app-manifest-512x512.png",
+            "sameAs": [
+                "https://www.instagram.com/spacaretime",
+                "https://www.facebook.com/spacaretime"
+            ],
+            "contactPoint": {
+                "@type": "ContactPoint",
+                "contactType": "Customer Support",
+                "availableLanguage": ["English", "Arabic"]
+            }
+        }
+    </script>
+
+    <!-- ✅ JSON-LD: SiteLinksNavigation (the sub-links shown under your result) -->
+    <script type="application/ld+json">
+        {
+            "@context": "https://schema.org",
+            "@type": "ItemList",
+            "name": "SpaCareTime Navigation",
+            "itemListElement": [
+                {
+                    "@type": "SiteLinksNavigationElement",
+                    "position": 1,
+                    "name": "Overview",
+                    "description": "Browse and book top-rated spa services near you.",
+                    "url": "https://www.spacaretime.com/Overview"
+                },
+                {
+                    "@type": "SiteLinksNavigationElement",
+                    "position": 2,
+                    "name": "Our Products",
+                    "description": "Explore facials, hair care, and beauty treatments.",
+                    "url": "https://www.spacaretime.com/beauty"
+                },
+                {
+                    "@type": "SiteLinksNavigationElement",
+                    "position": 3,
+                    "name": "About Us",
+                    "description": "Relax with professional massage and wellness packages.",
+                    "url": "https://www.spacaretime.com/wellness"
+                },
+                {
+                    "@type": "SiteLinksNavigationElement",
+                    "position": 4,
+                    "name": "Terms of Service",
+                    "description": "Exclusive deals and seasonal wellness packages.",
+                    "url": "https://www.spacaretime.com/offers"
+                },
+                {
+                    "@type": "SiteLinksNavigationElement",
+                    "position": 5,
+                    "name": "Contact Us",
+                    "description": "Learn about SpaCareTime and our mission.",
+                    "url": "https://www.spacaretime.com/about"
+                }
+            ]
+        }
+    </script>
+
 </head>
 <body>
 <script src="flutter_bootstrap.js" async></script>
