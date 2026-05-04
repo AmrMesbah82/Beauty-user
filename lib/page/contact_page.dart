@@ -20,6 +20,7 @@
 //                 unless Firebase field is empty
 
 import 'dart:async';
+import 'dart:html' as html;
 
 import 'package:beauty_user/controller/home/lang_state.dart';
 import 'package:flutter/material.dart';
@@ -28,7 +29,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:url_launcher/url_launcher.dart';
-
+import 'dart:ui_web' as ui_web;
 import 'package:beauty_user/controller/contact_us/contacu_us_location_cubit.dart';
 import 'package:beauty_user/controller/contact_us/contacu_us_location_state.dart';
 import 'package:beauty_user/controller/contact_us/contatc_us_cubit.dart';
@@ -393,17 +394,27 @@ class _SvgPulseLoaderState extends State<_SvgPulseLoader>
         body: const SizedBox.shrink(),
       );
     }
+
+    final viewId = 'svg-contact-pulse-${_resolvedUrl.hashCode}';
+
+    ui_web.platformViewRegistry.registerViewFactory(viewId, (int id) {
+      final img = html.ImageElement()
+        ..src = _resolvedUrl!
+        ..style.width = '100%'
+        ..style.height = '100%'
+        ..style.objectFit = 'contain';
+      return img;
+    });
+
     return Scaffold(
       backgroundColor: widget.backgroundColor,
       body: Center(
         child: FadeTransition(
           opacity: _opacity,
-          child: SvgPicture.network(
-            _resolvedUrl!,
+          child: SizedBox(
             width: 88.w,
             height: 88.w,
-            fit: BoxFit.contain,
-            placeholderBuilder: (_) => SizedBox(width: 88.w, height: 88.w),
+            child: HtmlElementView(viewType: viewId),
           ),
         ),
       ),
@@ -504,17 +515,7 @@ class _ContactPageViewState extends State<_ContactPageView> {
   }) async {
     if (_preloadStarted) return;
     _preloadStarted = true;
-
-    final List<String> allUrls = [
-      if (logoUrl.isNotEmpty) logoUrl,
-      if (cmsData?.headings.svgUrl.isNotEmpty == true) cmsData!.headings.svgUrl,
-      if (cmsData != null)
-        for (final icon in cmsData.socialIcons)
-          if (icon.iconUrl.isNotEmpty) icon.iconUrl,
-    ];
-
-    await _preloadSvgImages(allUrls);
-    await Future.delayed(const Duration(milliseconds: 100));
+    await Future.delayed(const Duration(milliseconds: 200));
     if (mounted) setState(() => _showLoader = false);
   }
 
@@ -2679,24 +2680,28 @@ class _LeftIllustrationPanel extends StatelessWidget {
         // ── CMS SVG illustration ──
         Center(
           child: svgUrl.isNotEmpty
-              ? SvgPicture.network(
-                  svgUrl,
-                  width: 220.w,
-                  height: 200.h,
-                  fit: BoxFit.contain,
-                  placeholderBuilder: (_) => SvgPicture.asset(
-                    'assets/spa_core.svg',
-                    width: 220.w,
-                    height: 200.h,
-                    fit: BoxFit.contain,
-                  ),
-                )
+              ? () {
+            final viewId = 'svg-contact-illust-${svgUrl.hashCode}';
+            ui_web.platformViewRegistry.registerViewFactory(viewId, (int id) {
+              final img = html.ImageElement()
+                ..src = svgUrl
+                ..style.width = '100%'
+                ..style.height = '100%'
+                ..style.objectFit = 'contain';
+              return img;
+            });
+            return SizedBox(
+              width: 220.w,
+              height: 200.h,
+              child: HtmlElementView(viewType: viewId),
+            );
+          }()
               : SvgPicture.asset(
-                  'assets/spa_core.svg',
-                  width: 220.w,
-                  height: 200.h,
-                  fit: BoxFit.contain,
-                ),
+            'assets/spa_core.svg',
+            width: 220.w,
+            height: 200.h,
+            fit: BoxFit.contain,
+          ),
         ),
         SizedBox(height: 24.h),
         // ── CMS description ──
@@ -2884,24 +2889,28 @@ class _MobileBody extends StatelessWidget {
           // ── CMS SVG illustration ──
           Center(
             child: svgUrl.isNotEmpty
-                ? SvgPicture.network(
-                    svgUrl,
-                    width: double.infinity,
-                    height: 220.h,
-                    fit: BoxFit.contain,
-                    placeholderBuilder: (_) => SvgPicture.asset(
-                      'assets/spa_core.svg',
-                      width: double.infinity,
-                      height: 220.h,
-                      fit: BoxFit.contain,
-                    ),
-                  )
+                ? () {
+              final viewId = 'svg-contact-mobile-illust-${svgUrl.hashCode}';
+              ui_web.platformViewRegistry.registerViewFactory(viewId, (int id) {
+                final img = html.ImageElement()
+                  ..src = svgUrl
+                  ..style.width = '100%'
+                  ..style.height = '100%'
+                  ..style.objectFit = 'contain';
+                return img;
+              });
+              return SizedBox(
+                width: double.infinity,
+                height: 220.h,
+                child: HtmlElementView(viewType: viewId),
+              );
+            }()
                 : SvgPicture.asset(
-                    'assets/spa_core.svg',
-                    width: double.infinity,
-                    height: 220.h,
-                    fit: BoxFit.contain,
-                  ),
+              'assets/spa_core.svg',
+              width: double.infinity,
+              height: 220.h,
+              fit: BoxFit.contain,
+            ),
           ),
           SizedBox(height: 20.h),
 
@@ -3738,20 +3747,29 @@ class _SocialIconWidget extends StatelessWidget {
         ),
         child: Center(
           child: iconUrl != null && iconUrl!.isNotEmpty
-              ? SvgPicture.network(
-                  iconUrl!,
-                  width: 22.w,
-                  height: 22.w,
-                  fit: BoxFit.contain,
-                  colorFilter: ColorFilter.mode(primaryColor, BlendMode.srcIn),
-                )
+              ? () {
+            final viewId = 'svg-social-${iconUrl.hashCode}';
+            ui_web.platformViewRegistry.registerViewFactory(viewId, (int id) {
+              final img = html.ImageElement()
+                ..src = iconUrl!
+                ..style.width = '100%'
+                ..style.height = '100%'
+                ..style.objectFit = 'contain';
+              return img;
+            });
+            return SizedBox(
+              width: 22.w,
+              height: 22.w,
+              child: HtmlElementView(viewType: viewId),
+            );
+          }()
               : SvgPicture.asset(
-                  svgPath ?? 'assets/images/instegrm.svg',
-                  width: 22.w,
-                  height: 22.w,
-                  fit: BoxFit.contain,
-                  colorFilter: ColorFilter.mode(primaryColor, BlendMode.srcIn),
-                ),
+            svgPath ?? 'assets/images/instegrm.svg',
+            width: 22.w,
+            height: 22.w,
+            fit: BoxFit.contain,
+            colorFilter: ColorFilter.mode(primaryColor, BlendMode.srcIn),
+          ),
         ),
       ),
     ),

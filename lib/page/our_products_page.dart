@@ -23,6 +23,7 @@
 // ignore_for_file: avoid_web_libraries_in_flutter
 import 'dart:html' as html;
 import 'dart:typed_data';
+import 'dart:ui_web' as ui_web;
 
 import 'package:beauty_user/core/widget/button.dart';
 import 'package:beauty_user/core/widget/navigator.dart';
@@ -170,38 +171,34 @@ Widget _netImg({
   Widget? errorWidget,
 }) {
   if (url.isEmpty) return errorWidget ?? const SizedBox.shrink();
-  final bool hintSvg = _isSvgUrl(url);
-  Widget inner = FutureBuilder<Uint8List>(
-    future: _xhrLoad(url, isSvg: hintSvg),
-    builder: (context, snapshot) {
-      if (snapshot.connectionState == ConnectionState.waiting) {
-        return placeholder ?? SizedBox(width: width, height: height);
-      }
-      if (snapshot.hasData) {
-        final bytes = snapshot.data!;
-        if (hintSvg || _isSvgBytes(bytes)) {
-          return SvgPicture.memory(
-            bytes,
-            width: width,
-            height: height,
-            fit: fit,
-            colorFilter: colorFilter,
-          );
-        }
-        return Image.memory(bytes, width: width, height: height, fit: fit);
-      }
-      return errorWidget ??
-          Icon(
-            Icons.broken_image,
-            color: Colors.grey[400],
-            size: (width ?? height ?? 24).toDouble(),
-          );
-    },
-  );
-  if (borderRadius != null)
-    inner = ClipRRect(borderRadius: borderRadius, child: inner);
-  if (width != null || height != null)
+
+  final fitStr = fit == BoxFit.contain
+      ? 'contain'
+      : fit == BoxFit.scaleDown
+      ? 'scale-down'
+      : 'cover';
+
+  final viewId = 'svg-products-${url.hashCode}-${width?.toInt()}-${height?.toInt()}';
+
+  ui_web.platformViewRegistry.registerViewFactory(viewId, (int id) {
+    final img = html.ImageElement()
+      ..src = url
+      ..style.width = '100%'
+      ..style.height = '100%'
+      ..style.objectFit = fitStr;
+    return img;
+  });
+
+  Widget inner = HtmlElementView(viewType: viewId);
+
+  if (width != null || height != null) {
     inner = SizedBox(width: width, height: height, child: inner);
+  }
+
+  if (borderRadius != null) {
+    inner = ClipRRect(borderRadius: borderRadius, child: inner);
+  }
+
   return inner;
 }
 
@@ -414,21 +411,33 @@ class _SvgPulseLoaderState extends State<_SvgPulseLoader>
 
   @override
   Widget build(BuildContext context) {
-    if (_resolvedUrl == null)
+    if (_resolvedUrl == null) {
       return Scaffold(
         backgroundColor: widget.backgroundColor,
         body: const SizedBox.shrink(),
       );
+    }
+
+    final viewId = 'svg-products-pulse-${_resolvedUrl.hashCode}';
+
+    ui_web.platformViewRegistry.registerViewFactory(viewId, (int id) {
+      final img = html.ImageElement()
+        ..src = _resolvedUrl!
+        ..style.width = '100%'
+        ..style.height = '100%'
+        ..style.objectFit = 'contain';
+      return img;
+    });
+
     return Scaffold(
       backgroundColor: widget.backgroundColor,
       body: Center(
         child: FadeTransition(
           opacity: _opacity,
-          child: _netImg(
-            url: _resolvedUrl!,
+          child: SizedBox(
             width: 88.w,
             height: 88.w,
-            fit: BoxFit.contain,
+            child: HtmlElementView(viewType: viewId),
           ),
         ),
       ),
@@ -643,24 +652,7 @@ class _OurProductsPageState extends State<OurProductsPage> {
     _preloadStarted = true;
     _lastPreloadedTab = _selectedTabIndex;
 
-    final List<String> urls = [if (logoUrl.isNotEmpty) logoUrl];
-
-    if (_selectedTabIndex == 0 && clientData != null) {
-      if (clientData.header.svgUrl.isNotEmpty)
-        urls.add(clientData.header.svgUrl);
-      for (final m in clientData.mockups.items) {
-        if (m.svgUrl.isNotEmpty) urls.add(m.svgUrl);
-      }
-    } else if (_selectedTabIndex == 1 && ownerData != null) {
-      if (ownerData.header.imageUrl.isNotEmpty)
-        urls.add(ownerData.header.imageUrl);
-      for (final m in ownerData.mockups.items) {
-        if (m.imageUrl.isNotEmpty) urls.add(m.imageUrl);
-      }
-    }
-
-    await _preloadImages(urls);
-    await Future.delayed(const Duration(milliseconds: 100));
+    await Future.delayed(const Duration(milliseconds: 200));
     if (mounted) setState(() => _showLoader = false);
   }
 

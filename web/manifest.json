@@ -4,8 +4,8 @@
   "start_url": ".",
   "display": "standalone",
   "background_color": "transparent",
-  "theme_color": "#FFFFFF",
-  "description": "",
+  "theme_color": "transparent",
+  "description": "Book premium spa, beauty, and wellness services near you.",
   "orientation": "portrait-primary",
   "prefer_related_applications": false,
   "categories": ["beauty", "health", "lifestyle", "shopping"],
@@ -73,26 +73,6 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
-    },
-    {
-      "src": "icons/favicon-96x96.png",
-      "sizes": "96x96",
-      "type": "image/png"
-    },
-    {
-      "src": "icons/web-app-manifest-192x192.png",
-      "sizes": "192x192",
-      "type": "image/png"
-    },
-    {
-      "src": "icons/web-app-manifest-512x512.png",
-      "sizes": "512x512",
-      "type": "image/png"
-    },
-    {
-      "src": "icons/apple-touch-icon.png",
-      "sizes": "180x180",
-      "type": "image/png"
     }
   ]
 }

@@ -1,6 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application
-        android:label="beauty_user"
+        android:label="SpaCareTime"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
