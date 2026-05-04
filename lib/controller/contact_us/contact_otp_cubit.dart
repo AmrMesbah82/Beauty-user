@@ -14,7 +14,8 @@ class ContactOtpCubit extends Cubit<ContactOtpState> {
   Future<void> sendOtp({
     required String phoneNumber,
     required String locale, // 'en' or 'ar'
-  }) async {
+  }) async
+  {
     print('\n📤 [CONTACT_OTP_CUBIT] sendOtp called');
     print('   - Phone: $phoneNumber');
     print('   - Locale: $locale');
@@ -46,7 +47,8 @@ class ContactOtpCubit extends Cubit<ContactOtpState> {
   Future<void> verifyOtp({
     required String phoneNumber,
     required String code,
-  }) async {
+  }) async
+  {
     print('\n🔍 [CONTACT_OTP_CUBIT] verifyOtp called');
     print('   - Phone: $phoneNumber');
     print('   - Code: $code');

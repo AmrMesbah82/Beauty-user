@@ -328,15 +328,18 @@ class _RevealState extends State<_Reveal> with SingleTickerProviderStateMixin {
     });
   }
 
+  _RevealCoordinatorState? _coordinator;
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _RevealCoordinator.of(context)?.register(this);
+    _coordinator = _RevealCoordinator.of(context);
+    _coordinator?.register(this);
   }
 
   @override
   void dispose() {
-    _RevealCoordinator.of(context)?.unregister(this);
+    _coordinator?.unregister(this);
     _ctrl.dispose();
     super.dispose();
   }
@@ -598,7 +601,7 @@ class _OurProductsPageState extends State<OurProductsPage> {
     if (_selectedTabIndex == index) return;
 
     try {
-      context.go('/about?tab=${_tabParamForIndex(index)}');
+      context.go('/our-products?tab=${_tabParamForIndex(index)}');
     } catch (_) {}
 
     setState(() {

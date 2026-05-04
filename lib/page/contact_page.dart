@@ -172,6 +172,7 @@ class _RevealState extends State<_Reveal> with SingleTickerProviderStateMixin {
     });
   }
 
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();

@@ -40,7 +40,7 @@ Size _getDesignSize({
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  usePathUrlStrategy(); // ← add this line
+  usePathUrlStrategy();
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
@@ -94,17 +94,17 @@ class MyApp extends StatelessWidget {
             BlocProvider<OverviewCmsCubit>(
               create: (_) => OverviewCmsCubit(
                 OverviewRepoImp(),
-              ),
+              )..load(),
             ),
             BlocProvider<ClientServicesCmsCubit>(
               create: (_) => ClientServicesCmsCubit(
                 ClientServicesRepoImp(),
-              ),
+              )..load(),
             ),
             BlocProvider<OwnerServicesCmsCubit>(
               create: (_) => OwnerServicesCmsCubit(
                 OwnerServicesRepoImp(),
-              ),
+              )..load(),
             ),
             BlocProvider(
               create: (_) => GenderCubit(),

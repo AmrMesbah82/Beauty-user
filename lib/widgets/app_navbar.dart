@@ -1,22 +1,22 @@
 // ******************* FILE INFO *******************
 // File Name: app_navbar.dart
-// UPDATED: Fixed navigation for all 6 navbar items using direct Navigator.push
+// UPDATED: Navigation now uses GoRouter.go() so the browser URL updates correctly.
 //          Index 0: Home (/)
-//          Index 1: Overview (/services)
-//          Index 2: Our Products (/about)
-//          Index 3: About Us (/contact)
+//          Index 1: Overview (/overview)
+//          Index 2: Our Products (/our-products)
+//          Index 3: About Us (/about-us)
 //          Index 4: Terms Services (/terms)
-//          Index 5: Contact Us (/contactus)
+//          Index 5: Contact Us (/contact-us)
 // UPDATED: _getVisibleNavItems now returns iconUrl from NavButtonModel
 // ADDED:   _NavIcon widget — shows Firebase iconUrl if set, falls back to local SVG asset
 // UPDATED: _FullScreenDrawer and _NavItem both use _NavIcon
 // ADDED:   Gender toggle connected to GenderCubit — switches data across all page cubits
-// UPDATED: Navigation uses FadeRoute for smooth fade transitions
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:get/get.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
@@ -26,11 +26,6 @@ import '../controller/home/home_cubit.dart';
 import '../controller/home/home_state.dart';
 import '../controller/home/lang_state.dart';
 import '../model/home/home_model.dart';
-import '../page/contact_page.dart';
-import '../page/about_page.dart';
-import '../page/our_products_page.dart';
-import '../page/overview_page.dart';
-import '../page/terms_of_service_page.dart';
 import '../theme/app_theme.dart';
 import '../theme/app_wight.dart';
 import '../theme/appcolors.dart';
@@ -47,103 +42,29 @@ class _BP {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// FadeRoute — smooth fade transition between pages
+// _navigate — uses GoRouter so the browser URL updates correctly
 // ─────────────────────────────────────────────────────────────────────────────
 
-class FadeRoute extends PageRouteBuilder {
-  final Widget page;
-  final String routeName;
-  final Duration duration;
-
-  FadeRoute({
-    required this.page,
-    required this.routeName,
-    this.duration = const Duration(milliseconds: 300),
-  }) : super(
-    settings: RouteSettings(name: routeName),
-    transitionDuration: duration,
-    reverseTransitionDuration: duration,
-    pageBuilder: (_, __, ___) => page,
-    transitionsBuilder: (_, animation, __, child) {
-      return FadeTransition(
-        opacity: CurvedAnimation(
-          parent: animation,
-          curve: Curves.easeInOut,
-        ),
-        child: child,
-      );
-    },
-  );
-}
+const Map<String, String> _firebaseToClean = {
+  '/services':  '/overview',
+  '/about':     '/our-products',
+  '/contact':   '/about-us',
+  '/contactus': '/contact-us',
+};
 
 void _navigate(BuildContext context, String route) {
-  print('🚀 _navigate called with route: $route');
-
-  final homeCubit   = context.read<HomeCmsCubit>();
-  final langCubit   = context.read<LanguageCubit>();
-  final genderCubit = context.read<GenderCubit>();
-
-  Widget page;
-
-  switch (route) {
-    case '/':
-      Navigator.of(context).popUntil((r) => r.isFirst);
-      return;
-
-    case '/services':
-      print('✅ Navigating to OverviewPage');
-      page = const OverviewPage();
-      break;
-
-    case '/about':
-      print('✅ Navigating to OurProductsPage');
-      page = const OurProductsPage();
-      break;
-
-    case '/contact':
-      print('✅ Navigating to AboutPage');
-      page = const AboutPage();
-      break;
-
-    case '/terms':
-      print('✅ Navigating to TermsOfServicePage');
-      page = const TermsOfServicePage();
-      break;
-
-    case '/contactus':
-      print('✅ Navigating to ContactPage');
-      page = const ContactPage();
-      break;
-
-    default:
-      print('❌ unknown route: $route — returning to home');
-      Navigator.of(context).popUntil((r) => r.isFirst);
-      return;
-  }
-
-  print('➡️ pushing route: $route');
-  Navigator.of(context).push(
-    FadeRoute(
-      routeName: route,
-      page: MultiBlocProvider(
-        providers: [
-          BlocProvider.value(value: homeCubit),
-          BlocProvider.value(value: langCubit),
-          BlocProvider.value(value: genderCubit),
-        ],
-        child: page,
-      ),
-    ),
-  );
+  final cleanRoute = _firebaseToClean[route] ?? route;
+  print('🚀 _navigate called with route: $route → $cleanRoute');
+  GoRouter.of(context).go(cleanRoute);
 }
 
 const Map<String, String> _kSvgMap = {
-  '/':          'assets/drawer/home_drawer.svg',
-  '/services':  'assets/drawer/services_drawer.svg',
-  '/about':     'assets/drawer/services_drawer.svg',
-  '/contact':   'assets/drawer/services_drawer.svg',
-  '/terms':     'assets/drawer/services_drawer.svg',
-  '/contactus': 'assets/drawer/about_us_drawer.svg',
+  '/':             'assets/drawer/home_drawer.svg',
+  '/overview':     'assets/drawer/services_drawer.svg',
+  '/our-products': 'assets/drawer/services_drawer.svg',
+  '/about-us':     'assets/drawer/services_drawer.svg',
+  '/terms':        'assets/drawer/services_drawer.svg',
+  '/contact-us':   'assets/drawer/about_us_drawer.svg',
 };
 
 // Gender icons
@@ -263,8 +184,8 @@ class AppNavbar extends StatelessWidget {
   final String currentRoute;
 
   /// Optional callback invoked when a nav item is tapped.
-  /// Receives the route string of the tapped item (e.g. '/careers').
-  /// When null the navbar falls back to Navigator.push.
+  /// Receives the route string of the tapped item (e.g. '/overview').
+  /// When null the navbar falls back to GoRouter.go().
   final void Function(String route)? onItemTap;
 
   const AppNavbar({
@@ -541,7 +462,7 @@ class _FullScreenDrawer extends StatelessWidget {
                             children: [
                               GestureDetector(
                                 onTap: () {
-                                  Navigator.of(context).pop();
+                                  Navigator.of(context).pop(); // close drawer
                                   if (onItemTap != null) {
                                     onItemTap!(e.route);
                                   } else {

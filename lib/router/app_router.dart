@@ -1,16 +1,15 @@
 // ******************* FILE INFO *******************
 // File Name: app_router.dart
 // Description: Public website router for beauty_user app.
-//              Routes use CMS route keys (/, /services, /about, /contact, etc.)
-//              go_router is kept for the shell; in-app nav uses Navigator.push.
+//              Routes use clean URL paths that match page names.
 //
-//              CMS Route Mapping:
-//              /         → HomePage
-//              /services → OverviewPage
-//              /about    → OurProductsPage
-//              /contact  → AboutPage
-//              /terms    → TermsOfServicePage
-//              /contactus → ContactPage
+//              Route Mapping:
+//              /             → HomePage
+//              /overview     → OverviewPage
+//              /our-products → OurProductsPage
+//              /about-us     → AboutPage
+//              /terms        → TermsOfServicePage
+//              /contact-us   → ContactPage
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -74,7 +73,7 @@ Widget _withBlocs(BuildContext context, Widget page) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// ROUTER — public routes (keys match CMS navButton routes)
+// ROUTER — public routes (clean URL paths matching page names)
 // ═══════════════════════════════════════════════════════════════════════════════
 
 class AppRouter {
@@ -92,9 +91,9 @@ class AppRouter {
         ),
       ),
 
-      // ── /services → OverviewPage ───────────────────────────────────────────
+      // ── /overview → OverviewPage ───────────────────────────────────────────
       GoRoute(
-        path: '/services',
+        path: '/overview',
         name: 'overview',
         pageBuilder: (context, state) => fadePage(
           key: state.pageKey,
@@ -102,9 +101,9 @@ class AppRouter {
         ),
       ),
 
-      // ── /about → OurProductsPage ───────────────────────────────────────────
+      // ── /our-products → OurProductsPage ────────────────────────────────────
       GoRoute(
-        path: '/about',
+        path: '/our-products',
         name: 'our-products',
         pageBuilder: (context, state) => fadePage(
           key: state.pageKey,
@@ -112,9 +111,9 @@ class AppRouter {
         ),
       ),
 
-      // ── /contact → AboutPage ───────────────────────────────────────────────
+      // ── /about-us → AboutPage ──────────────────────────────────────────────
       GoRoute(
-        path: '/contact',
+        path: '/about-us',
         name: 'about-us',
         pageBuilder: (context, state) => fadePage(
           key: state.pageKey,
@@ -132,10 +131,10 @@ class AppRouter {
         ),
       ),
 
-      // ── /contactus → ContactPage ───────────────────────────────────────────
+      // ── /contact-us → ContactPage ──────────────────────────────────────────
       GoRoute(
-        path: '/contactus',
-        name: 'contactus',
+        path: '/contact-us',
+        name: 'contact-us',
         pageBuilder: (context, state) => fadePage(
           key: state.pageKey,
           child: _withBlocs(context, const ContactPage()),

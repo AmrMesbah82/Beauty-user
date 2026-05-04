@@ -1,12 +1,14 @@
 /// ******************* FILE INFO *******************
 /// File Name: home_page.dart
 /// Description: Public-facing Home Page for the Beauty App (Bayanatz).
-/// Last Update: 16/04/2026
-/// DEBUG: Added extensive logging for download section visibility diagnosis
+/// Last Update: 04/05/2026
+/// FIXED: SVG images now rendered via native browser <img> tag to avoid CORS
+///        issues with Firebase Storage + flutter_svg XHR loading.
 
 // ignore_for_file: avoid_web_libraries_in_flutter
 import 'dart:html' as html;
 import 'dart:typed_data';
+import 'dart:ui_web' as ui_web;
 
 import 'package:beauty_user/core/widget/format.dart';
 import 'package:beauty_user/core/widget/navigator.dart';
@@ -30,6 +32,12 @@ import 'about_page.dart';
 
 final RouteObserver<ModalRoute> routeObserver = RouteObserver<ModalRoute>();
 
+// ── Counter for unique HtmlElementView IDs ────────────────────────────────────
+int _htmlViewCounter = 0;
+
+// ── Registered view IDs to avoid duplicate registration ──────────────────────
+final Set<String> _registeredViewIds = {};
+
 Color _parseHex(String hex, {required Color fallback}) {
   try {
     final h = hex.replaceAll('#', '');
@@ -38,6 +46,7 @@ Color _parseHex(String hex, {required Color fallback}) {
   return fallback;
 }
 
+// ── XHR loader (used only for non-SVG images) ─────────────────────────────────
 final Map<String, Future<Uint8List>> _globalUrlCache = {};
 
 Future<Uint8List> _xhrLoad(String url, {bool isSvg = false}) {
@@ -74,6 +83,42 @@ bool _isSvgUrl(String url) {
       decoded.endsWith('/svg');
 }
 
+// ── Native SVG renderer via browser <img> tag ─────────────────────────────────
+// Bypasses CORS issues that affect XHR/flutter_svg on Firebase Storage URLs.
+Widget _nativeSvgImg({
+  required String url,
+  double? width,
+  double? height,
+  BoxFit fit = BoxFit.contain,
+}) {
+  if (url.isEmpty) return const SizedBox.shrink();
+
+  // Use url+size as key so same URL at different sizes gets its own view
+  final viewId = 'native-svg-${url.hashCode}-${_htmlViewCounter++}';
+
+  if (!_registeredViewIds.contains(viewId)) {
+    _registeredViewIds.add(viewId);
+    ui_web.platformViewRegistry.registerViewFactory(viewId, (int id) {
+      final img = html.ImageElement()
+        ..src = url
+        ..style.width = '100%'
+        ..style.height = '100%'
+        ..style.objectFit = fit == BoxFit.cover ? 'cover' : 'contain'
+        ..style.display = 'block';
+      return img;
+    });
+  }
+
+  Widget view = HtmlElementView(viewType: viewId);
+
+  if (width != null || height != null) {
+    view = SizedBox(width: width, height: height, child: view);
+  }
+
+  return view;
+}
+
+// ── General image loader (non-SVG uses XHR, SVG uses native renderer) ─────────
 Widget _netImg({
   required String url,
   double? width,
@@ -85,25 +130,36 @@ Widget _netImg({
   Widget? errorWidget,
 }) {
   if (url.isEmpty) return errorWidget ?? const SizedBox.shrink();
-  final bool hintSvg = _isSvgUrl(url);
+
+  // ✅ SVG: use native browser <img> tag — avoids CORS + flutter_svg parse issues
+  if (_isSvgUrl(url)) {
+    Widget svgWidget = _nativeSvgImg(url: url, width: width, height: height, fit: fit);
+    if (borderRadius != null) {
+      svgWidget = ClipRRect(borderRadius: borderRadius, child: svgWidget);
+    }
+    return svgWidget;
+  }
+
+  // Non-SVG: use XHR loader
   Widget inner = FutureBuilder<Uint8List>(
-    future: _xhrLoad(url, isSvg: hintSvg),
+    future: _xhrLoad(url, isSvg: false),
     builder: (context, snapshot) {
       if (snapshot.connectionState == ConnectionState.waiting) {
         return placeholder ?? SizedBox(width: width, height: height);
       }
       if (snapshot.hasData) {
         final bytes = snapshot.data!;
-        if (hintSvg || _isSvgBytes(bytes)) {
-          return SvgPicture.memory(
-            bytes,
-            width: width,
-            height: height,
-            fit: fit,
-            colorFilter: colorFilter,
-          );
+        if (_isSvgBytes(bytes)) {
+          // Fallback: bytes turned out to be SVG anyway
+          return _nativeSvgImg(url: url, width: width, height: height, fit: fit);
         }
-        return Image.memory(bytes, width: width, height: height, fit: fit);
+        return Image.memory(
+          bytes,
+          width: width,
+          height: height,
+          fit: fit,
+          colorBlendMode: colorFilter != null ? BlendMode.srcIn : null,
+        );
       }
       return errorWidget ??
           Icon(Icons.broken_image,
@@ -111,10 +167,13 @@ Widget _netImg({
               size: (width ?? height ?? 24).toDouble());
     },
   );
-  if (borderRadius != null)
+
+  if (borderRadius != null) {
     inner = ClipRRect(borderRadius: borderRadius, child: inner);
-  if (width != null || height != null)
+  }
+  if (width != null || height != null) {
     inner = SizedBox(width: width, height: height, child: inner);
+  }
   return inner;
 }
 
@@ -124,9 +183,13 @@ Future<void> _preloadImages(List<String> urls) async {
   u.isNotEmpty &&
       (u.startsWith('http://') || u.startsWith('https://')))
       .toSet();
+
+  // Only XHR-preload non-SVG images; SVGs will be loaded natively by the browser
+  final nonSvgUrls = valid.where((u) => !_isSvgUrl(u)).toSet();
+
   await Future.wait(
-    valid.map((url) =>
-        _xhrLoad(url, isSvg: _isSvgUrl(url)).catchError((_) => Uint8List(0))),
+    nonSvgUrls.map((url) =>
+        _xhrLoad(url, isSvg: false).catchError((_) => Uint8List(0))),
   );
 }
 
@@ -208,9 +271,9 @@ class _RevealState extends State<_Reveal> with SingleTickerProviderStateMixin {
         .drive(Tween(begin: 0.0, end: 1.0));
     final Offset begin = switch (widget.direction) {
       _SlideDirection.fromBottom => const Offset(0, 0.18),
-      _SlideDirection.fromTop => const Offset(0, -0.18),
-      _SlideDirection.fromLeft => const Offset(-0.18, 0),
-      _SlideDirection.fromRight => const Offset(0.18, 0),
+      _SlideDirection.fromTop    => const Offset(0, -0.18),
+      _SlideDirection.fromLeft   => const Offset(-0.18, 0),
+      _SlideDirection.fromRight  => const Offset(0.18, 0),
     };
     _slide = CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic)
         .drive(Tween(begin: begin, end: Offset.zero));
@@ -222,15 +285,18 @@ class _RevealState extends State<_Reveal> with SingleTickerProviderStateMixin {
     });
   }
 
+  _RevealCoordinatorState? _coordinator;
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _RevealCoordinator.of(context)?.register(this);
+    _coordinator = _RevealCoordinator.of(context);
+    _coordinator?.register(this);
   }
 
   @override
   void dispose() {
-    _RevealCoordinator.of(context)?.unregister(this);
+    _coordinator?.unregister(this);
     _ctrl.dispose();
     super.dispose();
   }
@@ -287,8 +353,9 @@ class _SvgPulseLoaderState extends State<_SvgPulseLoader>
     super.didUpdateWidget(oldWidget);
     if (widget.logoUrl != null &&
         widget.logoUrl!.isNotEmpty &&
-        _resolvedUrl == null)
+        _resolvedUrl == null) {
       setState(() => _resolvedUrl = widget.logoUrl);
+    }
   }
 
   @override
@@ -299,11 +366,12 @@ class _SvgPulseLoaderState extends State<_SvgPulseLoader>
 
   @override
   Widget build(BuildContext context) {
-    if (_resolvedUrl == null)
+    if (_resolvedUrl == null) {
       return Scaffold(
         backgroundColor: widget.backgroundColor,
         body: const SizedBox.shrink(),
       );
+    }
     return Scaffold(
       backgroundColor: widget.backgroundColor,
       body: Center(
@@ -424,14 +492,15 @@ class _HomePageViewState extends State<_HomePageView> with RouteAware {
     _lastAboutImageUrl = aboutImageUrl;
     _lastDownloadImageUrl = downloadImageUrl;
 
+    // SVGs are loaded natively by the browser — only preload non-SVG images
     final urls = [
-      if (logoUrl.isNotEmpty) logoUrl,
-      if (headerImageUrl.isNotEmpty) headerImageUrl,
-      if (aboutImageUrl.isNotEmpty) aboutImageUrl,
-      if (downloadImageUrl.isNotEmpty) downloadImageUrl,
+      if (logoUrl.isNotEmpty && !_isSvgUrl(logoUrl)) logoUrl,
+      if (headerImageUrl.isNotEmpty && !_isSvgUrl(headerImageUrl)) headerImageUrl,
+      if (aboutImageUrl.isNotEmpty && !_isSvgUrl(aboutImageUrl)) aboutImageUrl,
+      if (downloadImageUrl.isNotEmpty && !_isSvgUrl(downloadImageUrl)) downloadImageUrl,
     ];
 
-    print('🏠 [HomePage] preloading ${urls.length} URLs');
+    print('🏠 [HomePage] preloading ${urls.length} non-SVG URLs');
     await _preloadImages(urls);
     await Future.delayed(const Duration(milliseconds: 100));
     if (mounted) {
@@ -453,9 +522,9 @@ class _HomePageViewState extends State<_HomePageView> with RouteAware {
           print('🏠 [HomePage] HomeCmsState = ${homeState.runtimeType}');
 
           final homeData = switch (homeState) {
-            HomeCmsLoaded(:final data) => data,
-            HomeCmsSaved(:final data) => data,
-            HomeCmsSaving(:final data) => data,
+            HomeCmsLoaded(:final data)   => data,
+            HomeCmsSaved(:final data)    => data,
+            HomeCmsSaving(:final data)   => data,
             HomeCmsError(:final lastData) => lastData,
             _ => null,
           };
@@ -480,10 +549,9 @@ class _HomePageViewState extends State<_HomePageView> with RouteAware {
             );
           }
 
-          // ✅ Extract download links from homeData
-          final String appStoreLink = homeData.appDownloadLinks.iosUrl;
+          final String appStoreLink   = homeData.appDownloadLinks.iosUrl;
           final String googlePlayLink = homeData.appDownloadLinks.androidUrl;
-          final bool showDownload = homeData.appDownloadLinks.visibility;
+          final bool showDownload     = homeData.appDownloadLinks.visibility;
 
           print('🏠 [HomePage] homeData loaded:');
           print('   appStoreLink   = "$appStoreLink"');
@@ -519,12 +587,12 @@ class _HomePageViewState extends State<_HomePageView> with RouteAware {
                 );
               }
 
-              final headerSection = masterData?.sectionByKey('header');
-              final aboutSection = masterData?.sectionByKey('aboutUs');
+              final headerSection   = masterData?.sectionByKey('header');
+              final aboutSection    = masterData?.sectionByKey('aboutUs');
               final downloadSection = masterData?.sectionByKey('footer');
 
-              final String headerImageUrl = headerSection?.imageUrl ?? '';
-              final String aboutImageUrl = aboutSection?.imageUrl ?? '';
+              final String headerImageUrl   = headerSection?.imageUrl ?? '';
+              final String aboutImageUrl    = aboutSection?.imageUrl ?? '';
               final String downloadImageUrl = downloadSection?.imageUrl ?? '';
 
               final bool hasDownloadContent = showDownload &&
@@ -535,21 +603,13 @@ class _HomePageViewState extends State<_HomePageView> with RouteAware {
               print('🏠🔍 [HomePage] DOWNLOAD SECTION DEBUG:');
               print('   masterData null?        = ${masterData == null}');
               print('   masterState type        = ${masterState.runtimeType}');
-              print('   headerSection null?     = ${headerSection == null}');
-              print('   aboutSection null?      = ${aboutSection == null}');
-              print('   downloadSection null?   = ${downloadSection == null}');
               print('   headerImageUrl          = "$headerImageUrl"');
               print('   aboutImageUrl           = "$aboutImageUrl"');
               print('   downloadImageUrl        = "$downloadImageUrl"');
-              print('   headerVisibility        = ${headerSection?.visibility}');
-              print('   aboutVisibility         = ${aboutSection?.visibility}');
-              print('   downloadVisibility      = ${downloadSection?.visibility}');
               print('   appStoreLink            = "$appStoreLink"');
               print('   googlePlayLink          = "$googlePlayLink"');
               print('   showDownload            = $showDownload');
               print('   >>> hasDownloadContent  = $hasDownloadContent');
-              print('   _showLoader             = $_showLoader');
-              print('   _preloadStarted         = $_preloadStarted');
 
               if (!_preloadStarted) {
                 print('🏠 [HomePage] starting preload...');
@@ -619,14 +679,6 @@ class _HomePageViewState extends State<_HomePageView> with RouteAware {
                       ? downloadSection!.description.en
                       : 'Download our app now and enjoy a unique experience');
 
-                  print('🏠 [HomePage] Building sections:');
-                  print('   heroTitle        = "$heroTitle"');
-                  print('   aboutHeading     = "$aboutHeading"');
-                  print('   downloadHeading  = "$downloadHeading"');
-                  print('   show hero?       = ${headerSection?.visibility ?? true}');
-                  print('   show about?      = ${aboutSection?.visibility ?? true}');
-                  print('   show download?   = $hasDownloadContent');
-
                   return Directionality(
                     textDirection: isAr ? TextDirection.rtl : TextDirection.ltr,
                     child: AppPageShell(
@@ -675,28 +727,21 @@ class _HomePageViewState extends State<_HomePageView> with RouteAware {
 
                               // ═══ SECTION 3 — DOWNLOAD APP ═══
                               if (hasDownloadContent) ...[
-                                Builder(builder: (context) {
-                                  print('🏠🟢 [HomePage] DOWNLOAD SECTION IS RENDERING!');
-                                  return _Reveal(
-                                    delay: const Duration(milliseconds: 180),
-                                    direction: _SlideDirection.fromRight,
-                                    duration: const Duration(milliseconds: 650),
-                                    child: _DownloadAppSection(
-                                      primaryColor: primaryColor,
-                                      heading: downloadHeading,
-                                      body: downloadBody,
-                                      imageUrl: downloadImageUrl,
-                                      appStoreLink: appStoreLink,
-                                      googlePlayLink: googlePlayLink,
-                                    ),
-                                  );
-                                }),
+                                _Reveal(
+                                  delay: const Duration(milliseconds: 180),
+                                  direction: _SlideDirection.fromRight,
+                                  duration: const Duration(milliseconds: 650),
+                                  child: _DownloadAppSection(
+                                    primaryColor: primaryColor,
+                                    heading: downloadHeading,
+                                    body: downloadBody,
+                                    imageUrl: downloadImageUrl,
+                                    appStoreLink: appStoreLink,
+                                    googlePlayLink: googlePlayLink,
+                                  ),
+                                ),
                               ],
-                              if (!hasDownloadContent)
-                                Builder(builder: (context) {
-                                  print('🏠🔴 [HomePage] DOWNLOAD SECTION HIDDEN — hasDownloadContent=false');
-                                  return const SizedBox.shrink();
-                                }),
+
                               SizedBox(height: 80.h),
                             ],
                           ),
@@ -791,6 +836,10 @@ class _HeroSection extends StatelessWidget {
 
   Widget _buildImage(double height) {
     if (imageUrl.isEmpty) return const SizedBox.shrink();
+    // ✅ SVGs rendered natively — no CORS issues
+    if (_isSvgUrl(imageUrl)) {
+      return _nativeSvgImg(url: imageUrl, height: height, fit: BoxFit.contain);
+    }
     return _netImg(
       url: imageUrl,
       height: height,
@@ -871,12 +920,22 @@ class _AboutUsSection extends StatelessWidget {
           if (imageUrl.isNotEmpty)
             Padding(
               padding: EdgeInsets.only(bottom: 16.h),
-              child: _netImg(
-                url: imageUrl,
-                width: double.infinity,
-                height: 200.h,
-                fit: BoxFit.cover,
+              child: ClipRRect(
                 borderRadius: BorderRadius.circular(12.r),
+                child: _isSvgUrl(imageUrl)
+                    ? _nativeSvgImg(
+                  url: imageUrl,
+                  width: double.infinity,
+                  height: 200.h,
+                  fit: BoxFit.cover,
+                )
+                    : _netImg(
+                  url: imageUrl,
+                  width: double.infinity,
+                  height: 200.h,
+                  fit: BoxFit.cover,
+                  borderRadius: BorderRadius.circular(12.r),
+                ),
               ),
             ),
           if (body.isNotEmpty)
@@ -891,9 +950,7 @@ class _AboutUsSection extends StatelessWidget {
           Align(
             alignment: AlignmentDirectional.centerEnd,
             child: InkWell(
-              onTap: onReadMore ?? () {
-                navigateTo(context, AboutPage());
-              },
+              onTap: onReadMore ?? () => navigateTo(context, AboutPage()),
               borderRadius: BorderRadius.circular(8.r),
               child: Padding(
                 padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
@@ -952,7 +1009,6 @@ class _DownloadAppSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bool hasImage = imageUrl.isNotEmpty;
-    print('🏠 [_DownloadAppSection] build: hasImage=$hasImage heading="$heading" appStore="$appStoreLink" googlePlay="$googlePlayLink"');
 
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 20.w),
@@ -1013,6 +1069,10 @@ class _DownloadAppSection extends StatelessWidget {
 
   Widget _buildImage(double height) {
     if (imageUrl.isEmpty) return const SizedBox.shrink();
+    // ✅ SVGs rendered natively — no CORS issues
+    if (_isSvgUrl(imageUrl)) {
+      return _nativeSvgImg(url: imageUrl, height: height, fit: BoxFit.contain);
+    }
     return _netImg(
       url: imageUrl,
       height: height,
@@ -1039,12 +1099,11 @@ class _DownloadTextContent extends StatelessWidget {
 
   void _launchUrl(String url) {
     if (url.isEmpty) return;
-    print('🟡 [DownloadSection] Would launch: $url');
+    html.window.open(url, '_blank');
   }
 
   @override
   Widget build(BuildContext context) {
-    print('🏠 [_DownloadTextContent] build: heading="$heading" googlePlay="$googlePlayLink" appStore="$appStoreLink"');
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
