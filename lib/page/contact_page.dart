@@ -18,6 +18,8 @@
 //          FIXED: cmsData was never assigned from cmsState — all CMS fields now render
 //          FIXED: title, subtitle, SVG now read from Firebase, no static fallback shown
 //                 unless Firebase field is empty
+//          UPDATED: Gender + Country dropdowns now shown for ALL users (client & owner)
+//                   per Figma design — moved out of owner-only section into Personal Info
 
 import 'dart:async';
 import 'dart:html' as html;
@@ -173,7 +175,6 @@ class _RevealState extends State<_Reveal> with SingleTickerProviderStateMixin {
     });
   }
 
-
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -278,18 +279,18 @@ List<Map<String, String>> _buildReasonItems({
         .where((r) => r.label.en.isNotEmpty || r.label.ar.isNotEmpty)
         .map(
           (r) => {
-            'key': isRtl ? r.label.ar : r.label.en,
-            'value': isRtl ? r.label.ar : r.label.en,
-          },
-        )
+        'key': isRtl ? r.label.ar : r.label.en,
+        'value': isRtl ? r.label.ar : r.label.en,
+      },
+    )
         .where((m) => m['key']!.isNotEmpty)
         .toList();
     if (items.isNotEmpty) return items;
   }
 
   return (isRtl
-          ? ContactFormConstants.reasonsAr
-          : ContactFormConstants.reasonsEn)
+      ? ContactFormConstants.reasonsAr
+      : ContactFormConstants.reasonsEn)
       .map((r) => {'key': r, 'value': r})
       .toList();
 }
@@ -318,9 +319,9 @@ Future<void> _preloadSvgImages(List<String> urls) async {
   final validUrls = urls
       .where(
         (url) =>
-            url.isNotEmpty &&
-            (url.startsWith('http://') || url.startsWith('https://')),
-      )
+    url.isNotEmpty &&
+        (url.startsWith('http://') || url.startsWith('https://')),
+  )
       .toSet()
       .toList();
 
@@ -330,7 +331,7 @@ Future<void> _preloadSvgImages(List<String> urls) async {
         final loader = SvgNetworkLoader(url);
         await svg.cache.putIfAbsent(
           loader.cacheKey(null),
-          () => loader.loadBytes(null),
+              () => loader.loadBytes(null),
         );
       } catch (_) {}
     }),
@@ -473,8 +474,14 @@ class _ContactPageViewState extends State<_ContactPageView> {
   String _userType = ContactFormConstants.userTypeClient;
   String _phoneCode = '+20';
   String _preferredLanguage = 'ar';
-  String? _selectedTargetAudience;
-  String? _selectedSalonCountry;
+
+  // ── Personal Info (shown for ALL users) ──
+  String? _selectedGender;        // maps to targetAudience / Gender field
+  String? _selectedCountry;       // maps to salonCountry / Country field
+
+  // ── Salon Info (Owner-only extras) ──
+  String? _selectedTargetAudience; // kept for owner's "Target Audience" dropdown (same as gender for client)
+  String? _selectedSalonCountry;   // kept for owner's extra country usage
   String? _selectedSalonCity;
   String? _selectedNoBranches;
   String? _selectedServices;
@@ -533,15 +540,17 @@ class _ContactPageViewState extends State<_ContactPageView> {
       _messageCtrl,
     ].every((c) => c.text.trim().isNotEmpty);
 
-    if (!personalFilled || _selectedReason == null) return;
+    // Gender and Country are required for all users per Figma
+    if (!personalFilled ||
+        _selectedReason == null ||
+        _selectedGender == null ||
+        _selectedCountry == null) return;
 
     if (_isOwner) {
       final salonFilled =
           _salonNameCtrl.text.trim().isNotEmpty &&
-          _selectedTargetAudience != null &&
-          _selectedSalonCountry != null &&
-          _selectedNoBranches != null &&
-          _selectedServices != null;
+              _selectedNoBranches != null &&
+              _selectedServices != null;
       if (!salonFilled) return;
     }
 
@@ -567,8 +576,14 @@ class _ContactPageViewState extends State<_ContactPageView> {
         preferredLanguage: _preferredLanguage,
         salonNameEn: _salonNameCtrl.text.trim(),
         salonNameAr: _salonNameArCtrl.text.trim(),
-        targetAudience: _selectedTargetAudience ?? '',
-        salonCountry: _selectedSalonCountry ?? '',
+        // For clients: targetAudience = gender selection, salonCountry = country selection
+        // For owners: targetAudience = salon target audience, salonCountry = salon country
+        targetAudience: _isOwner
+            ? (_selectedTargetAudience ?? _selectedGender ?? '')
+            : (_selectedGender ?? ''),
+        salonCountry: _isOwner
+            ? (_selectedSalonCountry ?? _selectedCountry ?? '')
+            : (_selectedCountry ?? ''),
         salonCity: _selectedSalonCity ?? '',
         noBranches: _selectedNoBranches ?? '',
         services: _selectedServices ?? '',
@@ -594,6 +609,8 @@ class _ContactPageViewState extends State<_ContactPageView> {
       _submitted = false;
       _userType = ContactFormConstants.userTypeClient;
       _preferredLanguage = 'ar';
+      _selectedGender = null;
+      _selectedCountry = null;
       _selectedTargetAudience = null;
       _selectedSalonCountry = null;
       _selectedSalonCity = null;
@@ -727,9 +744,8 @@ class _ContactPageViewState extends State<_ContactPageView> {
                   builder: (context, cmsState) {
                     final bool cmsReady =
                         cmsState is ContactUsCmsLoaded ||
-                        cmsState is ContactUsCmsError;
+                            cmsState is ContactUsCmsError;
 
-                    // ── CRITICAL FIX: assign cmsData from state ──
                     ContactUsCmsModel? cmsData;
                     if (cmsState is ContactUsCmsLoaded) {
                       cmsData = cmsState.data;
@@ -766,7 +782,7 @@ class _ContactPageViewState extends State<_ContactPageView> {
                                 child: SingleChildScrollView(
                                   child: Column(
                                     crossAxisAlignment:
-                                        CrossAxisAlignment.center,
+                                    CrossAxisAlignment.center,
                                     children: [
                                       SizedBox(height: 80.h),
                                       _Reveal(
@@ -777,175 +793,201 @@ class _ContactPageViewState extends State<_ContactPageView> {
                                         ),
                                         child: isMobile
                                             ? _MobileBody(
-                                                firstNameCtrl: _firstNameCtrl,
-                                                lastNameCtrl: _lastNameCtrl,
-                                                emailCtrl: _emailCtrl,
-                                                phoneCtrl: _phoneCtrl,
-                                                salonNameCtrl: _salonNameCtrl,
-                                                salonNameArCtrl:
-                                                    _salonNameArCtrl,
-                                                subjectCtrl: _subjectCtrl,
-                                                messageCtrl: _messageCtrl,
-                                                submitted: _submitted,
-                                                userType: _userType,
-                                                phoneCode: _phoneCode,
-                                                preferredLanguage:
-                                                    _preferredLanguage,
-                                                selectedTargetAudience:
-                                                    _selectedTargetAudience,
-                                                selectedSalonCountry:
-                                                    _selectedSalonCountry,
-                                                selectedSalonCity:
-                                                    _selectedSalonCity,
-                                                selectedNoBranches:
-                                                    _selectedNoBranches,
-                                                selectedServices:
-                                                    _selectedServices,
-                                                selectedAtLocation:
-                                                    _selectedAtLocation,
-                                                selectedReason: _selectedReason,
-                                                isRtl: isRtl,
-                                                primaryColor: primaryColor,
-                                                onUserTypeChanged: (v) =>
-                                                    setState(() {
-                                                      _userType = v;
-                                                      _selectedReason = null;
-                                                    }),
-                                                onCodeChanged: (v) => setState(
-                                                  () => _phoneCode =
-                                                      v ?? _phoneCode,
-                                                ),
-                                                onLanguageChanged: (v) =>
-                                                    setState(
-                                                      () => _preferredLanguage =
-                                                          v,
-                                                    ),
-                                                onTargetAudienceChanged: (v) =>
-                                                    setState(
-                                                      () =>
-                                                          _selectedTargetAudience =
-                                                              v,
-                                                    ),
-                                                onSalonCountryChanged: (v) =>
-                                                    setState(
-                                                      () =>
-                                                          _selectedSalonCountry =
-                                                              v,
-                                                    ),
-                                                onSalonCityChanged: (v) =>
-                                                    setState(
-                                                      () => _selectedSalonCity =
-                                                          v,
-                                                    ),
-                                                onNoBranchesChanged: (v) =>
-                                                    setState(
-                                                      () =>
-                                                          _selectedNoBranches =
-                                                              v,
-                                                    ),
-                                                onServicesChanged: (v) =>
-                                                    setState(
-                                                      () =>
-                                                          _selectedServices = v,
-                                                    ),
-                                                onAtLocationChanged: (v) =>
-                                                    setState(
-                                                      () =>
-                                                          _selectedAtLocation =
-                                                              v,
-                                                    ),
-                                                onReasonChanged: (v) =>
-                                                    setState(
-                                                      () => _selectedReason = v,
-                                                    ),
-                                                onSend: _onSend,
-                                                cmsData: cmsData,
-                                              )
-                                            : _DesktopBody(
-                                                firstNameCtrl: _firstNameCtrl,
-                                                lastNameCtrl: _lastNameCtrl,
-                                                emailCtrl: _emailCtrl,
-                                                phoneCtrl: _phoneCtrl,
-                                                salonNameCtrl: _salonNameCtrl,
-                                                salonNameArCtrl:
-                                                    _salonNameArCtrl,
-                                                subjectCtrl: _subjectCtrl,
-                                                messageCtrl: _messageCtrl,
-                                                submitted: _submitted,
-                                                userType: _userType,
-                                                phoneCode: _phoneCode,
-                                                preferredLanguage:
-                                                    _preferredLanguage,
-                                                selectedTargetAudience:
-                                                    _selectedTargetAudience,
-                                                selectedSalonCountry:
-                                                    _selectedSalonCountry,
-                                                selectedSalonCity:
-                                                    _selectedSalonCity,
-                                                selectedNoBranches:
-                                                    _selectedNoBranches,
-                                                selectedServices:
-                                                    _selectedServices,
-                                                selectedAtLocation:
-                                                    _selectedAtLocation,
-                                                selectedReason: _selectedReason,
-                                                isRtl: isRtl,
-                                                primaryColor: primaryColor,
-                                                onUserTypeChanged: (v) =>
-                                                    setState(() {
-                                                      _userType = v;
-                                                      _selectedReason = null;
-                                                    }),
-                                                onCodeChanged: (v) => setState(
-                                                  () => _phoneCode =
-                                                      v ?? _phoneCode,
-                                                ),
-                                                onLanguageChanged: (v) =>
-                                                    setState(
-                                                      () => _preferredLanguage =
-                                                          v,
-                                                    ),
-                                                onTargetAudienceChanged: (v) =>
-                                                    setState(
-                                                      () =>
-                                                          _selectedTargetAudience =
-                                                              v,
-                                                    ),
-                                                onSalonCountryChanged: (v) =>
-                                                    setState(
-                                                      () =>
-                                                          _selectedSalonCountry =
-                                                              v,
-                                                    ),
-                                                onSalonCityChanged: (v) =>
-                                                    setState(
-                                                      () => _selectedSalonCity =
-                                                          v,
-                                                    ),
-                                                onNoBranchesChanged: (v) =>
-                                                    setState(
-                                                      () =>
-                                                          _selectedNoBranches =
-                                                              v,
-                                                    ),
-                                                onServicesChanged: (v) =>
-                                                    setState(
-                                                      () =>
-                                                          _selectedServices = v,
-                                                    ),
-                                                onAtLocationChanged: (v) =>
-                                                    setState(
-                                                      () =>
-                                                          _selectedAtLocation =
-                                                              v,
-                                                    ),
-                                                onReasonChanged: (v) =>
-                                                    setState(
-                                                      () => _selectedReason = v,
-                                                    ),
-                                                onSend: _onSend,
-                                                cmsData: cmsData,
+                                          firstNameCtrl: _firstNameCtrl,
+                                          lastNameCtrl: _lastNameCtrl,
+                                          emailCtrl: _emailCtrl,
+                                          phoneCtrl: _phoneCtrl,
+                                          salonNameCtrl: _salonNameCtrl,
+                                          salonNameArCtrl:
+                                          _salonNameArCtrl,
+                                          subjectCtrl: _subjectCtrl,
+                                          messageCtrl: _messageCtrl,
+                                          submitted: _submitted,
+                                          userType: _userType,
+                                          phoneCode: _phoneCode,
+                                          preferredLanguage:
+                                          _preferredLanguage,
+                                          selectedGender: _selectedGender,
+                                          selectedCountry:
+                                          _selectedCountry,
+                                          selectedTargetAudience:
+                                          _selectedTargetAudience,
+                                          selectedSalonCountry:
+                                          _selectedSalonCountry,
+                                          selectedSalonCity:
+                                          _selectedSalonCity,
+                                          selectedNoBranches:
+                                          _selectedNoBranches,
+                                          selectedServices:
+                                          _selectedServices,
+                                          selectedAtLocation:
+                                          _selectedAtLocation,
+                                          selectedReason: _selectedReason,
+                                          isRtl: isRtl,
+                                          primaryColor: primaryColor,
+                                          onUserTypeChanged: (v) =>
+                                              setState(() {
+                                                _userType = v;
+                                                _selectedReason = null;
+                                              }),
+                                          onCodeChanged: (v) => setState(
+                                                () => _phoneCode =
+                                                v ?? _phoneCode,
+                                          ),
+                                          onLanguageChanged: (v) =>
+                                              setState(
+                                                    () => _preferredLanguage =
+                                                    v,
                                               ),
+                                          onGenderChanged: (v) =>
+                                              setState(
+                                                    () =>
+                                                _selectedGender = v,
+                                              ),
+                                          onCountryChanged: (v) =>
+                                              setState(
+                                                    () =>
+                                                _selectedCountry = v,
+                                              ),
+                                          onTargetAudienceChanged: (v) =>
+                                              setState(
+                                                    () =>
+                                                _selectedTargetAudience =
+                                                    v,
+                                              ),
+                                          onSalonCountryChanged: (v) =>
+                                              setState(
+                                                    () =>
+                                                _selectedSalonCountry =
+                                                    v,
+                                              ),
+                                          onSalonCityChanged: (v) =>
+                                              setState(
+                                                    () => _selectedSalonCity =
+                                                    v,
+                                              ),
+                                          onNoBranchesChanged: (v) =>
+                                              setState(
+                                                    () =>
+                                                _selectedNoBranches =
+                                                    v,
+                                              ),
+                                          onServicesChanged: (v) =>
+                                              setState(
+                                                    () =>
+                                                _selectedServices = v,
+                                              ),
+                                          onAtLocationChanged: (v) =>
+                                              setState(
+                                                    () =>
+                                                _selectedAtLocation =
+                                                    v,
+                                              ),
+                                          onReasonChanged: (v) =>
+                                              setState(
+                                                    () => _selectedReason = v,
+                                              ),
+                                          onSend: _onSend,
+                                          cmsData: cmsData,
+                                        )
+                                            : _DesktopBody(
+                                          firstNameCtrl: _firstNameCtrl,
+                                          lastNameCtrl: _lastNameCtrl,
+                                          emailCtrl: _emailCtrl,
+                                          phoneCtrl: _phoneCtrl,
+                                          salonNameCtrl: _salonNameCtrl,
+                                          salonNameArCtrl:
+                                          _salonNameArCtrl,
+                                          subjectCtrl: _subjectCtrl,
+                                          messageCtrl: _messageCtrl,
+                                          submitted: _submitted,
+                                          userType: _userType,
+                                          phoneCode: _phoneCode,
+                                          preferredLanguage:
+                                          _preferredLanguage,
+                                          selectedGender: _selectedGender,
+                                          selectedCountry:
+                                          _selectedCountry,
+                                          selectedTargetAudience:
+                                          _selectedTargetAudience,
+                                          selectedSalonCountry:
+                                          _selectedSalonCountry,
+                                          selectedSalonCity:
+                                          _selectedSalonCity,
+                                          selectedNoBranches:
+                                          _selectedNoBranches,
+                                          selectedServices:
+                                          _selectedServices,
+                                          selectedAtLocation:
+                                          _selectedAtLocation,
+                                          selectedReason: _selectedReason,
+                                          isRtl: isRtl,
+                                          primaryColor: primaryColor,
+                                          onUserTypeChanged: (v) =>
+                                              setState(() {
+                                                _userType = v;
+                                                _selectedReason = null;
+                                              }),
+                                          onCodeChanged: (v) => setState(
+                                                () => _phoneCode =
+                                                v ?? _phoneCode,
+                                          ),
+                                          onLanguageChanged: (v) =>
+                                              setState(
+                                                    () => _preferredLanguage =
+                                                    v,
+                                              ),
+                                          onGenderChanged: (v) =>
+                                              setState(
+                                                    () =>
+                                                _selectedGender = v,
+                                              ),
+                                          onCountryChanged: (v) =>
+                                              setState(
+                                                    () =>
+                                                _selectedCountry = v,
+                                              ),
+                                          onTargetAudienceChanged: (v) =>
+                                              setState(
+                                                    () =>
+                                                _selectedTargetAudience =
+                                                    v,
+                                              ),
+                                          onSalonCountryChanged: (v) =>
+                                              setState(
+                                                    () =>
+                                                _selectedSalonCountry =
+                                                    v,
+                                              ),
+                                          onSalonCityChanged: (v) =>
+                                              setState(
+                                                    () => _selectedSalonCity =
+                                                    v,
+                                              ),
+                                          onNoBranchesChanged: (v) =>
+                                              setState(
+                                                    () =>
+                                                _selectedNoBranches =
+                                                    v,
+                                              ),
+                                          onServicesChanged: (v) =>
+                                              setState(
+                                                    () =>
+                                                _selectedServices = v,
+                                              ),
+                                          onAtLocationChanged: (v) =>
+                                              setState(
+                                                    () =>
+                                                _selectedAtLocation =
+                                                    v,
+                                              ),
+                                          onReasonChanged: (v) =>
+                                              setState(
+                                                    () => _selectedReason = v,
+                                              ),
+                                          onSend: _onSend,
+                                          cmsData: cmsData,
+                                        ),
                                       ),
                                       _Reveal(
                                         delay: const Duration(
@@ -1009,7 +1051,7 @@ class _ContactPageViewState extends State<_ContactPageView> {
                                                 ? 'جاري ارسال البيانات...'
                                                 : 'Sending your information…',
                                             style:
-                                                StyleText.fontSize13Weight400,
+                                            StyleText.fontSize13Weight400,
                                           ),
                                         ],
                                       ),
@@ -1054,7 +1096,7 @@ class _OtpDialog extends StatefulWidget {
 class _OtpDialogState extends State<_OtpDialog> {
   final List<TextEditingController> _digitCtrls = List.generate(
     6,
-    (_) => TextEditingController(),
+        (_) => TextEditingController(),
   );
   final List<FocusNode> _focusNodes = List.generate(6, (_) => FocusNode());
   bool _hasError = false;
@@ -1077,12 +1119,12 @@ class _OtpDialogState extends State<_OtpDialog> {
     _timer = Stream.periodic(const Duration(seconds: 1), (i) => i)
         .take(30)
         .listen((_) {
-          if (!mounted) return;
-          setState(() {
-            _countdown--;
-            if (_countdown <= 0) _canResend = true;
-          });
-        });
+      if (!mounted) return;
+      setState(() {
+        _countdown--;
+        if (_countdown <= 0) _canResend = true;
+      });
+    });
   }
 
   @override
@@ -1307,30 +1349,30 @@ class _OtpDialogState extends State<_OtpDialog> {
                           ),
                           child: _canResend
                               ? Text(
-                                  widget.isRtl
-                                      ? 'إعادة إرسال الرمز'
-                                      : 'Resend Code',
-                                  style: StyleText.fontSize16Weight600.copyWith(
-                                    color: Colors.white,
-                                  ),
-                                )
+                            widget.isRtl
+                                ? 'إعادة إرسال الرمز'
+                                : 'Resend Code',
+                            style: StyleText.fontSize16Weight600.copyWith(
+                              color: Colors.white,
+                            ),
+                          )
                               : isVerifying
                               ? const SizedBox(
-                                  height: 18,
-                                  width: 18,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    valueColor: AlwaysStoppedAnimation<Color>(
-                                      Colors.white,
-                                    ),
-                                  ),
-                                )
+                            height: 18,
+                            width: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Colors.white,
+                              ),
+                            ),
+                          )
                               : Text(
-                                  widget.isRtl ? 'تحقق الآن' : 'Verify Now',
-                                  style: StyleText.fontSize16Weight600.copyWith(
-                                    color: Colors.white,
-                                  ),
-                                ),
+                            widget.isRtl ? 'تحقق الآن' : 'Verify Now',
+                            style: StyleText.fontSize16Weight600.copyWith(
+                              color: Colors.white,
+                            ),
+                          ),
                         ),
                       ),
                     ],
@@ -1433,6 +1475,10 @@ class _DesktopBody extends StatelessWidget {
       messageCtrl;
   final bool submitted, isRtl;
   final String userType, phoneCode, preferredLanguage;
+  // Personal info (all users)
+  final String? selectedGender;
+  final String? selectedCountry;
+  // Owner-only extras
   final String? selectedTargetAudience,
       selectedSalonCountry,
       selectedSalonCity,
@@ -1443,6 +1489,8 @@ class _DesktopBody extends StatelessWidget {
   final Color primaryColor;
   final ValueChanged<String> onUserTypeChanged, onLanguageChanged;
   final ValueChanged<String?> onCodeChanged,
+      onGenderChanged,
+      onCountryChanged,
       onTargetAudienceChanged,
       onSalonCountryChanged,
       onSalonCityChanged,
@@ -1466,6 +1514,8 @@ class _DesktopBody extends StatelessWidget {
     required this.userType,
     required this.phoneCode,
     required this.preferredLanguage,
+    required this.selectedGender,
+    required this.selectedCountry,
     required this.selectedTargetAudience,
     required this.selectedSalonCountry,
     required this.selectedSalonCity,
@@ -1478,6 +1528,8 @@ class _DesktopBody extends StatelessWidget {
     required this.onUserTypeChanged,
     required this.onCodeChanged,
     required this.onLanguageChanged,
+    required this.onGenderChanged,
+    required this.onCountryChanged,
     required this.onTargetAudienceChanged,
     required this.onSalonCountryChanged,
     required this.onSalonCityChanged,
@@ -1497,27 +1549,26 @@ class _DesktopBody extends StatelessWidget {
     final double contentW = 1000.w;
     final double hPad = ((screenW - contentW) / 2).clamp(16.0, double.infinity);
 
-    // ── CMS-driven title & subtitle with fallback ──
     final String pageTitle = (cmsData?.headings.title.en.isNotEmpty == true)
         ? _t(
-            context,
-            en: cmsData!.headings.title.en,
-            ar: cmsData!.headings.title.ar,
-          )
+      context,
+      en: cmsData!.headings.title.en,
+      ar: cmsData!.headings.title.ar,
+    )
         : _t(context, en: 'Contact Us', ar: 'تواصل معنا');
 
     final String pageSubtitle =
-        (cmsData?.headings.shortDescription.en.isNotEmpty == true)
+    (cmsData?.headings.shortDescription.en.isNotEmpty == true)
         ? _t(
-            context,
-            en: cmsData!.headings.shortDescription.en,
-            ar: cmsData!.headings.shortDescription.ar,
-          )
+      context,
+      en: cmsData!.headings.shortDescription.en,
+      ar: cmsData!.headings.shortDescription.ar,
+    )
         : _t(
-            context,
-            en: 'Your Feedback Shapes Our Success: Join Us in Building a Better Experience!',
-            ar: 'ملاحظاتك تشكل نجاحنا: انضم إلينا في بناء تجربة أفضل!',
-          );
+      context,
+      en: 'Your Feedback Shapes Our Success: Join Us in Building a Better Experience!',
+      ar: 'ملاحظاتك تشكل نجاحنا: انضم إلينا في بناء تجربة أفضل!',
+    );
 
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: hPad),
@@ -1584,6 +1635,8 @@ class _DesktopBody extends StatelessWidget {
                         userType: userType,
                         phoneCode: phoneCode,
                         preferredLanguage: preferredLanguage,
+                        selectedGender: selectedGender,
+                        selectedCountry: selectedCountry,
                         selectedTargetAudience: selectedTargetAudience,
                         selectedSalonCountry: selectedSalonCountry,
                         selectedSalonCity: selectedSalonCity,
@@ -1596,6 +1649,8 @@ class _DesktopBody extends StatelessWidget {
                         onUserTypeChanged: onUserTypeChanged,
                         onCodeChanged: onCodeChanged,
                         onLanguageChanged: onLanguageChanged,
+                        onGenderChanged: onGenderChanged,
+                        onCountryChanged: onCountryChanged,
                         onTargetAudienceChanged: onTargetAudienceChanged,
                         onSalonCountryChanged: onSalonCountryChanged,
                         onSalonCityChanged: onSalonCityChanged,
@@ -1634,6 +1689,10 @@ class _FormCard extends StatelessWidget {
       messageCtrl;
   final bool submitted, isMobile, isRtl;
   final String userType, phoneCode, preferredLanguage;
+  // Personal info (all users)
+  final String? selectedGender;
+  final String? selectedCountry;
+  // Owner-only extras
   final String? selectedTargetAudience,
       selectedSalonCountry,
       selectedSalonCity,
@@ -1644,6 +1703,8 @@ class _FormCard extends StatelessWidget {
   final Color primaryColor;
   final ValueChanged<String> onUserTypeChanged, onLanguageChanged;
   final ValueChanged<String?> onCodeChanged,
+      onGenderChanged,
+      onCountryChanged,
       onTargetAudienceChanged,
       onSalonCountryChanged,
       onSalonCityChanged,
@@ -1667,6 +1728,8 @@ class _FormCard extends StatelessWidget {
     required this.userType,
     required this.phoneCode,
     required this.preferredLanguage,
+    required this.selectedGender,
+    required this.selectedCountry,
     required this.selectedTargetAudience,
     required this.selectedSalonCountry,
     required this.selectedSalonCity,
@@ -1679,6 +1742,8 @@ class _FormCard extends StatelessWidget {
     required this.onUserTypeChanged,
     required this.onCodeChanged,
     required this.onLanguageChanged,
+    required this.onGenderChanged,
+    required this.onCountryChanged,
     required this.onTargetAudienceChanged,
     required this.onSalonCountryChanged,
     required this.onSalonCityChanged,
@@ -1731,6 +1796,10 @@ class _FormCard extends StatelessWidget {
       ar: 'أدخل بريدك الإلكتروني',
     );
     final String phoneLabel = _t(context, en: 'Phone Number', ar: 'رقم الهاتف');
+    // ── NEW: Gender & Country labels for all users ──
+    final String genderLabel = _t(context, en: 'Gender', ar: 'الجنس');
+    final String countryLabel = _t(context, en: 'Country', ar: 'الدولة');
+    // ── Salon-only labels ──
     final String salonNameLabel = _t(
       context,
       en: 'Salon Name',
@@ -1746,7 +1815,7 @@ class _FormCard extends StatelessWidget {
       en: 'Target audience of salon',
       ar: 'الجمهور المستهدف للصالون',
     );
-    final String countryLabel = _t(
+    final String salonCountryLabel = _t(
       context,
       en: 'Country of salon',
       ar: 'دولة الصالون',
@@ -1773,30 +1842,47 @@ class _FormCard extends StatelessWidget {
         ? ContactFormConstants.preferredLanguageLabelsAr
         : ContactFormConstants.preferredLanguageLabelsEn;
 
-    final targetItems =
-        (isRtl
-                ? ContactFormConstants.targetAudienceAr
-                : ContactFormConstants.targetAudienceEn)
-            .map((t) => {'key': t, 'value': t})
-            .toList();
+    // ── Gender items (all users) ──
+    final genderItems =
+    (isRtl
+        ? ContactFormConstants.targetAudienceAr
+        : ContactFormConstants.targetAudienceEn)
+        .map((t) => {'key': t, 'value': t})
+        .toList();
+
+    // ── Country items (all users) ──
     final countryItems =
-        (isRtl
-                ? ContactFormConstants.countriesAr
-                : ContactFormConstants.countriesEn)
-            .map((c) => {'key': c, 'value': c})
-            .toList();
+    (isRtl
+        ? ContactFormConstants.countriesAr
+        : ContactFormConstants.countriesEn)
+        .map((c) => {'key': c, 'value': c})
+        .toList();
+
+    // ── Owner-only items ──
+    final targetItems =
+    (isRtl
+        ? ContactFormConstants.targetAudienceAr
+        : ContactFormConstants.targetAudienceEn)
+        .map((t) => {'key': t, 'value': t})
+        .toList();
+    final salonCountryItems =
+    (isRtl
+        ? ContactFormConstants.countriesAr
+        : ContactFormConstants.countriesEn)
+        .map((c) => {'key': c, 'value': c})
+        .toList();
     final branchItems =
-        (isRtl
-                ? ContactFormConstants.noBranchesAr
-                : ContactFormConstants.noBranchesEn)
-            .map((b) => {'key': b, 'value': b})
-            .toList();
+    (isRtl
+        ? ContactFormConstants.noBranchesAr
+        : ContactFormConstants.noBranchesEn)
+        .map((b) => {'key': b, 'value': b})
+        .toList();
     final serviceItems =
-        (isRtl
-                ? ContactFormConstants.servicesAr
-                : ContactFormConstants.servicesEn)
-            .map((s) => {'key': s, 'value': s})
-            .toList();
+    (isRtl
+        ? ContactFormConstants.servicesAr
+        : ContactFormConstants.servicesEn)
+        .map((s) => {'key': s, 'value': s})
+        .toList();
     final reasonItems = _buildReasonItems(
       cmsData: cmsData,
       isOwner: _isOwner,
@@ -1821,7 +1907,7 @@ class _FormCard extends StatelessWidget {
                       'assets/beauty/contact_us/owner.svg',
                     ],
                     selectedIndex:
-                        userType == ContactFormConstants.userTypeClient ? 0 : 1,
+                    userType == ContactFormConstants.userTypeClient ? 0 : 1,
                     onTabSelected: (i) => onUserTypeChanged(
                       i == 0
                           ? ContactFormConstants.userTypeClient
@@ -1894,8 +1980,7 @@ class _FormCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              _SectionHeader(title: personalInfo, primaryColor: primaryColor),
-              SizedBox(height: 8.h),
+              // ── Preferred Language ──
               _FormLabel(label: prefLangLabel),
               SizedBox(height: 6.h),
               Row(
@@ -1926,15 +2011,15 @@ class _FormCard extends StatelessWidget {
                               ),
                               child: selected
                                   ? Center(
-                                      child: Container(
-                                        width: 10.w,
-                                        height: 10.w,
-                                        decoration: BoxDecoration(
-                                          shape: BoxShape.circle,
-                                          color: primaryColor,
-                                        ),
-                                      ),
-                                    )
+                                child: Container(
+                                  width: 10.w,
+                                  height: 10.w,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: primaryColor,
+                                  ),
+                                ),
+                              )
                                   : null,
                             ),
                             SizedBox(width: 6.w),
@@ -1956,6 +2041,7 @@ class _FormCard extends StatelessWidget {
               ),
               SizedBox(height: isMobile ? 10.h : 12.h),
 
+              // ── First Name / Last Name ──
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -1987,6 +2073,7 @@ class _FormCard extends StatelessWidget {
                 ],
               ),
 
+              // ── Email / Phone ──
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -2022,6 +2109,47 @@ class _FormCard extends StatelessWidget {
                 ],
               ),
 
+              // ════════════════════════════════════════════════
+              // NEW: Gender + Country — shown for ALL users
+              // ════════════════════════════════════════════════
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: _DropdownField(
+                      label: genderLabel,
+                      hint: selectHint,
+                      value: selectedGender,
+                      items: genderItems,
+                      onChanged: onGenderChanged,
+                      submitted: submitted,
+                      isRtl: isRtl,
+                      isMobile: isMobile,
+                      primaryColor: primaryColor,
+                      iconPath: 'assets/gender.svg',
+                    ),
+                  ),
+                  SizedBox(width: isMobile ? 8.w : 12.w),
+                  Expanded(
+                    child: _DropdownField(
+                      label: countryLabel,
+                      hint: selectHint,
+                      value: selectedCountry,
+                      items: countryItems,
+                      onChanged: onCountryChanged,
+                      submitted: submitted,
+                      isRtl: isRtl,
+                      isMobile: isMobile,
+                      primaryColor: primaryColor,
+                      iconPath: 'assets/contact/Country of salon.svg',
+                      isSearchable: true,
+                    ),
+                  ),
+                ],
+              ),
+              // ════════════════════════════════════════════════
+
+              // ── OWNER-ONLY: Salon Info ──
               if (_isOwner) ...[
                 SizedBox(height: isMobile ? 12.h : 16.h),
                 _SectionHeader(title: salonInfo, primaryColor: primaryColor),
@@ -2073,10 +2201,10 @@ class _FormCard extends StatelessWidget {
                   children: [
                     Expanded(
                       child: _DropdownField(
-                        label: countryLabel,
+                        label: salonCountryLabel,
                         hint: selectHint,
                         value: selectedSalonCountry,
-                        items: countryItems,
+                        items: salonCountryItems,
                         onChanged: onSalonCountryChanged,
                         submitted: submitted,
                         isRtl: isRtl,
@@ -2139,6 +2267,7 @@ class _FormCard extends StatelessWidget {
                 ),
               ],
 
+              // ── Subject / Reason / Message ──
               SizedBox(height: _isOwner ? 8.h : 4.h),
               _DesktopIconField(
                 label: subjectLabel,
@@ -2155,7 +2284,6 @@ class _FormCard extends StatelessWidget {
                 label: reasonLabel,
                 hint: selectHint,
                 value: selectedReason,
-
                 items: reasonItems,
                 onChanged: onReasonChanged,
                 submitted: submitted,
@@ -2222,7 +2350,7 @@ class _DesktopIconField extends StatefulWidget {
   final int maxLines, minLength;
   final double fieldHeight;
   final bool onlyDigits;
-  final bool forceRtlLabelAndHint; // NEW: forces RTL for label & hint
+  final bool forceRtlLabelAndHint;
 
   const _DesktopIconField({
     required this.label,
@@ -2237,7 +2365,7 @@ class _DesktopIconField extends StatefulWidget {
     this.fieldHeight = 32,
     this.minLength = 0,
     this.onlyDigits = false,
-    this.forceRtlLabelAndHint = false, // Set to true for Arabic fields
+    this.forceRtlLabelAndHint = false,
   });
 
   @override
@@ -2258,24 +2386,21 @@ class _DesktopIconFieldState extends State<_DesktopIconField> {
     final bool isEmpty = widget.controller.text.trim().isEmpty;
     final bool isTooShort =
         !isEmpty &&
-        widget.minLength > 0 &&
-        widget.controller.text.trim().length < widget.minLength;
+            widget.minLength > 0 &&
+            widget.controller.text.trim().length < widget.minLength;
     final bool showError = widget.submitted && (isEmpty || isTooShort);
     final bool isRtl = widget.textDirection == TextDirection.rtl;
-
-    // NEW: Determine if label & hint should be RTL
     final bool useRtlForLabelHint = widget.forceRtlLabelAndHint || isRtl;
 
     final String errMsg = isEmpty
         ? (useRtlForLabelHint ? 'هذا الحقل مطلوب' : 'This field is required')
         : (useRtlForLabelHint
-              ? 'الحد الأدنى ${widget.minLength} حرف'
-              : 'Minimum ${widget.minLength} characters');
+        ? 'الحد الأدنى ${widget.minLength} حرف'
+        : 'Minimum ${widget.minLength} characters');
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Label with RTL support
         Container(
           width: double.infinity,
           child: Text(
@@ -2290,10 +2415,7 @@ class _DesktopIconFieldState extends State<_DesktopIconField> {
                 : TextDirection.ltr,
           ),
         ),
-        // Height 4 between title and textfield
         SizedBox(height: 4.h),
-
-        // TextField container
         Container(
           height: widget.fieldHeight.h,
           decoration: BoxDecoration(
@@ -2318,10 +2440,7 @@ class _DesktopIconFieldState extends State<_DesktopIconField> {
                   widget.iconPath,
                   width: 16.w,
                   height: 16.w,
-                  colorFilter: ColorFilter.mode(
-                    showError ? Colors.red.shade300 : Colors.grey.shade400,
-                    BlendMode.srcIn,
-                  ),
+                  color: widget.primaryColor,
                 ),
               ),
               Expanded(
@@ -2369,8 +2488,6 @@ class _DesktopIconFieldState extends State<_DesktopIconField> {
             ],
           ),
         ),
-
-        // Error message
         if (showError) ...[
           SizedBox(height: 2.h),
           Padding(
@@ -2391,13 +2508,12 @@ class _DesktopIconFieldState extends State<_DesktopIconField> {
             ),
           ),
         ],
-
-        // Height 8 between textfield section and next field
         SizedBox(height: 8.h),
       ],
     );
   }
 }
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // DROPDOWN FIELD
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -2677,7 +2793,6 @@ class _LeftIllustrationPanel extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // ── CMS SVG illustration ──
         Center(
           child: svgUrl.isNotEmpty
               ? () {
@@ -2704,7 +2819,6 @@ class _LeftIllustrationPanel extends StatelessWidget {
           ),
         ),
         SizedBox(height: 24.h),
-        // ── CMS description ──
         if (cmsDesc.isNotEmpty)
           Text(
             cmsDesc,
@@ -2734,6 +2848,10 @@ class _MobileBody extends StatelessWidget {
       messageCtrl;
   final bool submitted, isRtl;
   final String userType, phoneCode, preferredLanguage;
+  // Personal info (all users)
+  final String? selectedGender;
+  final String? selectedCountry;
+  // Owner-only
   final String? selectedTargetAudience,
       selectedSalonCountry,
       selectedSalonCity,
@@ -2744,6 +2862,8 @@ class _MobileBody extends StatelessWidget {
   final Color primaryColor;
   final ValueChanged<String> onUserTypeChanged, onLanguageChanged;
   final ValueChanged<String?> onCodeChanged,
+      onGenderChanged,
+      onCountryChanged,
       onTargetAudienceChanged,
       onSalonCountryChanged,
       onSalonCityChanged,
@@ -2767,6 +2887,8 @@ class _MobileBody extends StatelessWidget {
     required this.userType,
     required this.phoneCode,
     required this.preferredLanguage,
+    required this.selectedGender,
+    required this.selectedCountry,
     required this.selectedTargetAudience,
     required this.selectedSalonCountry,
     required this.selectedSalonCity,
@@ -2779,6 +2901,8 @@ class _MobileBody extends StatelessWidget {
     required this.onUserTypeChanged,
     required this.onCodeChanged,
     required this.onLanguageChanged,
+    required this.onGenderChanged,
+    required this.onCountryChanged,
     required this.onTargetAudienceChanged,
     required this.onSalonCountryChanged,
     required this.onSalonCityChanged,
@@ -2794,27 +2918,26 @@ class _MobileBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // ── CMS-driven title & subtitle ──
     final String pageTitle = (cmsData?.headings.title.en.isNotEmpty == true)
         ? _t(
-            context,
-            en: cmsData!.headings.title.en,
-            ar: cmsData!.headings.title.ar,
-          )
+      context,
+      en: cmsData!.headings.title.en,
+      ar: cmsData!.headings.title.ar,
+    )
         : _t(context, en: 'Contact Us', ar: 'تواصل معنا');
 
     final String pageSubtitle =
-        (cmsData?.headings.shortDescription.en.isNotEmpty == true)
+    (cmsData?.headings.shortDescription.en.isNotEmpty == true)
         ? _t(
-            context,
-            en: cmsData!.headings.shortDescription.en,
-            ar: cmsData!.headings.shortDescription.ar,
-          )
+      context,
+      en: cmsData!.headings.shortDescription.en,
+      ar: cmsData!.headings.shortDescription.ar,
+    )
         : _t(
-            context,
-            en: 'Your Feedback Shapes Our Success: Join Us in Building a Better Experience!',
-            ar: 'ملاحظاتك تشكل نجاحنا: انضم إلينا في بناء تجربة أفضل!',
-          );
+      context,
+      en: 'Your Feedback Shapes Our Success: Join Us in Building a Better Experience!',
+      ar: 'ملاحظاتك تشكل نجاحنا: انضم إلينا في بناء تجربة أفضل!',
+    );
 
     final String svgUrl = cmsData?.headings.svgUrl ?? '';
     final String clientLabel = _t(context, en: 'Client', ar: 'عميل');
@@ -2832,30 +2955,46 @@ class _MobileBody extends StatelessWidget {
     final langLabels = isRtl
         ? ContactFormConstants.preferredLanguageLabelsAr
         : ContactFormConstants.preferredLanguageLabelsEn;
-    final targetItems =
-        (isRtl
-                ? ContactFormConstants.targetAudienceAr
-                : ContactFormConstants.targetAudienceEn)
-            .map((t) => {'key': t, 'value': t})
-            .toList();
+
+    // ── Gender & Country for ALL users ──
+    final genderItems =
+    (isRtl
+        ? ContactFormConstants.targetAudienceAr
+        : ContactFormConstants.targetAudienceEn)
+        .map((t) => {'key': t, 'value': t})
+        .toList();
     final countryItems =
-        (isRtl
-                ? ContactFormConstants.countriesAr
-                : ContactFormConstants.countriesEn)
-            .map((c) => {'key': c, 'value': c})
-            .toList();
+    (isRtl
+        ? ContactFormConstants.countriesAr
+        : ContactFormConstants.countriesEn)
+        .map((c) => {'key': c, 'value': c})
+        .toList();
+
+    // ── Owner-only ──
+    final targetItems =
+    (isRtl
+        ? ContactFormConstants.targetAudienceAr
+        : ContactFormConstants.targetAudienceEn)
+        .map((t) => {'key': t, 'value': t})
+        .toList();
+    final salonCountryItems =
+    (isRtl
+        ? ContactFormConstants.countriesAr
+        : ContactFormConstants.countriesEn)
+        .map((c) => {'key': c, 'value': c})
+        .toList();
     final branchItems =
-        (isRtl
-                ? ContactFormConstants.noBranchesAr
-                : ContactFormConstants.noBranchesEn)
-            .map((b) => {'key': b, 'value': b})
-            .toList();
+    (isRtl
+        ? ContactFormConstants.noBranchesAr
+        : ContactFormConstants.noBranchesEn)
+        .map((b) => {'key': b, 'value': b})
+        .toList();
     final serviceItems =
-        (isRtl
-                ? ContactFormConstants.servicesAr
-                : ContactFormConstants.servicesEn)
-            .map((s) => {'key': s, 'value': s})
-            .toList();
+    (isRtl
+        ? ContactFormConstants.servicesAr
+        : ContactFormConstants.servicesEn)
+        .map((s) => {'key': s, 'value': s})
+        .toList();
     final reasonItems = _buildReasonItems(
       cmsData: cmsData,
       isOwner: _isOwner,
@@ -2941,6 +3080,7 @@ class _MobileBody extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // ── Preferred Language ──
                 Text(
                   prefLangLabel,
                   style: StyleText.fontSize13Weight400.copyWith(
@@ -2974,15 +3114,15 @@ class _MobileBody extends StatelessWidget {
                               ),
                               child: selected
                                   ? Center(
-                                      child: Container(
-                                        width: 9.w,
-                                        height: 9.w,
-                                        decoration: BoxDecoration(
-                                          shape: BoxShape.circle,
-                                          color: primaryColor,
-                                        ),
-                                      ),
-                                    )
+                                child: Container(
+                                  width: 9.w,
+                                  height: 9.w,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: primaryColor,
+                                  ),
+                                ),
+                              )
                                   : null,
                             ),
                             SizedBox(width: 5.w),
@@ -3003,6 +3143,7 @@ class _MobileBody extends StatelessWidget {
                 ),
                 SizedBox(height: 10.h),
 
+                // ── Personal fields ──
                 _MobileIconField(
                   controller: firstNameCtrl,
                   hint: _t(context, en: 'First Name *', ar: 'الاسم الأول *'),
@@ -3043,6 +3184,32 @@ class _MobileBody extends StatelessWidget {
                   primaryColor: primaryColor,
                 ),
 
+                // ════════════════════════════════════════════════
+                // NEW: Gender + Country — shown for ALL users
+                // ════════════════════════════════════════════════
+                _MobileIconDropdown(
+                  hint: _t(context, en: 'Gender *', ar: 'الجنس *'),
+                  iconPath: 'assets/contact/Target audience of salon.svg',
+                  value: selectedGender,
+                  items: genderItems,
+                  onChanged: onGenderChanged,
+                  submitted: submitted,
+                  isRtl: isRtl,
+                  primaryColor: primaryColor,
+                ),
+                _MobileIconDropdown(
+                  hint: _t(context, en: 'Country *', ar: 'الدولة *'),
+                  iconPath: 'assets/contact/Country of salon.svg',
+                  value: selectedCountry,
+                  items: countryItems,
+                  onChanged: onCountryChanged,
+                  submitted: submitted,
+                  isRtl: isRtl,
+                  primaryColor: primaryColor,
+                ),
+                // ════════════════════════════════════════════════
+
+                // ── OWNER-ONLY: Salon fields ──
                 if (_isOwner) ...[
                   _MobileIconField(
                     controller: salonNameCtrl,
@@ -3084,7 +3251,7 @@ class _MobileBody extends StatelessWidget {
                     ),
                     iconPath: 'assets/contact/Country of salon.svg',
                     value: selectedSalonCountry,
-                    items: countryItems,
+                    items: salonCountryItems,
                     onChanged: onSalonCountryChanged,
                     submitted: submitted,
                     isRtl: isRtl,
@@ -3123,6 +3290,7 @@ class _MobileBody extends StatelessWidget {
                   ),
                 ],
 
+                // ── Subject / Reason / Message ──
                 _MobileIconField(
                   controller: subjectCtrl,
                   hint: _t(context, en: 'Subject *', ar: 'الموضوع *'),
@@ -3329,15 +3497,15 @@ class _MobileIconFieldState extends State<_MobileIconField> {
     final bool isEmpty = widget.controller.text.trim().isEmpty;
     final bool isTooShort =
         !isEmpty &&
-        widget.minLength > 0 &&
-        widget.controller.text.trim().length < widget.minLength;
+            widget.minLength > 0 &&
+            widget.controller.text.trim().length < widget.minLength;
     final bool showError = widget.submitted && (isEmpty || isTooShort);
     final bool isRtlDir = widget.textDirection == TextDirection.rtl;
     final String errMsg = isEmpty
         ? (isRtlDir ? 'هذا الحقل مطلوب' : 'This field is required')
         : (isRtlDir
-              ? 'الحد الأدنى ${widget.minLength} حرف'
-              : 'Minimum ${widget.minLength} characters');
+        ? 'الحد الأدنى ${widget.minLength} حرف'
+        : 'Minimum ${widget.minLength} characters');
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -3566,18 +3734,18 @@ class _MobilePhoneField extends StatelessWidget {
                     items: _phoneCodes
                         .map(
                           (c) => DropdownMenuItem<String>(
-                            value: c['key'],
-                            child: Padding(
-                              padding: EdgeInsets.symmetric(horizontal: 4.w),
-                              child: Text(
-                                c['value'] ?? '',
-                                style: StyleText.fontSize12Weight400.copyWith(
-                                  fontSize: 12.sp,
-                                ),
-                              ),
+                        value: c['key'],
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 4.w),
+                          child: Text(
+                            c['value'] ?? '',
+                            style: StyleText.fontSize12Weight400.copyWith(
+                              fontSize: 12.sp,
                             ),
                           ),
-                        )
+                        ),
+                      ),
+                    )
                         .toList(),
                     onChanged: onCodeChanged,
                     padding: EdgeInsets.symmetric(horizontal: 8.w),
@@ -3655,7 +3823,6 @@ class _SocialMediaSection extends StatelessWidget {
         .where((i) => i.iconUrl.isNotEmpty || i.link.isNotEmpty)
         .toList();
 
-    // Don't render the section at all if no icons
     if (rawIcons.isEmpty) return const SizedBox.shrink();
 
     final String title = _t(
@@ -3685,14 +3852,14 @@ class _SocialMediaSection extends StatelessWidget {
               children: rawIcons
                   .map(
                     (i) => Padding(
-                      padding: EdgeInsetsDirectional.only(end: 10.w),
-                      child: _SocialIconWidget(
-                        iconUrl: i.iconUrl,
-                        link: i.link,
-                        primaryColor: primaryColor,
-                      ),
-                    ),
-                  )
+                  padding: EdgeInsetsDirectional.only(end: 10.w),
+                  child: _SocialIconWidget(
+                    iconUrl: i.iconUrl,
+                    link: i.link,
+                    primaryColor: primaryColor,
+                  ),
+                ),
+              )
                   .toList(),
             ),
           ],
@@ -3720,19 +3887,19 @@ class _SocialIconWidget extends StatelessWidget {
   Widget build(BuildContext context) => GestureDetector(
     onTap: (link?.isNotEmpty ?? false)
         ? () async {
-            String raw = link!.trim();
-            if (!raw.startsWith('http://') && !raw.startsWith('https://'))
-              raw = 'https://$raw';
-            final uri = Uri.tryParse(raw);
-            if (uri == null || !uri.hasAuthority) return;
-            if (await canLaunchUrl(uri)) {
-              await launchUrl(
-                uri,
-                mode: LaunchMode.externalApplication,
-                webOnlyWindowName: '_blank',
-              );
-            }
-          }
+      String raw = link!.trim();
+      if (!raw.startsWith('http://') && !raw.startsWith('https://'))
+        raw = 'https://$raw';
+      final uri = Uri.tryParse(raw);
+      if (uri == null || !uri.hasAuthority) return;
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(
+          uri,
+          mode: LaunchMode.externalApplication,
+          webOnlyWindowName: '_blank',
+        );
+      }
+    }
         : null,
     child: MouseRegion(
       cursor: (link?.isNotEmpty ?? false)

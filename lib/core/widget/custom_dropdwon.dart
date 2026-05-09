@@ -1,3 +1,4 @@
+import 'package:beauty_user/core/custom_svg.dart';
 import 'package:dropdown_button2/dropdown_button2.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -125,11 +126,7 @@ class _CustomDropdownFormFieldInvMasterState
   }
 
   // ── Arrow icon ────────────────────────────────────────────────────────────
-  Widget _arrowIcon() => Icon(
-    Icons.keyboard_arrow_down_rounded,
-    size: (widget.widthIcon ?? 18).sp,
-    color: AppColors.secondaryBlack,
-  );
+  Widget _arrowIcon() => CustomSvg(assetPath: "assets/arrowdown.svg",width: 15.w,height: 10.h,);
 
   // ── Custom button with prefix SVG icon ───────────────────────────────────
   Widget? _buildCustomButton(double fieldHeight) {
@@ -160,12 +157,7 @@ class _CustomDropdownFormFieldInvMasterState
             widget.iconPath!,
             width:  (widget.widthIcon ?? 16).w,
             height: (widget.heightIcon ?? 16).w,
-            colorFilter: ColorFilter.mode(
-              hasValue
-                  ? (widget.primaryColor ?? AppColors.primary).withOpacity(0.7)
-                  : Colors.grey.shade400,
-              BlendMode.srcIn,
-            ),
+            color: widget.primaryColor,
           ),
           SizedBox(width: 6.w),
           // ── Selected value or hint ──

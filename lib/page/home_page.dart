@@ -1,9 +1,10 @@
 /// ******************* FILE INFO *******************
 /// File Name: home_page.dart
 /// Description: Public-facing Home Page for the Beauty App (Bayanatz).
-/// Last Update: 04/05/2026
+/// Last Update: 09/05/2026
 /// FIXED: SVG images now rendered via native browser <img> tag to avoid CORS
 ///        issues with Firebase Storage + flutter_svg XHR loading.
+/// FIXED: Reduced loader timeout and optimized preload logic for faster rendering
 
 // ignore_for_file: avoid_web_libraries_in_flutter
 import 'dart:html' as html;
@@ -420,9 +421,10 @@ class _HomePageViewState extends State<_HomePageView> with RouteAware {
   void initState() {
     super.initState();
     print('🏠🏠🏠 [HomePage] initState called');
-    Future.delayed(const Duration(seconds: 12), () {
+    // ✅ FIXED: Reduced timeout from 12s to 3s for faster fallback
+    Future.delayed(const Duration(seconds: 3), () {
       if (mounted && _showLoader) {
-        print('🏠 [HomePage] 12s timeout — forcing loader off');
+        print('🏠 [HomePage] 3s timeout — forcing loader off');
         setState(() => _showLoader = false);
       }
     });
@@ -501,8 +503,17 @@ class _HomePageViewState extends State<_HomePageView> with RouteAware {
     ];
 
     print('🏠 [HomePage] preloading ${urls.length} non-SVG URLs');
-    await _preloadImages(urls);
-    await Future.delayed(const Duration(milliseconds: 100));
+
+    // ✅ FIXED: Only preload if there are actual URLs to load
+    if (urls.isNotEmpty) {
+      await _preloadImages(urls);
+    } else {
+      print('🏠 [HomePage] No non-SVG images to preload — all images are SVG or local');
+    }
+
+    // ✅ FIXED: Reduced delay from 100ms to 50ms
+    await Future.delayed(const Duration(milliseconds: 50));
+
     if (mounted) {
       print('🏠 [HomePage] preload done — hiding loader');
       setState(() => _showLoader = false);
@@ -1127,21 +1138,51 @@ class _DownloadTextContent extends StatelessWidget {
             ),
           ),
         if (googlePlayLink.isNotEmpty || appStoreLink.isNotEmpty)
-          Wrap(
-            spacing: 12.w,
-            runSpacing: 8.h,
-            children: [
-              if (googlePlayLink.isNotEmpty)
-                _StoreBadge(
-                  onTap: () => _launchUrl(googlePlayLink),
-                  svgAsset: 'assets/beauty/home/google_play.svg',
-                ),
-              if (appStoreLink.isNotEmpty)
-                _StoreBadge(
-                  onTap: () => _launchUrl(appStoreLink),
-                  svgAsset: 'assets/beauty/home/app_store.svg',
-                ),
-            ],
+          LayoutBuilder(
+            builder: (context, constraints) {
+              // ✅ Responsive button sizing
+              double buttonWidth;
+              double buttonHeight;
+              double spacing;
+
+              if (constraints.maxWidth >= 1024) {
+                // Desktop
+                buttonWidth = 160;
+                buttonHeight = 48;
+                spacing = 16;
+              } else if (constraints.maxWidth >= 600) {
+                // Tablet
+                buttonWidth = 140;
+                buttonHeight = 44;
+                spacing = 12;
+              } else {
+                // Mobile
+                buttonWidth = 135;
+                buttonHeight = 42;
+                spacing = 10;
+              }
+
+              return Wrap(
+                spacing: spacing,
+                runSpacing: 8.h,
+                children: [
+                  if (googlePlayLink.isNotEmpty)
+                    _StoreBadge(
+                      onTap: () => _launchUrl(googlePlayLink),
+                      svgAsset: 'assets/beauty/home/google_play.svg',
+                      width: buttonWidth,
+                      height: buttonHeight,
+                    ),
+                  if (appStoreLink.isNotEmpty)
+                    _StoreBadge(
+                      onTap: () => _launchUrl(appStoreLink),
+                      svgAsset: 'assets/beauty/home/app_store.svg',
+                      width: buttonWidth,
+                      height: buttonHeight,
+                    ),
+                ],
+              );
+            },
           ),
       ],
     );
@@ -1155,8 +1196,15 @@ class _DownloadTextContent extends StatelessWidget {
 class _StoreBadge extends StatelessWidget {
   final VoidCallback? onTap;
   final String svgAsset;
+  final double width;
+  final double height;
 
-  const _StoreBadge({this.onTap, required this.svgAsset});
+  const _StoreBadge({
+    this.onTap,
+    required this.svgAsset,
+    required this.width,
+    required this.height,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1167,8 +1215,8 @@ class _StoreBadge extends StatelessWidget {
         borderRadius: BorderRadius.circular(8.r),
         child: SvgPicture.asset(
           svgAsset,
-          height: 42.h,
-          width: 135.w,
+          width: width,
+          height: height,
           fit: BoxFit.contain,
         ),
       ),

@@ -734,26 +734,26 @@ class _GenderToggle extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocBuilder<GenderCubit, GenderState>(
       builder: (context, genderState) {
+        final bool isMale = genderState.isMale;
+        final Color genderColor = isMale
+            ? const Color(0xFF1565C0)   // blue for male
+            : const Color(0xFFBE6A7A);  // pink for female
+
         return MouseRegion(
           cursor: SystemMouseCursors.click,
           child: GestureDetector(
-            onTap: () {
-              context.read<GenderCubit>().toggle();
-            },
+            onTap: () => context.read<GenderCubit>().toggle(),
             child: Container(
               decoration: BoxDecoration(
-                color: primary.withOpacity(0.1),
+                color: genderColor.withOpacity(0.1),
                 shape: BoxShape.circle,
               ),
               padding: EdgeInsets.all(isCompact ? 8.w : 10.w),
               child: SvgPicture.asset(
-                _kMaleIcon,
-                width: isCompact ? 18.w : 20.w,
+                isMale ? _kMaleIcon : _kMaleIcon,
+                width:  isCompact ? 18.w : 20.w,
                 height: isCompact ? 18.w : 20.w,
-                colorFilter: ColorFilter.mode(
-                  genderState.isMale ? primary : AppColors.secondaryText,
-                  BlendMode.srcIn,
-                ),
+                colorFilter: ColorFilter.mode(genderColor, BlendMode.srcIn),
               ),
             ),
           ),

@@ -739,7 +739,7 @@ class _TopServicesSection extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.start,
             children: items
                 .map((item) => Padding(
-              padding: EdgeInsets.symmetric(horizontal: 20.w),
+              padding: EdgeInsetsDirectional.only(end: 20.w),
               child: _ServiceCard(
                 imageUrl: item.imageUrl,
                 name: isAr ? item.name.ar : item.name.en,

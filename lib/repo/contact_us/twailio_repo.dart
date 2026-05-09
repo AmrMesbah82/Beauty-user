@@ -1,150 +1,65 @@
-import 'dart:convert';
-import 'package:http/http.dart' as http;
-
-import '../../core/constant/keys.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 
 class TwilioRepository {
   Future<void> sendOTP(String to, String channel, String locale) async {
-    // Build credentials
-    final credentials =
-        '${TwilioConstants.twilioAccountSid}:${TwilioConstants.twilioAuthToken}';
-    final encodedCredentials = base64Encode(utf8.encode(credentials));
-
-    // Build URL
-    final url = Uri.parse(
-      'https://verify.twilio.com/v2/Services/${TwilioConstants.twilioVerifyServiceSid}/Verifications',
-    );
-
-    // Build headers
-    final headers = {
-      'Authorization': 'Basic $encodedCredentials',
-      'Content-Type': 'application/x-www-form-urlencoded',
-    };
-    print('\n📋 [TWILIO_REPO] Request Headers:');
-    headers.forEach((key, value) {
-      print('   - $key: $value');
-    });
-
-    // Build body
-    final body = {'To': to, 'Channel': channel, 'Locale': locale};
-    print('\n📦 [TWILIO_REPO] Request Body:');
-    body.forEach((key, value) {
-      print('   - $key: $value');
-    });
-
-    print('\n📤 [TWILIO_REPO] Sending HTTP POST request...');
+    print('\n📤 [TWILIO_REPO] Calling Cloud Function sendOTP...');
+    print('   - To: $to');
+    print('   - Channel: $channel');
+    print('   - Locale: $locale');
 
     try {
-      final response = await http.post(url, headers: headers, body: body);
+      final callable = FirebaseFunctions.instance.httpsCallable('sendOTP');
 
-      response.headers.forEach((key, value) {
-        print('     - $key: $value');
+      final result = await callable.call({
+        'to': to,
+        'channel': channel,
+        'locale': locale,
       });
-      print('   - Response Body:');
-      print('${response.body}');
 
-      if (response.statusCode == 201) {
-        print('\n✅ [TWILIO_REPO] OTP sent successfully!');
+      print('✅ [TWILIO_REPO] sendOTP result: ${result.data}');
 
-        // Try to parse response for more details
-        try {
-          final jsonResponse = jsonDecode(response.body);
-
-          jsonResponse.forEach((key, value) {
-            print('   - $key: $value');
-          });
-        } catch (e) {
-          print('⚠️ [TWILIO_REPO] Could not parse JSON response: $e');
-        }
-      } else {
-        // Try to parse error response
-        try {
-          final jsonError = jsonDecode(response.body);
-          print('   - Parsed error:');
-          jsonError.forEach((key, value) {
-            print('     - $key: $value');
-          });
-        } catch (e) {
-          print('   - Could not parse error JSON: $e');
-        }
-
-        throw Exception(
-          'Twilio API error: ${response.statusCode} - ${response.body}',
-        );
+      final success = result.data['success'] as bool? ?? false;
+      if (!success) {
+        throw Exception('Cloud Function returned success=false');
       }
-    } catch (e, stackTrace) {
+    } on FirebaseFunctionsException catch (e) {
+      print('❌ [TWILIO_REPO] FirebaseFunctionsException: ${e.code} - ${e.message}');
+      print('   Details: ${e.details}');
+      throw Exception('Failed to send OTP: ${e.message}');
+    } catch (e) {
+      print('❌ [TWILIO_REPO] Error: $e');
       rethrow;
     }
   }
 
   Future<bool> verifyOTP(String to, String code) async {
-    // Build URL
-    final url = Uri.parse(
-      'https://verify.twilio.com/v2/Services/${TwilioConstants.twilioVerifyServiceSid}/VerificationCheck',
-    );
-
-    // Build credentials
-    final credentials =
-        '${TwilioConstants.twilioAccountSid}:${TwilioConstants.twilioAuthToken}';
-    final encodedCredentials = base64Encode(utf8.encode(credentials));
-
-    // Build headers
-    final headers = {
-      'Authorization': 'Basic $encodedCredentials',
-      'Content-Type': 'application/x-www-form-urlencoded',
-    };
-
-    headers.forEach((key, value) {
-      print('   - $key: $value');
-    });
-
-    // Build body
-    final body = {'To': to, 'Code': code};
-    print('\n📦 [TWILIO_REPO] Request Body:');
-    body.forEach((key, value) {
-      print('   - $key: $value');
-    });
-
-    print('\n📤 [TWILIO_REPO] Sending HTTP POST request...');
+    print('\n🔍 [TWILIO_REPO] Calling Cloud Function verifyOTP...');
+    print('   - To: $to');
+    print('   - Code: $code');
 
     try {
-      final response = await http.post(url, headers: headers, body: body);
+      final callable = FirebaseFunctions.instance.httpsCallable('verifyOTP');
 
-      print('\n📥 [TWILIO_REPO] Response received:');
-      print('   - Status Code: ${response.statusCode}');
-      print('   - Response Body:');
-      print('${response.body}');
+      final result = await callable.call({
+        'to': to,
+        'code': code,
+      });
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        print('\n📊 [TWILIO_REPO] Parsed response data:');
-        data.forEach((key, value) {
-          print('   - $key: $value');
-        });
+      print('✅ [TWILIO_REPO] verifyOTP result: ${result.data}');
 
-        final status = data['status'] as String?;
-        final isApproved = status == 'approved';
+      final success = result.data['success'] as bool? ?? false;
+      final status = result.data['status'] as String? ?? '';
 
-        if (isApproved) {
-          return true;
-        } else {
-          return false;
-        }
-      } else {
-        // Try to parse error response
-        try {
-          final jsonError = jsonDecode(response.body);
-          print('   - Parsed error:');
-          jsonError.forEach((key, value) {
-            print('     - $key: $value');
-          });
-        } catch (e) {
-          print('   - Could not parse error JSON: $e');
-        }
+      print('   - Approved: $success');
+      print('   - Status: $status');
 
-        return false;
-      }
-    } catch (e, stackTrace) {
+      return success;
+    } on FirebaseFunctionsException catch (e) {
+      print('❌ [TWILIO_REPO] FirebaseFunctionsException: ${e.code} - ${e.message}');
+      print('   Details: ${e.details}');
+      throw Exception('Failed to verify OTP: ${e.message}');
+    } catch (e) {
+      print('❌ [TWILIO_REPO] Error: $e');
       rethrow;
     }
   }

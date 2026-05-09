@@ -860,30 +860,7 @@ class _ClientServiceTab extends StatelessWidget {
 
             SizedBox(height: 20.h),
 
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                _Reveal(
-                  delay: const Duration(milliseconds: 140),
-                  direction: _SlideDirection.fromLeft,
-                  duration: const Duration(milliseconds: 650),
-                  child: customButton(
-                    width: 150.w,
-                    height: 36.h,
-                    textStyle: StyleText.fontSize16Weight500.copyWith(
-                      color: Colors.white
-                    ),
-                    radius: 4.r,
-                    color: primaryColor,
-                    title: "Request Demo",
-                    function: () {
-                      navigateTo(context, RequestDemoPage());
-                    },
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: 20.h),
+
             // Download bar
             _Reveal(
               delay: const Duration(milliseconds: 140),
@@ -1627,19 +1604,47 @@ class _SideBySideLayout extends StatelessWidget {
       ],
     );
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: imageOnLeft
-          ? [
-              Expanded(flex: 4, child: imageWidget),
-              SizedBox(width: 30.w),
-              Expanded(flex: 6, child: textWidget),
-            ]
-          : [
-              Expanded(flex: 6, child: textWidget),
-              SizedBox(width: 30.w),
-              Expanded(flex: 4, child: imageWidget),
-            ],
+    return Stack(
+      alignment: AlignmentGeometry.bottomRight,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: imageOnLeft
+              ? [
+                  Expanded(flex: 4, child: imageWidget),
+                  SizedBox(width: 30.w),
+                  Expanded(flex: 6, child: textWidget),
+                ]
+              : [
+                  Expanded(flex: 6, child: textWidget),
+                  SizedBox(width: 30.w),
+                  Expanded(flex: 4, child: imageWidget),
+                ],
+        ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            _Reveal(
+              delay: const Duration(milliseconds: 140),
+              direction: _SlideDirection.fromLeft,
+              duration: const Duration(milliseconds: 650),
+              child: customButton(
+                width: 150.w,
+                height: 36.h,
+                textStyle: StyleText.fontSize16Weight500.copyWith(
+                    color: Colors.white
+                ),
+                radius: 4.r,
+                color: primaryColor,
+                title: "Request Demo",
+                function: () {
+                  navigateTo(context, RequestDemoPage());
+                },
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }
