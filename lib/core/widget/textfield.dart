@@ -2,11 +2,13 @@
 /// File Name: custom_textformfield.dart
 /// Description: this is custom Text field can reuse
 /// Created by: Amr Mesbah
-/// Last Update: 28/3/2026
+/// Last Update: 11/5/2026
+/// UPDATED: Added optional labelPrefixSvg / labelTrailingSvg icons on the label row
 
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:beauty_user/theme/appcolors.dart';
 import 'package:beauty_user/theme/new_theme.dart';
 
@@ -39,6 +41,17 @@ class CustomValidatedTextFieldMaster extends StatefulWidget {
   /// Minimum character requirement (default 0 = no minimum)
   final int minLength;
 
+  // ── NEW: optional label-row prefix / trailing SVG icons ──────────────────
+  final String? labelPrefixSvg;      // asset path for icon before the label text
+  final double? labelPrefixSvgSize;  // size (w & h), defaults to 14
+  final Color?  labelPrefixColor;    // colorFilter color
+
+  final String? labelTrailingSvg;    // asset path for icon after the label text
+  final double? labelTrailingSvgSize;
+  final Color?  labelTrailingColor;
+  final VoidCallback? onLabelTrailingTap; // optional tap on trailing icon
+  // ─────────────────────────────────────────────────────────────────────────
+
   const CustomValidatedTextFieldMaster({
     super.key,
     this.label,
@@ -60,6 +73,14 @@ class CustomValidatedTextFieldMaster extends StatefulWidget {
     this.primaryColor,
     this.maxLength = 500,
     this.minLength = 0,
+    // ── label icons ──
+    this.labelPrefixSvg,
+    this.labelPrefixSvgSize,
+    this.labelPrefixColor,
+    this.labelTrailingSvg,
+    this.labelTrailingSvgSize,
+    this.labelTrailingColor,
+    this.onLabelTrailingTap,
   });
 
   @override
@@ -102,6 +123,59 @@ class _CustomValidatedTextFieldMasterState
         .split('')
         .map((e) => arabicNums[int.parse(e)])
         .join();
+  }
+
+  // ── Label row: optional prefix icon + text + optional trailing icon ───────
+  Widget _buildLabelRow() {
+    final double prefixSize   = widget.labelPrefixSvgSize  ?? 14;
+    final double trailingSize = widget.labelTrailingSvgSize ?? 14;
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        // ── Prefix icon ──────────────────────────────────────────────────
+        if (widget.labelPrefixSvg != null) ...[
+          SvgPicture.asset(
+            widget.labelPrefixSvg!,
+            width:  prefixSize.w,
+            height: prefixSize.h,
+            colorFilter: widget.labelPrefixColor != null
+                ? ColorFilter.mode(widget.labelPrefixColor!, BlendMode.srcIn)
+                : null,
+          ),
+          SizedBox(width: 5.w),
+        ],
+
+        // ── Label text ───────────────────────────────────────────────────
+        Flexible(
+          child: Text(
+            widget.label!,
+            textDirection: widget.textDirection,
+            style: StyleText.fontSize14Weight400.copyWith(
+              color: AppColors.text,
+            ),
+          ),
+        ),
+
+        // ── Trailing icon ────────────────────────────────────────────────
+        if (widget.labelTrailingSvg != null) ...[
+          SizedBox(width: 5.w),
+          GestureDetector(
+            onTap: widget.onLabelTrailingTap,
+            child: SvgPicture.asset(
+              widget.labelTrailingSvg!,
+              width:  trailingSize.w,
+              height: trailingSize.h,
+              colorFilter: widget.labelTrailingColor != null
+                  ? ColorFilter.mode(
+                  widget.labelTrailingColor!, BlendMode.srcIn)
+                  : null,
+            ),
+          ),
+        ],
+      ],
+    );
   }
 
   @override
@@ -161,12 +235,9 @@ class _CustomValidatedTextFieldMasterState
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // ── Label row ────────────────────────────────────────────────────────
         if (widget.label != null) ...[
-          Text(
-            widget.label!,
-            textDirection: widget.textDirection,
-            style: StyleText.fontSize14Weight400.copyWith(color: AppColors.text),
-          ),
+          _buildLabelRow(),
           SizedBox(height: 6.h),
         ],
 
@@ -192,7 +263,7 @@ class _CustomValidatedTextFieldMasterState
               enabled:           widget.enabled,
               textDirection:     widget.textDirection,
               textAlign:         widget.textAlign,
-              cursorColor:       resolvedPrimary, // ← also set directly
+              cursorColor:       resolvedPrimary,
               autovalidateMode:  AutovalidateMode.always,
               validator:         (_) => showError ? '' : null,
               keyboardType:

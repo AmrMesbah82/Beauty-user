@@ -147,8 +147,15 @@ Widget _netImg({
       ? 'fill'
       : 'cover';
 
+  // ✅ Guard against double.infinity which crashes toInt() on web (dart2js)
+  String _safeSize(double? v) {
+    if (v == null) return 'null';
+    if (v.isInfinite || v.isNaN) return 'fill';
+    return v.toInt().toString();
+  }
+
   final viewId =
-      'svg-about-user-${url.hashCode}-${width?.toInt()}-${height?.toInt()}';
+      'svg-about-user-${url.hashCode}-${_safeSize(width)}-${_safeSize(height)}';
 
   ui_web.platformViewRegistry.registerViewFactory(viewId, (int id) {
     final img = html.ImageElement()
@@ -162,7 +169,10 @@ Widget _netImg({
   Widget inner = HtmlElementView(viewType: viewId);
 
   if (width != null || height != null) {
-    inner = SizedBox(width: width, height: height, child: inner);
+    // ✅ Never pass infinity to SizedBox — use double.infinity only when it's a valid layout value
+    final safeW = (width != null && !width.isNaN && !width.isInfinite) ? width : double.infinity;
+    final safeH = (height != null && !height.isNaN && !height.isInfinite) ? height : null;
+    inner = SizedBox(width: safeW, height: safeH, child: inner);
   }
 
   if (borderRadius != null) {
@@ -367,6 +377,8 @@ class _SvgPulseLoaderState extends State<_SvgPulseLoader>
 
   @override
   void dispose() {
+    // ✅ Cache the coordinator reference before the widget is deactivated
+    // Never call context.dependOnInheritedWidgetOfExactType in dispose()
     _ctrl.dispose();
     super.dispose();
   }
@@ -1905,7 +1917,7 @@ class _AboutBodyMobileState extends State<_AboutBodyMobile> {
                                     child: _netImg(
                                       url: strategicHouseUrl,
                                       width: double.infinity,
-                                      height: 180.h,
+                                      height: 300.h,
                                       fit: BoxFit.contain,
                                     ),
                                   ),
@@ -2036,6 +2048,7 @@ class _MobileTopTabItemState extends State<_MobileTopTabItem> {
               Text(
                 widget.label,
                 style: StyleText.fontSize20Weight600.copyWith(
+                  fontSize: context.isPhone ? 16.sp : 20.sp,
                   color: sel
                       ? widget.primaryColor
                       : (_hovered

@@ -1634,7 +1634,8 @@ class _SideBySideLayout extends StatelessWidget {
                 ),
                 radius: 4.r,
                 color: primaryColor,
-                title: isArabic ? "آطلب للتجرمة" : "Request Demo",
+                title: isArabic ? 'اطلب للتجربة' : 'Request Demo',
+
                 function: () {
                   navigateTo(context, RequestDemoPage());
                 },
@@ -1662,6 +1663,8 @@ class _StackedFallback extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isArabic = Localizations.localeOf(context).languageCode == 'ar';
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1679,6 +1682,24 @@ class _StackedFallback extends StatelessWidget {
           style: AppTextStyles.font14BlackCairoRegular.copyWith(
             height: 1.7,
             color: AppColors.secondaryBlack,
+          ),
+        ),
+        SizedBox(height: 16.h),
+        // ✅ Request Demo button — same as desktop
+        Align(
+          alignment: isArabic ? Alignment.centerRight : Alignment.centerRight,
+          child: customButton(
+            width: 150.w,
+            height: 36.h,
+            textStyle: StyleText.fontSize16Weight500.copyWith(
+              color: Colors.white,
+            ),
+            radius: 4.r,
+            color: primaryColor,
+            title: isArabic ? 'اطلب للتجربة' : 'Request Demo',
+            function: () {
+              navigateTo(context, RequestDemoPage());
+            },
           ),
         ),
       ],

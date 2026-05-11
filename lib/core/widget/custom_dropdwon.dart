@@ -22,10 +22,21 @@ class CustomDropdownFormFieldInvMaster extends StatefulWidget {
   final double? dropdownWidth;
   final Widget? hint;
   final String? label;
-  final String? iconPath;           // ← prefix SVG icon path
+  final String? iconPath;           // ← prefix SVG icon path (field)
   final Map<String, Color>? itemColors;
   final bool showColorDots;
   final double borderRadius;
+
+  // ── NEW: optional label-row prefix / trailing SVG icons ──────────────────
+  final String? labelPrefixSvg;     // asset path for icon before the label text
+  final double? labelPrefixSvgSize; // size (w & h), defaults to 14
+  final Color?  labelPrefixColor;   // colorFilter color
+
+  final String? labelTrailingSvg;   // asset path for icon after the label text
+  final double? labelTrailingSvgSize;
+  final Color?  labelTrailingColor;
+  final VoidCallback? onLabelTrailingTap; // optional tap on trailing icon
+  // ─────────────────────────────────────────────────────────────────────────
 
   const CustomDropdownFormFieldInvMaster({
     Key? key,
@@ -43,10 +54,18 @@ class CustomDropdownFormFieldInvMaster extends StatefulWidget {
     this.hint,
     this.dropdownColor,
     this.label,
-    this.iconPath,                  // ← prefix SVG icon path
+    this.iconPath,
     this.itemColors,
     this.showColorDots = false,
     this.borderRadius = 8.0,
+    // ── label icons ──
+    this.labelPrefixSvg,
+    this.labelPrefixSvgSize,
+    this.labelPrefixColor,
+    this.labelTrailingSvg,
+    this.labelTrailingSvgSize,
+    this.labelTrailingColor,
+    this.onLabelTrailingTap,
   }) : super(key: key);
 
   @override
@@ -126,7 +145,11 @@ class _CustomDropdownFormFieldInvMasterState
   }
 
   // ── Arrow icon ────────────────────────────────────────────────────────────
-  Widget _arrowIcon() => CustomSvg(assetPath: "assets/arrowdown.svg",width: 15.w,height: 10.h,);
+  Widget _arrowIcon() => CustomSvg(
+    assetPath: "assets/arrowdown.svg",
+    width: 15.w,
+    height: 10.h,
+  );
 
   // ── Custom button with prefix SVG icon ───────────────────────────────────
   Widget? _buildCustomButton(double fieldHeight) {
@@ -180,6 +203,58 @@ class _CustomDropdownFormFieldInvMasterState
     );
   }
 
+  // ── Label row with optional prefix + trailing SVG ────────────────────────
+  Widget _buildLabelRow() {
+    final double prefixSize  = widget.labelPrefixSvgSize  ?? 14;
+    final double trailingSize = widget.labelTrailingSvgSize ?? 14;
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        // ── Prefix icon ──────────────────────────────────────────────────
+        if (widget.labelPrefixSvg != null) ...[
+          SvgPicture.asset(
+            widget.labelPrefixSvg!,
+            width:  prefixSize.w,
+            height: prefixSize.h,
+            colorFilter: widget.labelPrefixColor != null
+                ? ColorFilter.mode(widget.labelPrefixColor!, BlendMode.srcIn)
+                : null,
+          ),
+          SizedBox(width: 5.w),
+        ],
+
+        // ── Label text ───────────────────────────────────────────────────
+        Flexible(
+          child: Text(
+            widget.label!,
+            style: StyleText.fontSize14Weight400.copyWith(
+              color: AppColors.text,
+            ),
+          ),
+        ),
+
+        // ── Trailing icon ────────────────────────────────────────────────
+        if (widget.labelTrailingSvg != null) ...[
+          SizedBox(width: 5.w),
+          GestureDetector(
+            onTap: widget.onLabelTrailingTap,
+            child: SvgPicture.asset(
+              widget.labelTrailingSvg!,
+              width:  trailingSize.w,
+              height: trailingSize.h,
+              colorFilter: widget.labelTrailingColor != null
+                  ? ColorFilter.mode(
+                  widget.labelTrailingColor!, BlendMode.srcIn)
+                  : null,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final double fieldHeight = widget.height ?? 36;
@@ -187,12 +262,9 @@ class _CustomDropdownFormFieldInvMasterState
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // ── Label ───────────────────────────────────────────────────────────
+        // ── Label row ────────────────────────────────────────────────────────
         if (widget.label != null) ...[
-          Text(
-            widget.label!,
-            style: StyleText.fontSize14Weight400.copyWith(color: AppColors.text),
-          ),
+          _buildLabelRow(),
           SizedBox(height: widget.spaceHeight ?? 6.h),
         ],
 

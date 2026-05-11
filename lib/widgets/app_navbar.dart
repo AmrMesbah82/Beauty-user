@@ -8,12 +8,8 @@
 //          Index 4: Terms Services (/terms)
 //          Index 5: Contact Us (/contact-us)
 // UPDATED: _getVisibleNavItems now returns iconUrl from NavButtonModel
-// ADDED:   _NavIcon widget — shows Firebase iconUrl if set, falls back to local SVG asset
-// UPDATED: _FullScreenDrawer matches Figma exactly:
-//            Row 1 → [Logo]  ─────────────────────────────  [✕ close]
-//            Row 2 → [♀/♂ GenderToggle]  ──────  [AR] [ENG]
-//            Then nav list
-// UPDATED: Mobile top bar shows ONLY [Logo] + [≡ hamburger]
+// UPDATED: _NavIcon — shimmer placeholder while Firebase iconUrl loads (no flash)
+// UPDATED: _FullScreenDrawer — divider between nav items removed
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -134,7 +130,61 @@ List<_NavItemData> _getVisibleNavItems(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// _IconShimmer — animated shimmer placeholder shown while the network SVG loads
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _IconShimmer extends StatefulWidget {
+  final double size;
+  const _IconShimmer({required this.size});
+
+  @override
+  State<_IconShimmer> createState() => _IconShimmerState();
+}
+
+class _IconShimmerState extends State<_IconShimmer>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  late final Animation<double> _anim;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    )..repeat(reverse: true);
+    _anim = Tween<double>(begin: 0.15, end: 0.40).animate(
+      CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final double sz = widget.size.w;
+    return AnimatedBuilder(
+      animation: _anim,
+      builder: (_, __) => Container(
+        width:  sz,
+        height: sz,
+        decoration: BoxDecoration(
+          color: Colors.grey.withOpacity(_anim.value),
+          borderRadius: BorderRadius.circular(4.r),
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // _NavIcon
+// Shows a shimmer while the Firebase iconUrl loads, then fades in the real icon.
+// Falls back to the local SVG asset if iconUrl is empty.
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _NavIcon extends StatelessWidget {
@@ -153,15 +203,18 @@ class _NavIcon extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorFilter = ColorFilter.mode(color, BlendMode.srcIn);
+
     if (iconUrl.isNotEmpty) {
       return SvgPicture.network(
         iconUrl,
-        width:              size.w,
-        height:             size.w,
-        colorFilter:        colorFilter,
-        placeholderBuilder: (_) => _localSvg(colorFilter),
+        width:       size.w,
+        height:      size.w,
+        colorFilter: colorFilter,
+        // ✅ Shimmer instead of a blank box while the SVG downloads
+        placeholderBuilder: (_) => _IconShimmer(size: size),
       );
     }
+
     return _localSvg(colorFilter);
   }
 
@@ -325,7 +378,6 @@ class _NavbarMobile extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   const _BayanatzLogo(rawSize: true),
-                  // ✅ Only hamburger in mobile top bar — everything else in drawer
                   GestureDetector(
                     onTap: () => _openDrawer(context),
                     child: Container(
@@ -371,7 +423,7 @@ class _NavbarMobile extends StatelessWidget {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// Full-Screen Drawer — matches Figma exactly
+// Full-Screen Drawer
 //
 //  ┌──────────────────────────────────────────────────┐
 //  │  [Logo]                              [✕ close]   │  navbarBg
@@ -379,9 +431,8 @@ class _NavbarMobile extends StatelessWidget {
 //  │  [♀/♂]                          [AR]  [ENG]      │  navbarBg
 //  ├──────────────────────────────────────────────────┤
 //  │  🏠  Home                                        │
-//  │  ────────────────────────────────────────────    │
 //  │  👤  Overview                                    │
-//  │  ...                                             │
+//  │  ...  (no dividers between items)                │
 //  └──────────────────────────────────────────────────┘
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -407,7 +458,6 @@ class _FullScreenDrawer extends StatelessWidget {
         final navItems    = _getVisibleNavItems(
             langState.locale.languageCode, cmsState);
         final isRtl       = langState.isArabic;
-        final Color lightTint = _lightTint(primary);
 
         return Directionality(
           textDirection: isRtl ? TextDirection.rtl : TextDirection.ltr,
@@ -433,12 +483,12 @@ class _FullScreenDrawer extends StatelessWidget {
                             width: 36.w,
                             height: 36.w,
                             decoration: BoxDecoration(
-                              color: lightTint,
+                              color: Colors.transparent,
                               borderRadius: BorderRadius.circular(8.r),
                             ),
                             child: Icon(
-                              Icons.close,
-                              color: primary,
+                              Icons.menu,
+                              color: AppColors.secondaryText,
                               size: 20.sp,
                             ),
                           ),
@@ -463,81 +513,68 @@ class _FullScreenDrawer extends StatelessWidget {
 
                   SizedBox(height: 8.h),
 
-                  // ── Nav list ──────────────────────────────────────────
+                  // ── Nav list (no dividers) ────────────────────────────
                   Expanded(
                     child: ListView(
                       key: ValueKey(langState.locale.languageCode),
                       padding: EdgeInsets.symmetric(
                           horizontal: 16.w, vertical: 8.h),
-                      children: [
-                        ...navItems.asMap().entries.map((entry) {
-                          final index   = entry.key;
-                          final e       = entry.value;
-                          final bool isActive = currentRoute == e.route;
-
-                          return Column(
-                            children: [
-                              GestureDetector(
-                                onTap: () {
-                                  Navigator.of(context).pop();
-                                  if (onItemTap != null) {
-                                    onItemTap!(e.route);
-                                  } else {
-                                    _navigate(context, e.route);
-                                  }
-                                },
-                                child: Container(
-                                  key: ValueKey(
-                                      '${e.route}_${langState.locale.languageCode}'),
-                                  width: double.infinity,
-                                  padding: EdgeInsets.symmetric(
-                                      vertical: 16.h, horizontal: 16.w),
-                                  decoration: BoxDecoration(
+                      children: navItems.map((e) {
+                        final bool isActive = currentRoute == e.route;
+                        return GestureDetector(
+                          onTap: () {
+                            Navigator.of(context).pop();
+                            if (onItemTap != null) {
+                              onItemTap!(e.route);
+                            } else {
+                              _navigate(context, e.route);
+                            }
+                          },
+                          child: Container(
+                            key: ValueKey(
+                                '${e.route}_${langState.locale.languageCode}'),
+                            width: double.infinity,
+                            // ✅ small vertical gap between items instead of a Divider
+                            margin: EdgeInsets.only(bottom: 4.h),
+                            padding: EdgeInsets.symmetric(
+                                vertical: 16.h, horizontal: 16.w),
+                            decoration: BoxDecoration(
+                              color: isActive
+                                  ? primary
+                                  : Colors.transparent,
+                              borderRadius: BorderRadius.circular(10.r),
+                            ),
+                            child: Row(
+                              children: [
+                                _NavIcon(
+                                  iconUrl:  e.iconUrl,
+                                  svgAsset: e.svgAsset,
+                                  color: isActive
+                                      ? Colors.white
+                                      : AppColors.textButton,
+                                  size: 24,
+                                ),
+                                SizedBox(width: 14.w),
+                                Text(
+                                  e.label,
+                                  textDirection: isRtl
+                                      ? TextDirection.rtl
+                                      : TextDirection.ltr,
+                                  style: GoogleFonts.cairo(
+                                    fontSize: 16.sp,
+                                    fontWeight: isActive
+                                        ? AppFontWeights.semiBold
+                                        : AppFontWeights.regular,
                                     color: isActive
-                                        ? primary
-                                        : Colors.transparent,
-                                    borderRadius: BorderRadius.circular(10.r),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      _NavIcon(
-                                        iconUrl:  e.iconUrl,
-                                        svgAsset: e.svgAsset,
-                                        color: isActive
-                                            ? Colors.white
-                                            : AppColors.textButton,
-                                        size: 24,
-                                      ),
-                                      SizedBox(width: 14.w),
-                                      Text(
-                                        e.label,
-                                        textDirection: isRtl
-                                            ? TextDirection.rtl
-                                            : TextDirection.ltr,
-                                        style: GoogleFonts.cairo(
-                                          fontSize: 16.sp,
-                                          fontWeight: isActive
-                                              ? AppFontWeights.semiBold
-                                              : AppFontWeights.regular,
-                                          color: isActive
-                                              ? Colors.white
-                                              : AppColors.text,
-                                        ),
-                                      ),
-                                    ],
+                                        ? Colors.white
+                                        : AppColors.text,
                                   ),
                                 ),
-                              ),
-                              if (index < navItems.length - 1)
-                                Divider(
-                                  height: 1.h,
-                                  thickness: 1,
-                                  color: Colors.grey.withOpacity(0.2),
-                                ),
-                            ],
-                          );
-                        }).toList(),
-                      ],
+                              ],
+                            ),
+                          ),
+                        );
+                      }).toList(),
                     ),
                   ),
                 ],
@@ -758,8 +795,8 @@ class _GenderToggle extends StatelessWidget {
       builder: (context, genderState) {
         final bool  isMale      = genderState.isMale;
         final Color genderColor = isMale
-            ? const Color(0xFF1565C0)  // blue  — male
-            : const Color(0xFFBE6A7A); // pink  — female
+            ? const Color(0xFF1565C0)
+            : const Color(0xFFBE6A7A);
 
         return MouseRegion(
           cursor: SystemMouseCursors.click,

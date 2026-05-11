@@ -139,8 +139,15 @@ Widget _netImg({
       ? 'fill'
       : 'cover';
 
+  // ✅ Guard against double.infinity — crashes toInt() on web (dart2js)
+  String _safeSize(double? v) {
+    if (v == null) return 'null';
+    if (v.isInfinite || v.isNaN) return 'fill';
+    return v.toInt().toString();
+  }
+
   final viewId =
-      'svg-terms-user-${url.hashCode}-${width?.toInt()}-${height?.toInt()}';
+      'svg-terms-user-${url.hashCode}-${_safeSize(width)}-${_safeSize(height)}';
 
   ui_web.platformViewRegistry.registerViewFactory(viewId, (int id) {
     final img = html.ImageElement()
@@ -154,7 +161,10 @@ Widget _netImg({
   Widget inner = HtmlElementView(viewType: viewId);
 
   if (width != null || height != null) {
-    inner = SizedBox(width: width, height: height, child: inner);
+    // ✅ Never pass NaN to SizedBox; infinity is valid for SizedBox (fills parent)
+    final safeW = (width != null && !width.isNaN) ? width : double.infinity;
+    final safeH = (height != null && !height.isNaN) ? height : null;
+    inner = SizedBox(width: safeW, height: safeH, child: inner);
   }
 
   if (borderRadius != null) {
@@ -168,21 +178,6 @@ Widget _netImg({
 // Preload helpers
 // ══════════════════════════════════════════════════════════════════════════════
 
-Future<void> _preloadImages(List<String> urls) async {
-  final valid = urls
-      .where(
-        (u) =>
-    u.isNotEmpty &&
-        (u.startsWith('http://') || u.startsWith('https://')),
-  )
-      .toSet();
-  await Future.wait(
-    valid.map(
-          (url) =>
-          _xhrLoad(url, isSvg: _isSvgUrl(url)).catchError((_) => Uint8List(0)),
-    ),
-  );
-}
 
 // ══════════════════════════════════════════════════════════════════════════════
 // Reveal animation system
@@ -1118,22 +1113,24 @@ class _TermsBodyMobileState extends State<_TermsBodyMobile> {
     BiText(ar: 'سياسة الخصوصية', en: 'Privacy Policy'),
   ];
 
-  final List<String> _svgAssets = [
-    'assets/images/about_us/Terms and Conditions.svg',
-    'assets/images/about_us/Privacy Policy.svg',
-  ];
+
 
   @override
   Widget build(BuildContext context) {
     final TermsSection terms = widget.termsModel.termsAndConditions,
         privacy = widget.termsModel.privacyPolicy;
 
-    final String termsLastUpdate = widget.isRtl
-        ? 'آخر تحديث: ${terms.lastUpdate ?? ''}'
-        : 'Last Update: ${terms.lastUpdate ?? ''}';
-    final String privacyLastUpdate = widget.isRtl
-        ? 'آخر تحديث: ${privacy.lastUpdate ?? ''}'
-        : 'Last Update: ${privacy.lastUpdate ?? ''}';
+    final String termsLastUpdate = (terms.lastUpdate?.isNotEmpty == true)
+        ? (widget.isRtl
+        ? 'آخر تحديث: ${terms.lastUpdate}'
+        : 'Last Update: ${terms.lastUpdate}')
+        : '';
+
+    final String privacyLastUpdate = (privacy.lastUpdate?.isNotEmpty == true)
+        ? (widget.isRtl
+        ? 'آخر تحديث: ${privacy.lastUpdate}'
+        : 'Last Update: ${privacy.lastUpdate}')
+        : '';
 
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 16.w),
@@ -1151,7 +1148,10 @@ class _TermsBodyMobileState extends State<_TermsBodyMobile> {
                       ? _topTabs[i].ar
                       : _topTabs[i].en)
                       : _topTabs[i].en,
-                  svgAsset: _svgAssets[i],
+                  svgAsset: switch (i) {
+                    0 => terms.svgUrl,
+                    _ => privacy.svgUrl,
+                  },
                   isSelected: i == _selectedTopTab,
                   primaryColor: widget.primaryColor,
                   secondaryColor: widget.secondaryColor,
@@ -1267,8 +1267,9 @@ class _MobileTopTabItemState extends State<_MobileTopTabItem> {
                   borderRadius: BorderRadius.circular(8.r),
                 ),
                 child: Center(
-                  child: SvgPicture.asset(
-                    widget.svgAsset,
+                  child: widget.svgAsset.isNotEmpty
+                      ? _netImg(
+                    url: widget.svgAsset,
                     width: 26.sp,
                     height: 26.sp,
                     fit: BoxFit.contain,
@@ -1276,6 +1277,11 @@ class _MobileTopTabItemState extends State<_MobileTopTabItem> {
                       sel ? Colors.white : widget.primaryColor,
                       BlendMode.srcIn,
                     ),
+                  )
+                      : Icon(
+                    Icons.description_outlined,
+                    size: 26.sp,
+                    color: sel ? Colors.white : widget.primaryColor,
                   ),
                 ),
               ),
@@ -1376,12 +1382,20 @@ class _MobileDocPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // ✅ Hide the last update row entirely if the value is blank/null
+    final bool hasLastUpdate =
+        lastUpdate.isNotEmpty &&
+            !lastUpdate.endsWith(': ') &&
+            !lastUpdate.endsWith(': null');
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // ── SVG image on top (full width) ──
+        // ── SVG image on top (full width, respects RTL via Directionality) ──
         if (svgUrl.isNotEmpty) ...[
-          Center(
+          SizedBox(
+            width: double.infinity,
+            height: 200.h,
             child: _netImg(
               url: svgUrl,
               width: double.infinity,
@@ -1392,7 +1406,7 @@ class _MobileDocPanel extends StatelessWidget {
           SizedBox(height: 14.h),
         ],
 
-        // ── White card: logo + date header + description ──
+        // ── White card ──
         Container(
           decoration: BoxDecoration(
             color: _kSurface,
@@ -1403,37 +1417,41 @@ class _MobileDocPanel extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Logo (start) + Date (end) — respects Directionality
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (logoUrl.isNotEmpty)
-                      _netImg(
-                        url: logoUrl,
-                        width: 70.w,
-                        height: 34.h,
-                        fit: BoxFit.contain,
-                      )
-                    else
-                      const SizedBox.shrink(),
-                    if (lastUpdate.isNotEmpty)
-                      Flexible(
-                        child: Text(
-                          lastUpdate,
-                          textAlign: TextAlign.end,
-                          style: TextStyle(
-                            fontFamily: 'Cairo',
-                            fontSize: 10.sp,
-                            fontWeight: FontWeight.w400,
-                            color:
-                            AppColors.secondaryBlack.withOpacity(0.6),
+                // ✅ Only show logo/date row if at least one is present
+                if (logoUrl.isNotEmpty || hasLastUpdate) ...[
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      if (logoUrl.isNotEmpty)
+                        _netImg(
+                          url: logoUrl,
+                          width: 70.w,
+                          height: 34.h,
+                          fit: BoxFit.contain,
+                        )
+                      else
+                        const SizedBox.shrink(),
+
+                      // ✅ Only render date text when it has real content
+                      if (hasLastUpdate)
+                        Flexible(
+                          child: Text(
+                            lastUpdate,
+                            textAlign: TextAlign.end,
+                            style: TextStyle(
+                              fontFamily: 'Cairo',
+                              fontSize: 10.sp,
+                              fontWeight: FontWeight.w400,
+                              color: AppColors.secondaryBlack.withOpacity(0.6),
+                            ),
                           ),
                         ),
-                      ),
-                  ],
-                ),
-                SizedBox(height: 12.h),
+                    ],
+                  ),
+                  SizedBox(height: 12.h),
+                ],
+
                 Text(
                   description,
                   style: TextStyle(
@@ -1449,7 +1467,6 @@ class _MobileDocPanel extends StatelessWidget {
           ),
         ),
 
-        // ── Single language-aware download button ──
         _downloadBtn(context),
         SizedBox(height: 8.h),
       ],
