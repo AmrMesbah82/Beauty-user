@@ -22,22 +22,40 @@ class ContactRepoImpl implements ContactRepo {
     await doc.set(saved.toMap());
     print('🟢 [ContactRepoImpl] Saved to Firestore → ${doc.id}');
 
-    // 2) Send email notification
+    final submitterName = '${saved.firstName} ${saved.lastName}';
+    final submitterPhone = '${saved.countryCode}${saved.phoneNumber}';
+    final isArabic = saved.preferredLanguage == 'ar';
+
+    // 2) Notify the company
     try {
-      print('📧 [ContactRepoImpl] Calling SendGridRepository...');
+      print('📧 [ContactRepoImpl] Sending company notification...');
       await _sendGrid.sendContactNotification(
-        toEmail: 'a.mesbah@bayanatz.com',
-        submitterName: '${saved.firstName} ${saved.lastName}',
+        toEmail: 'm.handousa@bayanatz.com',
+        submitterName: submitterName,
         submitterEmail: saved.email,
-        submitterPhone: '${saved.countryCode}${saved.phoneNumber}',
+        submitterPhone: submitterPhone,
         subject: saved.subject,
         message: saved.message,
-        isArabic: saved.preferredLanguage == 'ar',
+        isArabic: isArabic,
       );
-      print('✅ [ContactRepoImpl] Email sent successfully');
+      print('✅ [ContactRepoImpl] Company email sent successfully');
     } catch (e) {
-      // Don't fail the whole submission if email fails
-      print('🔴 [ContactRepoImpl] Email failed (non-fatal): $e');
+      print('🔴 [ContactRepoImpl] Company email failed (non-fatal): $e');
+    }
+
+    // 3) Send confirmation to the submitter
+    try {
+      print('📧 [ContactRepoImpl] Sending confirmation to submitter...');
+      await _sendGrid.sendContactConfirmation(   // 👈 new method
+        toEmail: saved.email,
+        submitterName: submitterName,
+        subject: saved.subject,
+        message: saved.message,
+        isArabic: isArabic,
+      );
+      print('✅ [ContactRepoImpl] Confirmation email sent successfully');
+    } catch (e) {
+      print('🔴 [ContactRepoImpl] Confirmation email failed (non-fatal): $e');
     }
   }
 

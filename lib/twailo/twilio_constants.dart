@@ -1,5 +1,5 @@
 class TwilioConstants {
-  static String twilioAccountSid = 'AC4cee6b33d04e860e5021aaa6b10a14a8';
-  static String twilioAuthToken = '8078c401e65e14f03e8d45bacfba4893';
-  static String twilioVerifyServiceSid = 'VA9d8cdde0d89c8423acf06546aaeb656f';
+  static String twilioAccountSid = 'AC5c7b9035d12e92ae403e0dd730271199';
+  static String twilioAuthToken = 'f2207d1ed2a3e51803a4db80b5daef68';
+  static String twilioVerifyServiceSid = 'VA12e97bde58aedd9e9bc8f4ee01c0b41b';
 }

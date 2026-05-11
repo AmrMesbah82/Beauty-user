@@ -487,11 +487,11 @@ class _FooterMobile extends StatelessWidget {
             SizedBox(height: 10.h),
           ],
 
-          if (firstLabel != null)
-            _FooterLink(label: firstLabel, route: firstRoute, primary: primary),
-          SizedBox(height: 6.h),
+
           Text(
             _staticCopyright(isRtl),
+
+
             textAlign: TextAlign.center,
             style: GoogleFonts.cairo(
               fontSize: 10.sp,

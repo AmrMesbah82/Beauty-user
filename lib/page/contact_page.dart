@@ -2754,7 +2754,9 @@ class _SectionHeader extends StatelessWidget {
 
 class _FormLabel extends StatelessWidget {
   final String label;
-  const _FormLabel({required this.label});
+  final bool isRtl;
+  const _FormLabel({required this.label, this.isRtl = false});
+
   @override
   Widget build(BuildContext context) => Text(
     label,
@@ -2762,6 +2764,8 @@ class _FormLabel extends StatelessWidget {
       color: AppColors.text,
       fontSize: 14.sp,
     ),
+    textAlign: isRtl ? TextAlign.right : TextAlign.left,
+    textDirection: isRtl ? TextDirection.rtl : TextDirection.ltr,
   );
 }
 

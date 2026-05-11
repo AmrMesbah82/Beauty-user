@@ -504,12 +504,10 @@ class _ProductsTabBar extends StatelessWidget {
         spacing: 0, // No spacing between tabs since container handles it
         tabHorizontalPadding: 28.w,
         tabVerticalPadding: 10.h,
-        textStyle: TextStyle(
-          fontFamily: 'Cairo',
-          fontSize: 14.sp,
-          fontWeight: FontWeight.w500,
+        textStyle: StyleText.fontSize14Weight400.copyWith(
+
         ),
-        equalWidth: false, // Let tabs size based on content
+        equalWidth: true, // Let tabs size based on content
         containerPadding: EdgeInsets.all(4.r),
       ),
     );
@@ -747,19 +745,16 @@ class _OurProductsPageState extends State<OurProductsPage> {
                         child: AppPageShell(
                           currentRoute: '/about',
                           body: _RevealCoordinatorWidget(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                SizedBox(height: 24.h),
-
-                                _Reveal(
-                                  delay: const Duration(milliseconds: 60),
-                                  direction: _SlideDirection.fromTop,
-                                  duration: const Duration(milliseconds: 600),
-                                  child: Padding(
-                                    padding: EdgeInsets.symmetric(
-                                      horizontal: isMobile ? 35.w : 40.w,
-                                    ),
+                            child: Padding(
+                              padding:  EdgeInsets.symmetric(horizontal: 24.w),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  SizedBox(height: 24.h),
+                                  _Reveal(
+                                    delay: const Duration(milliseconds: 60),
+                                    direction: _SlideDirection.fromTop,
+                                    duration: const Duration(milliseconds: 600),
                                     child: _ProductsTabBar(
                                       selectedIndex: _selectedTabIndex,
                                       primaryColor: primaryColor,
@@ -767,25 +762,25 @@ class _OurProductsPageState extends State<OurProductsPage> {
                                       onTabSelected: _onTabSelected,
                                     ),
                                   ),
-                                ),
 
-                                SizedBox(height: 30.h),
+                                  SizedBox(height: 30.h),
 
-                                if (_selectedTabIndex == 0)
-                                  _ClientServiceTab(
-                                    key: const ValueKey('client_tab'),
-                                    primaryColor: primaryColor,
-                                    isAr: isAr,
-                                  )
-                                else
-                                  _OwnerServiceTab(
-                                    key: const ValueKey('owner_tab'),
-                                    primaryColor: primaryColor,
-                                    isAr: isAr,
-                                  ),
+                                  if (_selectedTabIndex == 0)
+                                    _ClientServiceTab(
+                                      key: const ValueKey('client_tab'),
+                                      primaryColor: primaryColor,
+                                      isAr: isAr,
+                                    )
+                                  else
+                                    _OwnerServiceTab(
+                                      key: const ValueKey('owner_tab'),
+                                      primaryColor: primaryColor,
+                                      isAr: isAr,
+                                    ),
 
-                                SizedBox(height: 20.h),
-                              ],
+                                  SizedBox(height: 20.h),
+                                ],
+                              ),
                             ),
                           ),
                         ),
@@ -1473,7 +1468,10 @@ class _DownloadNowBar extends StatelessWidget {
         color: AppColors.field,
         borderRadius: BorderRadius.circular(8.r),
       ),
-      child: Row(
+      child: Wrap(
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: 10.w,
+        runSpacing: 8.h,
         children: [
           Text(
             label,
@@ -1481,19 +1479,13 @@ class _DownloadNowBar extends StatelessWidget {
               color: primaryColor,
             ),
           ),
-          const Spacer(),
-          Wrap(
-            spacing: 10.w,
-            children: [
-              _MiniStoreBadge(
-                svgAsset: 'assets/beauty/home/google_play.svg',
-                onTap: googlePlayLink.isNotEmpty ? () {} : null,
-              ),
-              _MiniStoreBadge(
-                svgAsset: 'assets/beauty/home/app_store.svg',
-                onTap: appStoreLink.isNotEmpty ? () {} : null,
-              ),
-            ],
+          _MiniStoreBadge(
+            svgAsset: 'assets/beauty/home/google_play.svg',
+            onTap: googlePlayLink.isNotEmpty ? () {} : null,
+          ),
+          _MiniStoreBadge(
+            svgAsset: 'assets/beauty/home/app_store.svg',
+            onTap: appStoreLink.isNotEmpty ? () {} : null,
           ),
         ],
       ),
@@ -1514,8 +1506,12 @@ class _MiniStoreBadge extends StatelessWidget {
       borderRadius: BorderRadius.circular(6.r),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(6.r),
-        child: SvgPicture.asset(svgAsset, height: 36.h, fit: BoxFit.contain),
-      ),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final h = MediaQuery.of(context).size.width < 600 ? 30.h : 36.h;
+            return SvgPicture.asset(svgAsset, height: h, fit: BoxFit.contain);
+          },
+        ),      ),
     );
   }
 }
@@ -1582,6 +1578,8 @@ class _SideBySideLayout extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isArabic = Localizations.localeOf(context).languageCode == 'ar';
+
     final textWidget = Column(
       mainAxisAlignment: MainAxisAlignment.start,
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1636,7 +1634,7 @@ class _SideBySideLayout extends StatelessWidget {
                 ),
                 radius: 4.r,
                 color: primaryColor,
-                title: "Request Demo",
+                title: isArabic ? "آطلب للتجرمة" : "Request Demo",
                 function: () {
                   navigateTo(context, RequestDemoPage());
                 },

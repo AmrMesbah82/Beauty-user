@@ -738,18 +738,13 @@ class _HomePageViewState extends State<_HomePageView> with RouteAware {
 
                               // ═══ SECTION 3 — DOWNLOAD APP ═══
                               if (hasDownloadContent) ...[
-                                _Reveal(
-                                  delay: const Duration(milliseconds: 180),
-                                  direction: _SlideDirection.fromRight,
-                                  duration: const Duration(milliseconds: 650),
-                                  child: _DownloadAppSection(
-                                    primaryColor: primaryColor,
-                                    heading: downloadHeading,
-                                    body: downloadBody,
-                                    imageUrl: downloadImageUrl,
-                                    appStoreLink: appStoreLink,
-                                    googlePlayLink: googlePlayLink,
-                                  ),
+                                _DownloadAppSection(
+                                  primaryColor: primaryColor,
+                                  heading: downloadHeading,
+                                  body: downloadBody,
+                                  imageUrl: downloadImageUrl,
+                                  appStoreLink: appStoreLink,
+                                  googlePlayLink: googlePlayLink,
                                 ),
                               ],
 

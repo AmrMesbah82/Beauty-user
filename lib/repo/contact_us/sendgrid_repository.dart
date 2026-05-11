@@ -1,6 +1,12 @@
+// ******************* FILE INFO *******************
+// File Name: sendgrid_repository.dart
+// Created by: Amr Mesbah
+
 import 'package:cloud_functions/cloud_functions.dart';
 
 class SendGridRepository {
+  // ── Company notification (new inquiry arrived) ─────────────────────────────
+
   Future<void> sendContactNotification({
     required String toEmail,
     required String submitterName,
@@ -10,12 +16,8 @@ class SendGridRepository {
     required String message,
     required bool isArabic,
   }) async {
-    print('\n📧 [SENDGRID] Calling Firebase Cloud Function...');
-
-    print('\n📧 [SENDGRID] Calling Firebase Cloud Function...');
-
-    // ADD THIS:
-    print('📧 [SENDGRID] Payload being sent:');
+    print('\n📧 [SENDGRID] Sending company notification...');
+    print('📧 [SENDGRID] Payload:');
     print('   toEmail: "$toEmail"');
     print('   submitterName: "$submitterName"');
     print('   submitterEmail: "$submitterEmail"');
@@ -24,10 +26,9 @@ class SendGridRepository {
     print('   message: "$message"');
     print('   isArabic: $isArabic');
 
-    final callable = FirebaseFunctions.instance
-        .httpsCallable('sendContactEmail');
-
-    final result = await callable.call({
+    final result = await FirebaseFunctions.instance
+        .httpsCallable('sendContactEmail')
+        .call({
       'toEmail': toEmail,
       'submitterName': submitterName,
       'submitterEmail': submitterEmail,
@@ -37,6 +38,36 @@ class SendGridRepository {
       'isArabic': isArabic,
     });
 
-    print('✅ [SENDGRID] Cloud Function result: ${result.data}');
+    print('✅ [SENDGRID] Company notification result: ${result.data}');
+  }
+
+  // ── Submitter confirmation (thank you receipt) ─────────────────────────────
+
+  Future<void> sendContactConfirmation({
+    required String toEmail,
+    required String submitterName,
+    required String subject,
+    required String message,
+    required bool isArabic,
+  }) async {
+    print('\n📧 [SENDGRID] Sending submitter confirmation...');
+    print('📧 [SENDGRID] Payload:');
+    print('   toEmail: "$toEmail"');
+    print('   submitterName: "$submitterName"');
+    print('   subject: "$subject"');
+    print('   message: "$message"');
+    print('   isArabic: $isArabic');
+
+    final result = await FirebaseFunctions.instance
+        .httpsCallable('sendContactConfirmation')  // 👈 separate Cloud Function
+        .call({
+      'toEmail': toEmail,
+      'submitterName': submitterName,
+      'subject': subject,
+      'message': message,
+      'isArabic': isArabic,
+    });
+
+    print('✅ [SENDGRID] Confirmation result: ${result.data}');
   }
 }

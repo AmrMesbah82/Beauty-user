@@ -9,8 +9,11 @@
 //          Index 5: Contact Us (/contact-us)
 // UPDATED: _getVisibleNavItems now returns iconUrl from NavButtonModel
 // ADDED:   _NavIcon widget — shows Firebase iconUrl if set, falls back to local SVG asset
-// UPDATED: _FullScreenDrawer and _NavItem both use _NavIcon
-// ADDED:   Gender toggle connected to GenderCubit — switches data across all page cubits
+// UPDATED: _FullScreenDrawer matches Figma exactly:
+//            Row 1 → [Logo]  ─────────────────────────────  [✕ close]
+//            Row 2 → [♀/♂ GenderToggle]  ──────  [AR] [ENG]
+//            Then nav list
+// UPDATED: Mobile top bar shows ONLY [Logo] + [≡ hamburger]
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -42,7 +45,7 @@ class _BP {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// _navigate — uses GoRouter so the browser URL updates correctly
+// _navigate
 // ─────────────────────────────────────────────────────────────────────────────
 
 const Map<String, String> _firebaseToClean = {
@@ -67,9 +70,7 @@ const Map<String, String> _kSvgMap = {
   '/contact-us':   'assets/drawer/about_us_drawer.svg',
 };
 
-// Gender icons
-const String _kMaleIcon   = 'assets/male.svg';
-
+const String _kMaleIcon = 'assets/male.svg';
 
 Color _primaryFromState(HomeCmsState state) {
   final String hex = switch (state) {
@@ -100,7 +101,7 @@ Color _hexColor(String hex, Color fallback) {
 Color _lightTint(Color primary) => primary.withOpacity(0.12);
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Nav item record — now includes iconUrl from Firebase
+// Nav item record
 // ─────────────────────────────────────────────────────────────────────────────
 
 typedef _NavItemData = ({
@@ -112,15 +113,12 @@ String iconUrl,
 
 List<_NavItemData> _getVisibleNavItems(
     String languageCode, HomeCmsState cmsState) {
-
   final List<NavButtonModel> navButtons = switch (cmsState) {
     HomeCmsLoaded(:final data) => data.navButtons,
     HomeCmsSaved(:final data)  => data.navButtons,
     _                          => HomePageModel.defaultModel.navButtons,
   };
-
   final bool isAr = languageCode == 'ar';
-
   return navButtons
       .where((btn) => btn.status)
       .where((btn) => btn.route.isNotEmpty)
@@ -136,12 +134,12 @@ List<_NavItemData> _getVisibleNavItems(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// _NavIcon — shows Firebase iconUrl when available, falls back to local SVG
+// _NavIcon
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _NavIcon extends StatelessWidget {
-  final String iconUrl;   // Firebase URL — may be empty
-  final String svgAsset;  // local asset fallback
+  final String iconUrl;
+  final String svgAsset;
   final Color  color;
   final double size;
 
@@ -155,7 +153,6 @@ class _NavIcon extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorFilter = ColorFilter.mode(color, BlendMode.srcIn);
-
     if (iconUrl.isNotEmpty) {
       return SvgPicture.network(
         iconUrl,
@@ -168,24 +165,20 @@ class _NavIcon extends StatelessWidget {
     return _localSvg(colorFilter);
   }
 
-  Widget _localSvg(ColorFilter colorFilter) => SvgPicture.asset(
+  Widget _localSvg(ColorFilter cf) => SvgPicture.asset(
     svgAsset,
     width:       size.w,
     height:      size.w,
-    colorFilter: colorFilter,
+    colorFilter: cf,
   );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// AppNavbar — entry point
+// AppNavbar
 // ─────────────────────────────────────────────────────────────────────────────
 
 class AppNavbar extends StatelessWidget {
   final String currentRoute;
-
-  /// Optional callback invoked when a nav item is tapped.
-  /// Receives the route string of the tapped item (e.g. '/overview').
-  /// When null the navbar falls back to GoRouter.go().
   final void Function(String route)? onItemTap;
 
   const AppNavbar({
@@ -198,19 +191,10 @@ class AppNavbar extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocBuilder<HomeCmsCubit, HomeCmsState>(
       builder: (context, cmsState) {
-        final Color primary  = _primaryFromState(cmsState);
-        final Color navbarBg = _navbarBgFromState(cmsState);
-        final double w       = MediaQuery.of(context).size.width;
+        final Color  primary  = _primaryFromState(cmsState);
+        final Color  navbarBg = _navbarBgFromState(cmsState);
+        final double w        = MediaQuery.of(context).size.width;
 
-        if (w >= _BP.tablet) {
-          return _NavbarDesktop(
-            currentRoute: currentRoute,
-            primary:      primary,
-            navbarBg:     navbarBg,
-            cmsState:     cmsState,
-            onItemTap:    onItemTap,
-          );
-        }
         if (w >= _BP.mobile) {
           return _NavbarDesktop(
             currentRoute: currentRoute,
@@ -233,7 +217,7 @@ class AppNavbar extends StatelessWidget {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// DESKTOP  (≥ 1024px) — design size 1366×768
+// DESKTOP (≥ 600px) — gender toggle in top navbar
 // ═══════════════════════════════════════════════════════════════════════════════
 
 class _NavbarDesktop extends StatelessWidget {
@@ -255,9 +239,10 @@ class _NavbarDesktop extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocBuilder<LanguageCubit, LanguageState>(
       builder: (context, langState) {
-        final navItems = _getVisibleNavItems(langState.locale.languageCode, cmsState);
-        final isRtl    = langState.isArabic;
-        var isMobile = context.isPhone;
+        final navItems = _getVisibleNavItems(
+            langState.locale.languageCode, cmsState);
+        final isRtl = langState.isArabic;
+
         return Directionality(
           textDirection: isRtl ? TextDirection.rtl : TextDirection.ltr,
           child: Container(
@@ -274,7 +259,8 @@ class _NavbarDesktop extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: navItems
                           .map((e) => _NavItem(
-                        key:          ValueKey('${e.route}_${langState.locale.languageCode}'),
+                        key: ValueKey(
+                            '${e.route}_${langState.locale.languageCode}'),
                         label:        e.label,
                         route:        e.route,
                         svgAsset:     e.svgAsset,
@@ -304,7 +290,9 @@ class _NavbarDesktop extends StatelessWidget {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// MOBILE  (< 600px) — design size 375×812
+// MOBILE (< 600px)
+// Top bar: [Logo] ─────────────────────── [≡]
+// All controls (gender + language) are inside the drawer
 // ═══════════════════════════════════════════════════════════════════════════════
 
 class _NavbarMobile extends StatelessWidget {
@@ -327,7 +315,6 @@ class _NavbarMobile extends StatelessWidget {
     return BlocBuilder<LanguageCubit, LanguageState>(
       builder: (context, langState) {
         final isRtl = langState.isArabic;
-
         return Directionality(
           textDirection: isRtl ? TextDirection.rtl : TextDirection.ltr,
           child: Container(
@@ -338,25 +325,21 @@ class _NavbarMobile extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   const _BayanatzLogo(rawSize: true),
-                  Row(
-                    children: [
-                      _GenderToggle(primary: primary, isCompact: true),
-                      SizedBox(width: 8.w),
-                      _LanguageToggle(primary: primary, isCompact: true),
-                      SizedBox(width: 12.w),
-                      GestureDetector(
-                        onTap: () => _openDrawer(context),
-                        child: Container(
-                          width: 36.w,
-                          height: 36.w,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(8.r),
-                          ),
-                          child: Icon(Icons.menu_rounded,
-                              color: AppColors.textButton, size: 20.sp),
-                        ),
+                  // ✅ Only hamburger in mobile top bar — everything else in drawer
+                  GestureDetector(
+                    onTap: () => _openDrawer(context),
+                    child: Container(
+                      width: 36.w,
+                      height: 36.w,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(8.r),
                       ),
-                    ],
+                      child: Icon(
+                        Icons.menu_rounded,
+                        color: AppColors.textButton,
+                        size: 20.sp,
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -370,9 +353,9 @@ class _NavbarMobile extends StatelessWidget {
   void _openDrawer(BuildContext context) {
     Navigator.of(context, rootNavigator: true).push(
       PageRouteBuilder(
-        opaque:            false,
+        opaque:             false,
         barrierDismissible: true,
-        barrierColor:      Colors.transparent,
+        barrierColor:       Colors.transparent,
         pageBuilder: (ctx, anim, _) => _FullScreenDrawer(
           currentRoute: currentRoute,
           primary:      primary,
@@ -387,7 +370,20 @@ class _NavbarMobile extends StatelessWidget {
   }
 }
 
-// ─── Full-Screen Drawer (mobile) ──────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
+// Full-Screen Drawer — matches Figma exactly
+//
+//  ┌──────────────────────────────────────────────────┐
+//  │  [Logo]                              [✕ close]   │  navbarBg
+//  ├──────────────────────────────────────────────────┤
+//  │  [♀/♂]                          [AR]  [ENG]      │  navbarBg
+//  ├──────────────────────────────────────────────────┤
+//  │  🏠  Home                                        │
+//  │  ────────────────────────────────────────────    │
+//  │  👤  Overview                                    │
+//  │  ...                                             │
+//  └──────────────────────────────────────────────────┘
+// ═══════════════════════════════════════════════════════════════════════════════
 
 class _FullScreenDrawer extends StatelessWidget {
   final String                       currentRoute;
@@ -408,7 +404,8 @@ class _FullScreenDrawer extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocBuilder<LanguageCubit, LanguageState>(
       builder: (context, langState) {
-        final navItems    = _getVisibleNavItems(langState.locale.languageCode, cmsState);
+        final navItems    = _getVisibleNavItems(
+            langState.locale.languageCode, cmsState);
         final isRtl       = langState.isArabic;
         final Color lightTint = _lightTint(primary);
 
@@ -420,10 +417,12 @@ class _FullScreenDrawer extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // ── Top bar ───────────────────────────────────────────
+
+                  // ── Row 1: Logo  +  Close ──────────────────────────────
                   Container(
                     color: navbarBg,
-                    padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.h),
+                    padding: EdgeInsets.symmetric(
+                        horizontal: 16.w, vertical: 10.h),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -437,32 +436,50 @@ class _FullScreenDrawer extends StatelessWidget {
                               color: lightTint,
                               borderRadius: BorderRadius.circular(8.r),
                             ),
-                            child: Icon(Icons.close,
-                                color: primary, size: 20.sp),
+                            child: Icon(
+                              Icons.close,
+                              color: primary,
+                              size: 20.sp,
+                            ),
                           ),
                         ),
                       ],
                     ),
                   ),
 
-                  SizedBox(height: 10.h),
+                  // ── Row 2: GenderToggle (left)  +  LanguageToggle (right) ──
+                  Container(
+                    color: navbarBg,
+                    padding: EdgeInsets.symmetric(
+                        horizontal: 16.w, vertical: 10.h),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        _GenderToggle(primary: primary, isCompact: true),
+                        _LanguageToggle(primary: primary, isCompact: true),
+                      ],
+                    ),
+                  ),
+
+                  SizedBox(height: 8.h),
 
                   // ── Nav list ──────────────────────────────────────────
                   Expanded(
                     child: ListView(
                       key: ValueKey(langState.locale.languageCode),
-                      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+                      padding: EdgeInsets.symmetric(
+                          horizontal: 16.w, vertical: 8.h),
                       children: [
                         ...navItems.asMap().entries.map((entry) {
-                          final index    = entry.key;
-                          final e        = entry.value;
+                          final index   = entry.key;
+                          final e       = entry.value;
                           final bool isActive = currentRoute == e.route;
 
                           return Column(
                             children: [
                               GestureDetector(
                                 onTap: () {
-                                  Navigator.of(context).pop(); // close drawer
+                                  Navigator.of(context).pop();
                                   if (onItemTap != null) {
                                     onItemTap!(e.route);
                                   } else {
@@ -470,17 +487,19 @@ class _FullScreenDrawer extends StatelessWidget {
                                   }
                                 },
                                 child: Container(
-                                  key: ValueKey('${e.route}_${langState.locale.languageCode}'),
+                                  key: ValueKey(
+                                      '${e.route}_${langState.locale.languageCode}'),
                                   width: double.infinity,
                                   padding: EdgeInsets.symmetric(
                                       vertical: 16.h, horizontal: 16.w),
                                   decoration: BoxDecoration(
-                                    color: isActive ? primary : Colors.transparent,
+                                    color: isActive
+                                        ? primary
+                                        : Colors.transparent,
                                     borderRadius: BorderRadius.circular(10.r),
                                   ),
                                   child: Row(
                                     children: [
-                                      // ✅ Firebase icon with local SVG fallback
                                       _NavIcon(
                                         iconUrl:  e.iconUrl,
                                         svgAsset: e.svgAsset,
@@ -531,7 +550,9 @@ class _FullScreenDrawer extends StatelessWidget {
   }
 }
 
-// ─── Shared Widgets ───────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// _BayanatzLogo
+// ─────────────────────────────────────────────────────────────────────────────
 
 class _BayanatzLogo extends StatelessWidget {
   final bool rawSize;
@@ -549,7 +570,6 @@ class _BayanatzLogo extends StatelessWidget {
           _                          => '',
         };
 
-        // ── Still loading (no data yet) → show empty box, no fallback logo
         if (state is HomeCmsLoading || state is HomeCmsInitial) {
           return GestureDetector(
             onTap: () => _navigate(context, '/'),
@@ -560,7 +580,6 @@ class _BayanatzLogo extends StatelessWidget {
           );
         }
 
-        // ── Data loaded but no logoUrl → show local asset
         if (logoUrl.isEmpty) {
           return GestureDetector(
             onTap: () => _navigate(context, '/'),
@@ -579,7 +598,6 @@ class _BayanatzLogo extends StatelessWidget {
           );
         }
 
-        // ── Data loaded + logoUrl exists → show network logo, NO local fallback flash
         return GestureDetector(
           onTap: () {
             print('🖱️ Logo tapped - navigating to home');
@@ -591,9 +609,9 @@ class _BayanatzLogo extends StatelessWidget {
               borderRadius: BorderRadius.circular(8.r),
               child: SvgPicture.network(
                 logoUrl,
-                width: sz,
-                height: sz,
-                fit: BoxFit.fill,
+                width:              sz,
+                height:             sz,
+                fit:                BoxFit.fill,
                 placeholderBuilder: (_) => SizedBox(width: sz, height: sz),
               ),
             ),
@@ -604,7 +622,9 @@ class _BayanatzLogo extends StatelessWidget {
   }
 }
 
-// ─── Nav Item ─────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// _NavItem
+// ─────────────────────────────────────────────────────────────────────────────
 
 class _NavItem extends StatefulWidget {
   final String label;
@@ -639,7 +659,8 @@ class _NavItemState extends State<_NavItem> {
   @override
   Widget build(BuildContext context) {
     final Color hoverBg = _lightTint(widget.primary);
-    var isMobile = context.isPhone;
+    final isMobile      = context.isPhone;
+
     return BlocBuilder<LanguageCubit, LanguageState>(
       builder: (context, langState) {
         return MouseRegion(
@@ -648,7 +669,7 @@ class _NavItemState extends State<_NavItem> {
           cursor:  SystemMouseCursors.click,
           child: GestureDetector(
             onTap: () {
-              print('🖱️ Nav item tapped: ${widget.label} -> route: ${widget.route}');
+              print('🖱️ Nav item tapped: ${widget.label} -> ${widget.route}');
               if (widget.onItemTap != null) {
                 widget.onItemTap!(widget.route);
               } else {
@@ -665,21 +686,19 @@ class _NavItemState extends State<_NavItem> {
                     : (_hovered ? hoverBg : Colors.transparent),
                 borderRadius: BorderRadius.circular(8.r),
               ),
-              child:    isMobile ?  Row(
+              child: isMobile
+                  ? Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  if (widget.iconUrl.isNotEmpty || true)
-                    ...[
-                      _NavIcon(
-                        iconUrl:  widget.iconUrl,
-                        svgAsset: widget.svgAsset,
-                        color: _isActive
-                            ? Colors.white
-                            : (_hovered ? widget.primary : AppColors.textButton),
-                        size: 18,
-                      ),
-                      SizedBox(width: 6.w),
-                    ],
+                  _NavIcon(
+                    iconUrl:  widget.iconUrl,
+                    svgAsset: widget.svgAsset,
+                    color: _isActive
+                        ? Colors.white
+                        : (_hovered ? widget.primary : AppColors.textButton),
+                    size: 18,
+                  ),
+                  SizedBox(width: 6.w),
                   Text(
                     widget.label,
                     textDirection: langState.isArabic
@@ -696,7 +715,8 @@ class _NavItemState extends State<_NavItem> {
                     ),
                   ),
                 ],
-              ) :   Text(
+              )
+                  : Text(
                 widget.label,
                 textDirection: langState.isArabic
                     ? TextDirection.rtl
@@ -719,11 +739,13 @@ class _NavItemState extends State<_NavItem> {
   }
 }
 
-// ─── Gender Toggle — connected to GenderCubit ─────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// _GenderToggle
+// ─────────────────────────────────────────────────────────────────────────────
 
 class _GenderToggle extends StatelessWidget {
   final Color primary;
-  final bool isCompact;
+  final bool  isCompact;
 
   const _GenderToggle({
     required this.primary,
@@ -734,10 +756,10 @@ class _GenderToggle extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocBuilder<GenderCubit, GenderState>(
       builder: (context, genderState) {
-        final bool isMale = genderState.isMale;
+        final bool  isMale      = genderState.isMale;
         final Color genderColor = isMale
-            ? const Color(0xFF1565C0)   // blue for male
-            : const Color(0xFFBE6A7A);  // pink for female
+            ? const Color(0xFF1565C0)  // blue  — male
+            : const Color(0xFFBE6A7A); // pink  — female
 
         return MouseRegion(
           cursor: SystemMouseCursors.click,
@@ -750,9 +772,9 @@ class _GenderToggle extends StatelessWidget {
               ),
               padding: EdgeInsets.all(isCompact ? 8.w : 10.w),
               child: SvgPicture.asset(
-                isMale ? _kMaleIcon : _kMaleIcon,
-                width:  isCompact ? 18.w : 20.w,
-                height: isCompact ? 18.w : 20.w,
+                _kMaleIcon,
+                width:       isCompact ? 18.w : 20.w,
+                height:      isCompact ? 18.w : 20.w,
                 colorFilter: ColorFilter.mode(genderColor, BlendMode.srcIn),
               ),
             ),
@@ -763,11 +785,13 @@ class _GenderToggle extends StatelessWidget {
   }
 }
 
-// ─── Language Toggle ──────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// _LanguageToggle
+// ─────────────────────────────────────────────────────────────────────────────
 
 class _LanguageToggle extends StatelessWidget {
   final Color primary;
-  final bool isCompact;
+  final bool  isCompact;
 
   const _LanguageToggle({
     required this.primary,
@@ -786,21 +810,22 @@ class _LanguageToggle extends StatelessWidget {
           child: Padding(
             padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 4.h),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               mainAxisSize: MainAxisSize.min,
               children: [
                 _LangBtn(
-                  label:  'AR',
-                  active: state.isArabic,
+                  label:   'AR',
+                  active:  state.isArabic,
                   primary: primary,
-                  onTap: () => context.read<LanguageCubit>().setLanguage('ar'),
+                  onTap:   () =>
+                      context.read<LanguageCubit>().setLanguage('ar'),
                 ),
                 SizedBox(width: 4.w),
                 _LangBtn(
-                  label:  'EN',
-                  active: state.isEnglish,
+                  label:   'EN',
+                  active:  state.isEnglish,
                   primary: primary,
-                  onTap: () => context.read<LanguageCubit>().setLanguage('en'),
+                  onTap:   () =>
+                      context.read<LanguageCubit>().setLanguage('en'),
                 ),
               ],
             ),

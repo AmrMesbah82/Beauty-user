@@ -2,6 +2,9 @@
 // File Name: terms_of_service_page.dart
 // Contains: Tab 0 (Terms and Conditions) and Tab 1 (Privacy Policy)
 // UPDATED: Added initialTab parameter support for direct navigation
+// FIXED:   Download buttons now show language-aware label and URL
+//          AR mode → Arabic PDF button only
+//          EN mode → English PDF button only
 
 // ignore_for_file: avoid_web_libraries_in_flutter
 import 'dart:html' as html;
@@ -38,7 +41,6 @@ class _BP {
   static const double tablet = 1024;
 }
 
-/// Hover tint matching navbar: primary.withOpacity(0.12)
 Color _hoverTint(Color primary) => primary.withOpacity(0.12);
 
 double _desktopContentWidth(BuildContext context) {
@@ -137,7 +139,8 @@ Widget _netImg({
       ? 'fill'
       : 'cover';
 
-  final viewId = 'svg-about-user-${url.hashCode}-${width?.toInt()}-${height?.toInt()}';
+  final viewId =
+      'svg-terms-user-${url.hashCode}-${width?.toInt()}-${height?.toInt()}';
 
   ui_web.platformViewRegistry.registerViewFactory(viewId, (int id) {
     final img = html.ImageElement()
@@ -369,7 +372,7 @@ class _SvgPulseLoaderState extends State<_SvgPulseLoader>
       );
     }
 
-    final viewId = 'svg-about-pulse-${_resolvedUrl.hashCode}';
+    final viewId = 'svg-terms-pulse-${_resolvedUrl.hashCode}';
 
     ui_web.platformViewRegistry.registerViewFactory(viewId, (int id) {
       final img = html.ImageElement()
@@ -411,18 +414,19 @@ class TermsOfServicePage extends StatelessWidget {
       providers: [
         BlocProvider(create: (_) => TermsCubit()..load()),
       ],
-      child: _TermsOfServicePageView(initialTab: initialTab),  // ✅ PASS TO VIEW
+      child: _TermsOfServicePageView(initialTab: initialTab),
     );
   }
 }
 
 class _TermsOfServicePageView extends StatefulWidget {
-  final String initialTab;  // ✅ ADDED
+  final String initialTab;
 
   const _TermsOfServicePageView({this.initialTab = ''});
 
   @override
-  State<_TermsOfServicePageView> createState() => _TermsOfServicePageViewState();
+  State<_TermsOfServicePageView> createState() =>
+      _TermsOfServicePageViewState();
 }
 
 class _TermsOfServicePageViewState extends State<_TermsOfServicePageView> {
@@ -434,7 +438,6 @@ class _TermsOfServicePageViewState extends State<_TermsOfServicePageView> {
   void initState() {
     super.initState();
 
-    // ✅ PRIORITY 1: Check constructor parameter first (for Navigator.push)
     if (widget.initialTab.isNotEmpty) {
       final resolved = _resolveTabParam(widget.initialTab);
       _initialTopTab = resolved.topTab;
@@ -445,7 +448,7 @@ class _TermsOfServicePageViewState extends State<_TermsOfServicePageView> {
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<HomeCmsCubit>().load();
-      _readTabParam();  // Priority 2: Check GoRouter query param
+      _readTabParam();
     });
   }
 
@@ -457,7 +460,6 @@ class _TermsOfServicePageViewState extends State<_TermsOfServicePageView> {
 
   void _readTabParam() {
     if (!mounted) return;
-    // Skip GoRouter lookup if already resolved from constructor
     if (_initialTopTab != null) return;
 
     try {
@@ -472,9 +474,7 @@ class _TermsOfServicePageViewState extends State<_TermsOfServicePageView> {
           });
         }
       }
-    } catch (_) {
-      // GoRouterState not available - fine, constructor param already handled
-    }
+    } catch (_) {}
   }
 
   Future<void> _preloadAndReveal({required String logoUrl}) async {
@@ -483,6 +483,7 @@ class _TermsOfServicePageViewState extends State<_TermsOfServicePageView> {
     await Future.delayed(const Duration(milliseconds: 200));
     if (mounted) setState(() => _showLoader = false);
   }
+
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<HomeCmsCubit, HomeCmsState>(
@@ -582,31 +583,35 @@ class _TermsOfServicePageViewState extends State<_TermsOfServicePageView> {
                 final bool isRtl = langState.isArabic;
                 final double w = MediaQuery.of(context).size.width;
                 return Directionality(
-                  textDirection: isRtl
-                      ? TextDirection.rtl
-                      : TextDirection.ltr,
+                  textDirection:
+                  isRtl ? TextDirection.rtl : TextDirection.ltr,
                   child: Scaffold(
                     backgroundColor: backgroundColor,
                     body: _RevealCoordinatorWidget(
                       child: Column(
                         children: [
-                          // ✅ Navbar — always visible at top
+                          // ✅ Navbar
                           Material(
                             color: backgroundColor,
                             elevation: 0,
                             child: AppNavbar(currentRoute: '/terms'),
                           ),
 
-                          // ✅ Middle content — scrolls, takes all remaining space
+                          // ✅ Scrollable content
                           Expanded(
                             child: SingleChildScrollView(
                               child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                crossAxisAlignment:
+                                CrossAxisAlignment.stretch,
                                 children: [
                                   _Reveal(
-                                    delay: const Duration(milliseconds: 80),
-                                    direction: _SlideDirection.fromLeft,
-                                    duration: const Duration(milliseconds: 650),
+                                    delay:
+                                    const Duration(milliseconds: 80),
+                                    direction: isRtl
+                                        ? _SlideDirection.fromRight
+                                        : _SlideDirection.fromLeft,
+                                    duration: const Duration(
+                                        milliseconds: 650),
                                     child: w < _BP.mobile
                                         ? _TermsHeaderMobile(
                                       isRtl: isRtl,
@@ -624,8 +629,11 @@ class _TermsOfServicePageViewState extends State<_TermsOfServicePageView> {
                                     primaryColor: primaryColor,
                                     secondaryColor: secondaryColor,
                                     logoUrl: logoUrl,
-                                    initialTopTab: _tabParamApplied ? null : _initialTopTab,
-                                    onTabApplied: () => _tabParamApplied = true,
+                                    initialTopTab: _tabParamApplied
+                                        ? null
+                                        : _initialTopTab,
+                                    onTabApplied: () =>
+                                    _tabParamApplied = true,
                                   )
                                       : _TermsBodyDesktop(
                                     termsModel: termsModel!,
@@ -633,15 +641,18 @@ class _TermsOfServicePageViewState extends State<_TermsOfServicePageView> {
                                     primaryColor: primaryColor,
                                     secondaryColor: secondaryColor,
                                     logoUrl: logoUrl,
-                                    initialTopTab: _tabParamApplied ? null : _initialTopTab,
-                                    onTabApplied: () => _tabParamApplied = true,
+                                    initialTopTab: _tabParamApplied
+                                        ? null
+                                        : _initialTopTab,
+                                    onTabApplied: () =>
+                                    _tabParamApplied = true,
                                   ),
                                 ],
                               ),
                             ),
                           ),
 
-                          // ✅ Footer — always visible at bottom
+                          // ✅ Footer
                           _Reveal(
                             delay: const Duration(milliseconds: 100),
                             direction: _SlideDirection.fromBottom,
@@ -677,12 +688,14 @@ class _TermsHeaderDesktop extends StatelessWidget {
   Widget build(BuildContext context) {
     final double screenW = MediaQuery.of(context).size.width,
         contentW = _desktopContentWidth(context);
-    final double hPad = ((screenW - contentW) / 2).clamp(36.0, double.infinity);
+    final double hPad =
+    ((screenW - contentW) / 2).clamp(36.0, double.infinity);
     final String title = isRtl ? 'الشروط والخدمة' : 'Terms of Service';
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: hPad, vertical: 36.h),
       child: Text(
         title,
+        textAlign: isRtl ? TextAlign.right : TextAlign.left,
         style: StyleText.fontSize45Weight600.copyWith(
           fontSize: 48.sp,
           fontWeight: FontWeight.w700,
@@ -707,6 +720,7 @@ class _TermsHeaderMobile extends StatelessWidget {
       padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 20.h),
       child: Text(
         title,
+        textAlign: isRtl ? TextAlign.right : TextAlign.left,
         style: StyleText.fontSize45Weight600.copyWith(
           fontSize: 28.sp,
           fontWeight: FontWeight.w900,
@@ -718,7 +732,7 @@ class _TermsHeaderMobile extends StatelessWidget {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// DESKTOP BODY — Tab 0 (Terms and Conditions) and Tab 1 (Privacy Policy)
+// DESKTOP BODY
 // ══════════════════════════════════════════════════════════════════════════════
 
 class _TermsBodyDesktop extends StatefulWidget {
@@ -753,8 +767,23 @@ class _TermsBodyDesktopState extends State<_TermsBodyDesktop> {
     );
   }
 
-  Widget _downloadButton(String label, String url) {
+  // ── Language-aware download button ──
+  // AR mode  → shows Arabic PDF + Arabic label
+  // EN mode  → shows English PDF + English label
+  Widget _downloadButton({
+    required bool isRtl,
+    required String attachEnUrl,
+    required String attachArUrl,
+    required String sectionLabelEn, // e.g. "Terms and Conditions"
+    required String sectionLabelAr, // e.g. "الشروط والأحكام"
+  }) {
+    final String url = isRtl ? attachArUrl : attachEnUrl;
     if (url.isEmpty) return const SizedBox.shrink();
+
+    final String label = isRtl
+        ? 'تحميل PDF — $sectionLabelAr'
+        : 'Download PDF — $sectionLabelEn';
+
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       child: GestureDetector(
@@ -763,7 +792,7 @@ class _TermsBodyDesktopState extends State<_TermsBodyDesktop> {
           mainAxisSize: MainAxisSize.min,
           children: [
             CustomSvg(
-              assetPath: "assets/download.svg",
+              assetPath: 'assets/download.svg',
               width: 12.h,
               height: 16.h,
               fit: BoxFit.scaleDown,
@@ -772,10 +801,7 @@ class _TermsBodyDesktopState extends State<_TermsBodyDesktop> {
             SizedBox(width: 6.w),
             Text(
               label,
-              style: TextStyle(
-                fontFamily: 'Cairo',
-                fontSize: 12.sp,
-                fontWeight: FontWeight.w500,
+              style: StyleText.fontSize12Weight400.copyWith(
                 color: widget.primaryColor,
               ),
             ),
@@ -791,16 +817,13 @@ class _TermsBodyDesktopState extends State<_TermsBodyDesktop> {
     required String svgUrl,
     required String attachEnUrl,
     required String attachArUrl,
-    required String labelEn,
-    required String labelAr,
+    required String sectionLabelEn,
+    required String sectionLabelAr,
     required String lastUpdate,
   }) {
-    final String logoUrl = widget.logoUrl;
-
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // ── Left: full column (white card + download buttons) ──
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -815,14 +838,14 @@ class _TermsBodyDesktopState extends State<_TermsBodyDesktop> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Logo (left) + Date (right)
+                    // Logo (start) + Date (end) — respects Directionality
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        if (logoUrl.isNotEmpty)
+                        if (widget.logoUrl.isNotEmpty)
                           _netImg(
-                            url: logoUrl,
+                            url: widget.logoUrl,
                             width: 80.w,
                             height: 40.h,
                             fit: BoxFit.contain,
@@ -836,7 +859,8 @@ class _TermsBodyDesktopState extends State<_TermsBodyDesktop> {
                               fontFamily: 'Cairo',
                               fontSize: 11.sp,
                               fontWeight: FontWeight.w400,
-                              color: AppColors.secondaryBlack.withOpacity(0.6),
+                              color: AppColors.secondaryBlack
+                                  .withOpacity(0.6),
                             ),
                           ),
                       ],
@@ -853,14 +877,14 @@ class _TermsBodyDesktopState extends State<_TermsBodyDesktop> {
                 ),
               ),
 
-              // ── Download buttons below the card ──
+              // ── Single language-aware download button ──
               SizedBox(height: 12.h),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  _downloadButton(labelEn, attachEnUrl),
-                  _downloadButton(labelAr, attachArUrl),
-                ],
+              _downloadButton(
+                isRtl: widget.isRtl,
+                attachEnUrl: attachEnUrl,
+                attachArUrl: attachArUrl,
+                sectionLabelEn: sectionLabelEn,
+                sectionLabelAr: sectionLabelAr,
               ),
             ],
           ),
@@ -869,7 +893,6 @@ class _TermsBodyDesktopState extends State<_TermsBodyDesktop> {
     );
   }
 
-  // Only 2 top tabs: Terms and Conditions & Privacy Policy
   final List<BiText> _topTabs = [
     BiText(ar: 'الشروط والأحكام', en: 'Terms and Conditions'),
     BiText(ar: 'سياسة الخصوصية', en: 'Privacy Policy'),
@@ -879,7 +902,8 @@ class _TermsBodyDesktopState extends State<_TermsBodyDesktop> {
   Widget build(BuildContext context) {
     final double screenW = MediaQuery.of(context).size.width,
         contentW = _desktopContentWidth(context);
-    final double hPad = ((screenW - contentW) / 2).clamp(36.0, double.infinity);
+    final double hPad =
+    ((screenW - contentW) / 2).clamp(36.0, double.infinity);
     final TermsSection terms = widget.termsModel.termsAndConditions,
         privacy = widget.termsModel.privacyPolicy;
 
@@ -901,7 +925,8 @@ class _TermsBodyDesktopState extends State<_TermsBodyDesktop> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: List.generate(_topTabs.length, (i) {
-                final bool isRtl = context.read<LanguageCubit>().state.isArabic;
+                final bool isRtl =
+                    context.read<LanguageCubit>().state.isArabic;
                 final String label = isRtl
                     ? (_topTabs[i].ar.isNotEmpty
                     ? _topTabs[i].ar
@@ -936,8 +961,8 @@ class _TermsBodyDesktopState extends State<_TermsBodyDesktop> {
                 svgUrl: terms.svgUrl,
                 attachEnUrl: terms.attachEnUrl,
                 attachArUrl: terms.attachArUrl,
-                labelEn: 'Download PDF of Terms and Conditions (ENG)',
-                labelAr: 'Download PDF of Terms and Conditions (ARB)',
+                sectionLabelEn: 'Terms and Conditions',
+                sectionLabelAr: 'الشروط والأحكام',
                 lastUpdate: termsLastUpdate,
               ),
             ),
@@ -953,8 +978,8 @@ class _TermsBodyDesktopState extends State<_TermsBodyDesktop> {
                 svgUrl: privacy.svgUrl,
                 attachEnUrl: privacy.attachEnUrl,
                 attachArUrl: privacy.attachArUrl,
-                labelEn: 'Download PDF of Privacy Policy (ENG)',
-                labelAr: 'Download PDF of Privacy Policy (ARB)',
+                sectionLabelEn: 'Privacy Policy',
+                sectionLabelAr: 'سياسة الخصوصية',
                 lastUpdate: privacyLastUpdate,
               ),
             ),
@@ -967,7 +992,7 @@ class _TermsBodyDesktopState extends State<_TermsBodyDesktop> {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// Desktop Top Tab Item (with hover)
+// Desktop Top Tab Item
 // ══════════════════════════════════════════════════════════════════════════════
 
 class _DesktopTopTabItem extends StatefulWidget {
@@ -996,7 +1021,6 @@ class _DesktopTopTabItemState extends State<_DesktopTopTabItem> {
   @override
   Widget build(BuildContext context) {
     final bool sel = widget.isSelected;
-    final Color hoverBg = _hoverTint(widget.primaryColor);
 
     return MouseRegion(
       cursor: SystemMouseCursors.click,
@@ -1007,10 +1031,7 @@ class _DesktopTopTabItemState extends State<_DesktopTopTabItem> {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           margin: EdgeInsets.only(right: 8.w),
-          padding: EdgeInsets.symmetric(
-            horizontal: 12.w,
-            vertical: 8.h,
-          ),
+          padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(8.r),
           ),
@@ -1022,9 +1043,7 @@ class _DesktopTopTabItemState extends State<_DesktopTopTabItem> {
                 width: 48.r,
                 height: 48.r,
                 decoration: BoxDecoration(
-                  color: sel
-                      ? widget.primaryColor
-                      : widget.secondaryColor,
+                  color: sel ? widget.primaryColor : widget.secondaryColor,
                   borderRadius: BorderRadius.circular(8.r),
                 ),
                 child: Center(
@@ -1043,15 +1062,11 @@ class _DesktopTopTabItemState extends State<_DesktopTopTabItem> {
               SizedBox(width: 10.w),
               Text(
                 widget.label,
-                style: TextStyle(
-                  fontSize: 13.sp,
+                style: StyleText.fontSize14Weight400.copyWith(
                   fontWeight: sel ? FontWeight.w700 : FontWeight.w500,
                   color: sel
                       ? widget.primaryColor
-                      : (_hovered
-                      ? AppColors.secondaryBlack
-                      : AppColors.secondaryBlack
-                  ),
+                      : AppColors.secondaryBlack,
                 ),
               ),
             ],
@@ -1063,7 +1078,7 @@ class _DesktopTopTabItemState extends State<_DesktopTopTabItem> {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// MOBILE BODY — Tab 0 (Terms and Conditions) and Tab 1 (Privacy Policy)
+// MOBILE BODY
 // ══════════════════════════════════════════════════════════════════════════════
 
 class _TermsBodyMobile extends StatefulWidget {
@@ -1088,6 +1103,7 @@ class _TermsBodyMobile extends StatefulWidget {
 
 class _TermsBodyMobileState extends State<_TermsBodyMobile> {
   late int _selectedTopTab;
+
   @override
   void initState() {
     super.initState();
@@ -1097,11 +1113,11 @@ class _TermsBodyMobileState extends State<_TermsBodyMobile> {
     );
   }
 
-  // Only 2 top tabs: Terms and Conditions & Privacy Policy
   final List<BiText> _topTabs = [
     BiText(ar: 'الشروط والأحكام', en: 'Terms and Conditions'),
     BiText(ar: 'سياسة الخصوصية', en: 'Privacy Policy'),
   ];
+
   final List<String> _svgAssets = [
     'assets/images/about_us/Terms and Conditions.svg',
     'assets/images/about_us/Privacy Policy.svg',
@@ -1157,11 +1173,12 @@ class _TermsBodyMobileState extends State<_TermsBodyMobile> {
                 svgUrl: terms.svgUrl,
                 attachEnUrl: terms.attachEnUrl,
                 attachArUrl: terms.attachArUrl,
-                labelEn: 'Download PDF of Terms and Conditions (ENG)',
-                labelAr: 'Download PDF of Terms and Conditions (ARB)',
+                sectionLabelEn: 'Terms and Conditions',
+                sectionLabelAr: 'الشروط والأحكام',
                 primaryColor: widget.primaryColor,
                 logoUrl: widget.logoUrl,
                 lastUpdate: termsLastUpdate,
+                isRtl: widget.isRtl,
               ),
             ),
 
@@ -1176,11 +1193,12 @@ class _TermsBodyMobileState extends State<_TermsBodyMobile> {
                 svgUrl: privacy.svgUrl,
                 attachEnUrl: privacy.attachEnUrl,
                 attachArUrl: privacy.attachArUrl,
-                labelEn: 'Download PDF of Privacy Policy (ENG)',
-                labelAr: 'Download PDF of Privacy Policy (ARB)',
+                sectionLabelEn: 'Privacy Policy',
+                sectionLabelAr: 'سياسة الخصوصية',
                 primaryColor: widget.primaryColor,
                 logoUrl: widget.logoUrl,
                 lastUpdate: privacyLastUpdate,
+                isRtl: widget.isRtl,
               ),
             ),
 
@@ -1192,7 +1210,7 @@ class _TermsBodyMobileState extends State<_TermsBodyMobile> {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// Mobile Top Tab Item (with hover)
+// Mobile Top Tab Item
 // ══════════════════════════════════════════════════════════════════════════════
 
 class _MobileTopTabItem extends StatefulWidget {
@@ -1230,21 +1248,12 @@ class _MobileTopTabItemState extends State<_MobileTopTabItem> {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           margin: EdgeInsets.only(right: 8.w),
-          padding: EdgeInsets.symmetric(
-            horizontal: 10.w,
-            vertical: 8.h,
-          ),
+          padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 8.h),
           decoration: BoxDecoration(
             color: sel
                 ? Colors.transparent
                 : (_hovered ? hoverBg : Colors.transparent),
             borderRadius: BorderRadius.circular(8.r),
-            // border: Border(
-            //   bottom: BorderSide(
-            //     color: sel ? widget.primaryColor : Colors.transparent,
-            //     width: 2,
-            //   ),
-            // ),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -1254,9 +1263,7 @@ class _MobileTopTabItemState extends State<_MobileTopTabItem> {
                 width: 48.sp,
                 height: 48.sp,
                 decoration: BoxDecoration(
-                  color: sel
-                      ? widget.primaryColor
-                      : widget.secondaryColor,
+                  color: sel ? widget.primaryColor : widget.secondaryColor,
                   borderRadius: BorderRadius.circular(8.r),
                 ),
                 child: Center(
@@ -1293,28 +1300,45 @@ class _MobileTopTabItemState extends State<_MobileTopTabItem> {
 
 // ══════════════════════════════════════════════════════════════════════════════
 // Mobile Doc Panel
+// FIXED: isRtl parameter added — download button now shows correct language
+//        AR → Arabic PDF + Arabic label
+//        EN → English PDF + English label
 // ══════════════════════════════════════════════════════════════════════════════
 
 class _MobileDocPanel extends StatelessWidget {
-  final String description, svgUrl, attachEnUrl, attachArUrl, labelEn, labelAr;
+  final String description,
+      svgUrl,
+      attachEnUrl,
+      attachArUrl,
+      sectionLabelEn,
+      sectionLabelAr;
   final Color primaryColor;
   final String logoUrl;
   final String lastUpdate;
+  final bool isRtl; // ← ADDED
 
   const _MobileDocPanel({
     required this.description,
     required this.svgUrl,
     required this.attachEnUrl,
     required this.attachArUrl,
-    required this.labelEn,
-    required this.labelAr,
+    required this.sectionLabelEn,
+    required this.sectionLabelAr,
     required this.primaryColor,
     required this.logoUrl,
     required this.lastUpdate,
+    required this.isRtl,
   });
 
-  Widget _downloadBtn(String label, String url) {
+  Widget _downloadBtn(BuildContext context) {
+    // Pick the correct URL and label based on current language
+    final String url = isRtl ? attachArUrl : attachEnUrl;
     if (url.isEmpty) return const SizedBox.shrink();
+
+    final String label = isRtl
+        ? 'تحميل PDF — $sectionLabelAr'
+        : 'Download PDF — $sectionLabelEn';
+
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       child: GestureDetector(
@@ -1325,7 +1349,7 @@ class _MobileDocPanel extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               CustomSvg(
-                assetPath: "assets/download.svg",
+                assetPath: 'assets/download.svg',
                 width: 18.w,
                 height: 18.h,
                 fit: BoxFit.scaleDown,
@@ -1368,7 +1392,7 @@ class _MobileDocPanel extends StatelessWidget {
           SizedBox(height: 14.h),
         ],
 
-        // ── White card: logo+date header + text only ──
+        // ── White card: logo + date header + description ──
         Container(
           decoration: BoxDecoration(
             color: _kSurface,
@@ -1379,9 +1403,9 @@ class _MobileDocPanel extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Logo (left) + Date (right)
+                // Logo (start) + Date (end) — respects Directionality
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     if (logoUrl.isNotEmpty)
@@ -1394,7 +1418,6 @@ class _MobileDocPanel extends StatelessWidget {
                     else
                       const SizedBox.shrink(),
                     if (lastUpdate.isNotEmpty)
-                      Spacer(),
                       Flexible(
                         child: Text(
                           lastUpdate,
@@ -1403,14 +1426,14 @@ class _MobileDocPanel extends StatelessWidget {
                             fontFamily: 'Cairo',
                             fontSize: 10.sp,
                             fontWeight: FontWeight.w400,
-                            color: AppColors.secondaryBlack.withOpacity(0.6),
+                            color:
+                            AppColors.secondaryBlack.withOpacity(0.6),
                           ),
                         ),
                       ),
                   ],
                 ),
                 SizedBox(height: 12.h),
-                // Description text only
                 Text(
                   description,
                   style: TextStyle(
@@ -1426,9 +1449,8 @@ class _MobileDocPanel extends StatelessWidget {
           ),
         ),
 
-        // ── Download buttons ──
-        _downloadBtn(labelEn, attachEnUrl),
-        _downloadBtn(labelAr, attachArUrl),
+        // ── Single language-aware download button ──
+        _downloadBtn(context),
         SizedBox(height: 8.h),
       ],
     );

@@ -8,6 +8,8 @@
 //          Navigator.push() from the footer deep-links to the correct tab
 //          without relying on GoRouterState (which is unavailable outside the
 //          GoRouter widget tree).
+// FIXED:   Hero Row now explicitly builds LTR vs RTL child order so SVG and
+//          title always align correctly regardless of language direction.
 
 // ignore_for_file: avoid_web_libraries_in_flutter
 import 'dart:html' as html;
@@ -145,7 +147,8 @@ Widget _netImg({
       ? 'fill'
       : 'cover';
 
-  final viewId = 'svg-about-user-${url.hashCode}-${width?.toInt()}-${height?.toInt()}';
+  final viewId =
+      'svg-about-user-${url.hashCode}-${width?.toInt()}-${height?.toInt()}';
 
   ui_web.platformViewRegistry.registerViewFactory(viewId, (int id) {
     final img = html.ImageElement()
@@ -406,12 +409,9 @@ class _SvgPulseLoaderState extends State<_SvgPulseLoader>
 
 // ══════════════════════════════════════════════════════════════════════════════
 // PAGE ROOT
-// FIXED: accepts initialTab so Navigator.push() from footer deep-links work
 // ══════════════════════════════════════════════════════════════════════════════
 
 class AboutPage extends StatelessWidget {
-  /// Pass a tab key (e.g. 'mission', 'vision', 'values', 'our-strategy')
-  /// when navigating via Navigator.push so GoRouterState is not needed.
   final String initialTab;
 
   const AboutPage({super.key, this.initialTab = ''});
@@ -430,7 +430,6 @@ class AboutPage extends StatelessWidget {
 
 // ══════════════════════════════════════════════════════════════════════════════
 // _AboutPageView
-// FIXED: reads tab from constructor first; falls back to GoRouter if available
 // ══════════════════════════════════════════════════════════════════════════════
 
 class _AboutPageView extends StatefulWidget {
@@ -450,7 +449,6 @@ class _AboutPageViewState extends State<_AboutPageView> {
   void initState() {
     super.initState();
 
-    // ── Priority 1: constructor param (Navigator.push path, no GoRouter) ──
     if (widget.initialTab.isNotEmpty) {
       final resolved = _resolveTabParam(widget.initialTab);
       _initialTopTab = resolved.topTab;
@@ -463,7 +461,7 @@ class _AboutPageViewState extends State<_AboutPageView> {
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<HomeCmsCubit>().load();
-      _readTabParam(); // Priority 2: GoRouter query param (fallback)
+      _readTabParam();
     });
   }
 
@@ -475,7 +473,6 @@ class _AboutPageViewState extends State<_AboutPageView> {
 
   void _readTabParam() {
     if (!mounted) return;
-    // Skip GoRouter lookup if already resolved from constructor param
     if (_initialTopTab != null) return;
     try {
       final uri = GoRouterState.of(context).uri;
@@ -491,9 +488,7 @@ class _AboutPageViewState extends State<_AboutPageView> {
           });
         }
       }
-    } catch (_) {
-      // GoRouterState not available — fine, constructor param already handled it
-    }
+    } catch (_) {}
   }
 
   Future<void> _preloadAndReveal({
@@ -605,6 +600,43 @@ class _AboutPageViewState extends State<_AboutPageView> {
               builder: (context, langState) {
                 final bool isRtl = langState.isArabic;
                 final double w = MediaQuery.of(context).size.width;
+
+                // ── Hero section children — explicit LTR vs RTL order ──
+                // We do NOT rely on Directionality to flip the Row because
+                // the SVG and title have different sizes; explicit ordering
+                // gives predictable alignment in both languages.
+                final Widget svgHero = model!.svgUrl.isNotEmpty && w >= _BP.mobile
+                    ? _Reveal(
+                  delay: const Duration(milliseconds: 60),
+                  direction: isRtl
+                      ? _SlideDirection.fromLeft
+                      : _SlideDirection.fromRight,
+                  duration: const Duration(milliseconds: 600),
+                  child: _HeadingsSvgDesktop(svgUrl: model.svgUrl),
+                )
+                    : const SizedBox.shrink();
+
+                final Widget titleHero = Expanded(
+                  child: _Reveal(
+                    delay: const Duration(milliseconds: 80),
+                    direction: isRtl
+                        ? _SlideDirection.fromRight
+                        : _SlideDirection.fromLeft,
+                    duration: const Duration(milliseconds: 650),
+                    child: w < _BP.mobile
+                        ? _AboutHeaderMobile(
+                      model: model,
+                      isRtl: isRtl,
+                      primaryColor: primaryColor,
+                    )
+                        : _AboutHeaderDesktop(
+                      model: model,
+                      isRtl: isRtl,
+                      primaryColor: primaryColor,
+                    ),
+                  ),
+                );
+
                 return Directionality(
                   textDirection:
                   isRtl ? TextDirection.rtl : TextDirection.ltr,
@@ -613,59 +645,38 @@ class _AboutPageViewState extends State<_AboutPageView> {
                     body: _RevealCoordinatorWidget(
                       child: Column(
                         children: [
-                          // ✅ Navbar — always visible at top
+                          // ✅ Navbar
                           Material(
                             color: backgroundColor,
                             elevation: 0,
                             child: AppNavbar(currentRoute: '/contact'),
                           ),
 
-                          // ✅ Middle content — scrolls, takes all remaining space
+                          // ✅ Scrollable content
                           Expanded(
                             child: SingleChildScrollView(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.stretch,
                                 children: [
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    crossAxisAlignment: CrossAxisAlignment.center,
-                                    children: [
-                                      if (w >= _BP.mobile) SizedBox(width: 220.w),
-
-                                      // Left: illustration SVG — desktop only, hidden on mobile
-                                      if (model!.svgUrl.isNotEmpty && w >= _BP.mobile)
-                                        _Reveal(
-                                          delay: const Duration(milliseconds: 60),
-                                          direction: _SlideDirection.fromTop,
-                                          duration: const Duration(milliseconds: 600),
-                                          child: _HeadingsSvgDesktop(svgUrl: model.svgUrl),
-                                        ),
-
-                                      // Right: page title
-                                      Expanded(
-                                        child: _Reveal(
-                                          delay: const Duration(
-                                              milliseconds: 80),
-                                          direction:
-                                          _SlideDirection.fromLeft,
-                                          duration: const Duration(
-                                              milliseconds: 650),
-                                          child: w < _BP.mobile
-                                              ? _AboutHeaderMobile(
-                                            model: model,
-                                            isRtl: isRtl,
-                                            primaryColor: primaryColor,
-                                          )
-                                              : _AboutHeaderDesktop(
-                                            model: model,
-                                            isRtl: isRtl,
-                                            primaryColor: primaryColor,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
+                                  // ── Hero Row: SVG + Title ──
+                                  // LTR (EN): [SVG]  [Title →→→→→→]
+                                  // RTL (AR): [←←←← Title]  [SVG]
+                                  Padding(
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: MediaQuery.of(context).size.width*.17,
+                                    ),
+                                    child: Row(
+                                      mainAxisAlignment:
+                                      MainAxisAlignment.start,
+                                      crossAxisAlignment:
+                                      CrossAxisAlignment.center,
+                                      children: isRtl
+                                          ? [titleHero, svgHero]
+                                          : [svgHero, titleHero],
+                                    ),
                                   ),
 
+                                  // ── Body ──
                                   w < _BP.mobile
                                       ? _AboutBodyMobile(
                                     model: model,
@@ -700,7 +711,7 @@ class _AboutPageViewState extends State<_AboutPageView> {
                             ),
                           ),
 
-                          // ✅ Footer — always visible at bottom
+                          // ✅ Footer
                           _Reveal(
                             delay: const Duration(milliseconds: 100),
                             direction: _SlideDirection.fromBottom,
@@ -723,6 +734,7 @@ class _AboutPageViewState extends State<_AboutPageView> {
 
 // ══════════════════════════════════════════════════════════════════════════════
 // Headings SVG Hero Banner — Desktop
+// Fixed: wrapped in SizedBox to prevent overflow / uncontrolled growth
 // ══════════════════════════════════════════════════════════════════════════════
 
 class _HeadingsSvgDesktop extends StatelessWidget {
@@ -731,11 +743,15 @@ class _HeadingsSvgDesktop extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _netImg(
-      url: svgUrl,
-      width: 340.w,
-      height: 280.h,
-      fit: BoxFit.contain,
+    return SizedBox(
+      width: 260.w,
+      height: 220.h,
+      child: _netImg(
+        url: svgUrl,
+        width: 260.w,
+        height: 220.h,
+        fit: BoxFit.contain,
+      ),
     );
   }
 }
@@ -750,11 +766,15 @@ class _HeadingsSvgMobile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _netImg(
-      url: svgUrl,
+    return SizedBox(
       width: 160.w,
       height: 160.h,
-      fit: BoxFit.contain,
+      child: _netImg(
+        url: svgUrl,
+        width: 160.w,
+        height: 160.h,
+        fit: BoxFit.contain,
+      ),
     );
   }
 }
@@ -781,6 +801,7 @@ class _AboutHeaderDesktop extends StatelessWidget {
       padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 36.h),
       child: Text(
         title,
+        textAlign: isRtl ? TextAlign.right : TextAlign.left,
         style: StyleText.fontSize45Weight600.copyWith(
           fontSize: 48.sp,
           fontWeight: FontWeight.w700,
@@ -809,6 +830,7 @@ class _AboutHeaderMobile extends StatelessWidget {
       padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 20.h),
       child: Text(
         title,
+        textAlign: isRtl ? TextAlign.right : TextAlign.left,
         style: StyleText.fontSize45Weight600.copyWith(
           fontSize: 28.sp,
           fontWeight: FontWeight.w900,
@@ -904,7 +926,8 @@ class _AboutBodyDesktopState extends State<_AboutBodyDesktop> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: List.generate(_topTabs.length, (i) {
-                final bool isRtl = context.read<LanguageCubit>().state.isArabic;
+                final bool isRtl =
+                    context.read<LanguageCubit>().state.isArabic;
                 final String label = isRtl
                     ? (_topTabs[i].ar.isNotEmpty
                     ? _topTabs[i].ar
@@ -913,8 +936,10 @@ class _AboutBodyDesktopState extends State<_AboutBodyDesktop> {
                 final String svgAsset = switch (i) {
                   0 => widget.model.navigationLabel.iconUrl,
                   _ => switch (context.read<StrategyCubit>().state) {
-                    StrategyLoaded(:final data) => data.navigationLabel.iconUrl,
-                    StrategySaved(:final data) => data.navigationLabel.iconUrl,
+                    StrategyLoaded(:final data) =>
+                    data.navigationLabel.iconUrl,
+                    StrategySaved(:final data) =>
+                    data.navigationLabel.iconUrl,
                     _ => '',
                   },
                 };
@@ -966,7 +991,8 @@ class _AboutBodyDesktopState extends State<_AboutBodyDesktop> {
                                 isSelected: _selectedTab == i,
                                 primaryColor: widget.primaryColor,
                                 secondaryColor: widget.secondaryColor,
-                                onTap: () => setState(() => _selectedTab = i),
+                                onTap: () =>
+                                    setState(() => _selectedTab = i),
                               ),
                             ),
                           );
@@ -1089,7 +1115,9 @@ class _AboutBodyDesktopState extends State<_AboutBodyDesktop> {
                               ),
                               child: Center(
                                 child: Text(
-                                  isRtl ? 'لا يوجد محتوى بعد' : 'No content yet',
+                                  isRtl
+                                      ? 'لا يوجد محتوى بعد'
+                                      : 'No content yet',
                                   style: TextStyle(
                                     fontFamily: 'Cairo',
                                     fontSize: 14.sp,
@@ -1249,7 +1277,6 @@ class _DesktopTabItemState extends State<_DesktopTabItem> {
                 ? _kSurface
                 : (_hovered ? hoverBg : _kSurface),
             borderRadius: BorderRadius.circular(12.r),
-            // ✅ ADD THIS BORDER WHEN SELECTED
             border: widget.isSelected
                 ? Border.all(
               color: widget.primaryColor,
@@ -1325,7 +1352,6 @@ class _DesktopTabItemState extends State<_DesktopTabItem> {
     );
   }
 }
-
 
 // ══════════════════════════════════════════════════════════════════════════════
 // Desktop Right Panel
@@ -1443,7 +1469,11 @@ class _ValueDetailPanel extends StatelessWidget {
                   BlendMode.srcIn,
                 ),
               )
-                  : Icon(Icons.star_outline, size: 20.sp, color: primaryColor),
+                  : Icon(
+                Icons.star_outline,
+                size: 20.sp,
+                color: primaryColor,
+              ),
             ),
           ),
           SizedBox(height: 10.h),
@@ -1749,7 +1779,8 @@ class _AboutBodyMobileState extends State<_AboutBodyMobile> {
   @override
   Widget build(BuildContext context) {
     final String aboutIconUrl = widget.model.navigationLabel.iconUrl;
-    final String strategyIconUrl = switch (context.read<StrategyCubit>().state) {
+    final String strategyIconUrl =
+    switch (context.read<StrategyCubit>().state) {
       StrategyLoaded(:final data) => data.navigationLabel.iconUrl,
       StrategySaved(:final data) => data.navigationLabel.iconUrl,
       _ => '',
@@ -1891,7 +1922,9 @@ class _AboutBodyMobileState extends State<_AboutBodyMobile> {
                               ),
                               child: Center(
                                 child: Text(
-                                  isRtl ? 'لا يوجد محتوى بعد' : 'No content yet',
+                                  isRtl
+                                      ? 'لا يوجد محتوى بعد'
+                                      : 'No content yet',
                                   style: TextStyle(
                                     fontFamily: 'Cairo',
                                     fontSize: 12.sp,
@@ -1944,7 +1977,7 @@ class _MobileTopTabItemState extends State<_MobileTopTabItem> {
   Widget build(BuildContext context) {
     final bool sel = widget.isSelected;
     final Color hoverBg = _hoverTint(widget.primaryColor);
-    var isMoile = context.isPhone;
+    final bool isMobile = context.isPhone;
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hovered = true),
@@ -1960,7 +1993,9 @@ class _MobileTopTabItemState extends State<_MobileTopTabItem> {
                 ? Colors.transparent
                 : (_hovered ? hoverBg : Colors.transparent),
             borderRadius: BorderRadius.circular(8.r),
-            border: isMoile ? null :  Border(
+            border: isMobile
+                ? null
+                : Border(
               bottom: BorderSide(
                 color: sel ? widget.primaryColor : Colors.transparent,
                 width: 2,

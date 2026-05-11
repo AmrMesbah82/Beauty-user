@@ -513,98 +513,101 @@ class _OverviewPageViewState extends State<_OverviewPageView> {
                     textDirection: isAr ? TextDirection.rtl : TextDirection.ltr,
                     child: AppPageShell(
                       currentRoute: '/services',
-                      body: _RevealCoordinatorWidget(
-                        child: SingleChildScrollView(
-                          controller: _scrollController,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              SizedBox(height: 40.h),
+                      body: Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 24.w),
+                        child: _RevealCoordinatorWidget(
+                          child: SingleChildScrollView(
+                            controller: _scrollController,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                SizedBox(height: 40.h),
 
-                              // ═══ SECTION 1 — OVERVIEW ═══
-                              _Reveal(
-                                delay: const Duration(milliseconds: 60),
-                                direction: _SlideDirection.fromBottom,
-                                duration: const Duration(milliseconds: 650),
-                                child: _OverviewSection(
-                                  primaryColor: primaryColor,
-                                  title: isAr
-                                      ? model.headings.title.ar
-                                      : model.headings.title.en,
-                                  body: isAr
-                                      ? model.headings.description.ar
-                                      : model.headings.description.en,
-                                  onReadMore: () {},
+                                // ═══ SECTION 1 — OVERVIEW ═══
+                                _Reveal(
+                                  delay: const Duration(milliseconds: 60),
+                                  direction: _SlideDirection.fromBottom,
+                                  duration: const Duration(milliseconds: 650),
+                                  child: _OverviewSection(
+                                    primaryColor: primaryColor,
+                                    title: isAr
+                                        ? model.headings.title.ar
+                                        : model.headings.title.en,
+                                    body: isAr
+                                        ? model.headings.description.ar
+                                        : model.headings.description.en,
+                                    onReadMore: () {},
+                                  ),
                                 ),
-                              ),
 
-                              SizedBox(height: 50.h),
+                                SizedBox(height: 50.h),
 
-                              // ═══ SECTION 2 — TOP SERVICES ═══
-                              _Reveal(
-                                delay: const Duration(milliseconds: 120),
-                                direction: _SlideDirection.fromLeft,
-                                duration: const Duration(milliseconds: 650),
-                                child: _TopServicesSection(
-                                  primaryColor: primaryColor,
-                                  title: isAr
-                                      ? model.services.title.ar
-                                      : model.services.title.en,
-                                  items: model.services.items,
-                                  isAr: isAr,
+                                // ═══ SECTION 2 — TOP SERVICES ═══
+                                _Reveal(
+                                  delay: const Duration(milliseconds: 120),
+                                  direction: _SlideDirection.fromLeft,
+                                  duration: const Duration(milliseconds: 650),
+                                  child: _TopServicesSection(
+                                    primaryColor: primaryColor,
+                                    title: isAr
+                                        ? model.services.title.ar
+                                        : model.services.title.en,
+                                    items: model.services.items,
+                                    isAr: isAr,
+                                  ),
                                 ),
-                              ),
 
-                              SizedBox(height: 50.h),
+                                SizedBox(height: 50.h),
 
-                              // ═══ SECTION 3 — GALLERY ═══
-                              _Reveal(
-                                delay: const Duration(milliseconds: 180),
-                                direction: _SlideDirection.fromRight,
-                                duration: const Duration(milliseconds: 650),
-                                child: _GallerySection(
-                                  primaryColor: primaryColor,
-                                  title: isAr ? 'المعرض' : 'Gallery',
-                                  images: model.gallery.images,
+                                // ═══ SECTION 3 — GALLERY ═══
+                                _Reveal(
+                                  delay: const Duration(milliseconds: 180),
+                                  direction: _SlideDirection.fromRight,
+                                  duration: const Duration(milliseconds: 650),
+                                  child: _GallerySection(
+                                    primaryColor: primaryColor,
+                                    title: isAr ? 'المعرض' : 'Gallery',
+                                    images: model.gallery.images,
+                                  ),
                                 ),
-                              ),
 
-                              SizedBox(height: 50.h),
+                                SizedBox(height: 50.h),
 
-                              // ═══ SECTION 4 — CLIENT TESTIMONIALS ═══
-                              _Reveal(
-                                delay: const Duration(milliseconds: 240),
-                                direction: _SlideDirection.fromBottom,
-                                duration: const Duration(milliseconds: 650),
-                                child: _TestimonialsSection(
-                                  primaryColor: primaryColor,
-                                  sectionTitle: isAr
-                                      ? model.clientComments.title.ar
-                                      : model.clientComments.title.en,
-                                  comments: model.clientComments.comments,
-                                  isAr: isAr,
+                                // ═══ SECTION 4 — CLIENT TESTIMONIALS ═══
+                                _Reveal(
+                                  delay: const Duration(milliseconds: 240),
+                                  direction: _SlideDirection.fromBottom,
+                                  duration: const Duration(milliseconds: 650),
+                                  child: _TestimonialsSection(
+                                    primaryColor: primaryColor,
+                                    sectionTitle: isAr
+                                        ? model.clientComments.title.ar
+                                        : model.clientComments.title.en,
+                                    comments: model.clientComments.comments,
+                                    isAr: isAr,
+                                  ),
                                 ),
-                              ),
 
-                              SizedBox(height: 50.h),
+                                SizedBox(height: 50.h),
 
-                              // ═══ SECTION 5 — DOWNLOAD NOW ═══
-                              _Reveal(
-                                delay: const Duration(milliseconds: 100),
-                                direction: _SlideDirection.fromBottom,
-                                duration: const Duration(milliseconds: 650),
-                                child: _DownloadNowSection(
-                                  primaryColor: primaryColor,
-                                  title: isAr
-                                      ? model.download.title.ar
-                                      : model.download.title.en,
-                                  appStoreLink: model.download.appStoreLink,
-                                  googlePlayLink: model.download.googlePlayLink,
+                                // ═══ SECTION 5 — DOWNLOAD NOW ═══
+                                _Reveal(
+                                  delay: const Duration(milliseconds: 100),
+                                  direction: _SlideDirection.fromBottom,
+                                  duration: const Duration(milliseconds: 650),
+                                  child: _DownloadNowSection(
+                                    primaryColor: primaryColor,
+                                    title: isAr
+                                        ? model.download.title.ar
+                                        : model.download.title.en,
+                                    appStoreLink: model.download.appStoreLink,
+                                    googlePlayLink: model.download.googlePlayLink,
+                                  ),
                                 ),
-                              ),
 
-                              SizedBox(height: 40.h),
-                            ],
+                                SizedBox(height: 40.h),
+                              ],
+                            ),
                           ),
                         ),
                       ),
