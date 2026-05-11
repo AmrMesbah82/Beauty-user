@@ -487,6 +487,7 @@ class _FooterMobile extends StatelessWidget {
             SizedBox(height: 10.h),
           ],
 
+          // sd
 
           Text(
             _staticCopyright(isRtl),
