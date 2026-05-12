@@ -7,7 +7,7 @@
 ///              Each tab renders: Header hero → Download bar → Mockups.
 ///              ALL data is DYNAMIC from Firebase. No static data in this file.
 /// Created by: Amr Mesbah
-/// Last Update: 12/04/2026
+/// Last Update: 11/05/2026
 /// UPDATED: Applied identical XHR-cache loader + _SvgPulseLoader + _RevealCoordinator
 ///          + _Reveal animation system from about_page.dart — UI/sections unchanged.
 /// UPDATED: Deep-link support — reads ?tab=client-service or ?tab=owner-service
@@ -19,6 +19,11 @@
 ///          unselected tab = plain text. Matches the circled design in the screenshot.
 /// UPDATED: Each mockup section (image + text) is wrapped in a white container with
 ///          padding 16 and border radius 8, no border.
+/// UPDATED: _DownloadNowBar now uses Spacer for desktop/tablet, Wrap for mobile.
+/// UPDATED: "Request Demo" button moved from FAB to inline in the column,
+///          placed just above the footer gap on Owner Services tab only.
+/// UPDATED: Primary color is now gender-aware — uses malePrimaryColor when
+///          GenderCubit reports male, primaryColor when female.
 
 // ignore_for_file: avoid_web_libraries_in_flutter
 import 'dart:html' as html;
@@ -119,6 +124,18 @@ Color _parseHex(String hex, {required Color fallback}) {
   return fallback;
 }
 
+// ── Gender-aware primary color helper ────────────────────────────────────────
+/// Returns malePrimaryColor when [isMale] is true, otherwise primaryColor.
+Color _resolvePrimaryColor({
+  required String primaryColorHex,
+  required String malePrimaryColorHex,
+  required bool isMale,
+}) {
+  final hex = isMale ? malePrimaryColorHex : primaryColorHex;
+  return _parseHex(hex,
+      fallback: isMale ? const Color(0xFF1565C0) : AppColors.primary);
+}
+
 // ══════════════════════════════════════════════════════════════════════════════
 // XHR Image Cache
 // ══════════════════════════════════════════════════════════════════════════════
@@ -178,7 +195,8 @@ Widget _netImg({
       ? 'scale-down'
       : 'cover';
 
-  final viewId = 'svg-products-${url.hashCode}-${width?.toInt()}-${height?.toInt()}';
+  final viewId =
+      'svg-products-${url.hashCode}-${width?.toInt()}-${height?.toInt()}';
 
   ui_web.platformViewRegistry.registerViewFactory(viewId, (int id) {
     final img = html.ImageElement()
@@ -210,13 +228,13 @@ Future<void> _preloadImages(List<String> urls) async {
   final valid = urls
       .where(
         (u) =>
-            u.isNotEmpty &&
-            (u.startsWith('http://') || u.startsWith('https://')),
-      )
+    u.isNotEmpty &&
+        (u.startsWith('http://') || u.startsWith('https://')),
+  )
       .toSet();
   await Future.wait(
     valid.map(
-      (url) =>
+          (url) =>
           _xhrLoad(url, isSvg: _isSvgUrl(url)).catchError((_) => Uint8List(0)),
     ),
   );
@@ -486,29 +504,33 @@ class _ProductsTabBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = MediaQuery.of(context).size.width < 600;
     final labels = isAr
         ? ['خدمة العميل', 'خدمة المالك']
         : ['Client Service', 'Owner Service'];
 
     return Center(
-      child: CustomSegmentedTabs(
-        tabs: labels,
-        selectedIndex: selectedIndex,
-        onTabSelected: onTabSelected,
-        selectedColor: primaryColor,
-        unselectedColor: Colors.transparent,
-        selectedTextColor: Colors.white,
-        unselectedTextColor: Colors.black.withOpacity(.6),
-        containerColor: Colors.white,
-        borderRadius: 8, // Circular corners
-        spacing: 0, // No spacing between tabs since container handles it
-        tabHorizontalPadding: 28.w,
-        tabVerticalPadding: 10.h,
-        textStyle: StyleText.fontSize14Weight400.copyWith(
-
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: isMobile ? double.infinity : 400.w,
         ),
-        equalWidth: true, // Let tabs size based on content
-        containerPadding: EdgeInsets.all(4.r),
+        child: CustomSegmentedTabs(
+          tabs: labels,
+          selectedIndex: selectedIndex,
+          onTabSelected: onTabSelected,
+          selectedColor: primaryColor,
+          unselectedColor: Colors.transparent,
+          selectedTextColor: Colors.white,
+          unselectedTextColor: Colors.black.withOpacity(.6),
+          containerColor: Colors.white,
+          borderRadius: 8,
+          spacing: 0,
+          tabHorizontalPadding: 28.w,
+          tabVerticalPadding: 10.h,
+          textStyle: StyleText.fontSize14Weight400.copyWith(),
+          equalWidth: true,
+          containerPadding: EdgeInsets.all(4.r),
+        ),
       ),
     );
   }
@@ -517,6 +539,9 @@ class _ProductsTabBar extends StatelessWidget {
 // ══════════════════════════════════════════════════════════════════════════════
 // OUR PRODUCTS PAGE ROOT
 // FIXED: accepts initialTab so Navigator.push() from footer works correctly
+// UPDATED: "Request Demo" button is inline in the column (above footer gap),
+//          shown only on Owner Services tab. FAB removed entirely.
+// UPDATED: Gender-aware primary color applied
 // ══════════════════════════════════════════════════════════════════════════════
 
 class OurProductsPage extends StatefulWidget {
@@ -595,7 +620,6 @@ class _OurProductsPageState extends State<OurProductsPage> {
     _preloadStarted = false;
     setState(() => _showLoader = true);
 
-    // Re-load the active tab with new gender
     if (_selectedTabIndex == 0) {
       context.read<ClientServicesCmsCubit>().switchGender(newGender);
     } else {
@@ -629,9 +653,9 @@ class _OurProductsPageState extends State<OurProductsPage> {
   }
 
   bool _isActiveTabReady(
-    ClientServicesCmsState clientState,
-    OwnerServicesCmsState ownerState,
-  ) {
+      ClientServicesCmsState clientState,
+      OwnerServicesCmsState ownerState,
+      ) {
     if (_selectedTabIndex == 0) {
       return clientState is ClientServicesCmsLoaded ||
           clientState is ClientServicesCmsSaved;
@@ -674,18 +698,11 @@ class _OurProductsPageState extends State<OurProductsPage> {
                     _ => null,
                   };
 
-                  final Color primaryColor = homeData != null
-                      ? _parseHex(
-                          homeData.branding.primaryColor,
-                          fallback: AppColors.primary,
-                        )
-                      : AppColors.primary;
-
                   final Color backgroundColor = homeData != null
                       ? _parseHex(
-                          homeData.branding.backgroundColor,
-                          fallback: AppColors.background,
-                        )
+                    homeData.branding.backgroundColor,
+                    fallback: AppColors.background,
+                  )
                       : AppColors.background;
 
                   final String logoUrl = homeData?.branding.logoUrl ?? '';
@@ -705,17 +722,17 @@ class _OurProductsPageState extends State<OurProductsPage> {
                   }
 
                   final ClientServicesPageModel? clientData =
-                      switch (clientState) {
-                        ClientServicesCmsLoaded(:final data) => data,
-                        ClientServicesCmsSaved(:final data) => data,
-                        _ => null,
-                      };
+                  switch (clientState) {
+                    ClientServicesCmsLoaded(:final data) => data,
+                    ClientServicesCmsSaved(:final data) => data,
+                    _ => null,
+                  };
                   final OwnerServicesPageModel? ownerData =
-                      switch (ownerState) {
-                        OwnerServicesCmsLoaded(:final data) => data,
-                        OwnerServicesCmsSaved(:final data) => data,
-                        _ => null,
-                      };
+                  switch (ownerState) {
+                    OwnerServicesCmsLoaded(:final data) => data,
+                    OwnerServicesCmsSaved(:final data) => data,
+                    _ => null,
+                  };
 
                   if (!_preloadStarted ||
                       _lastPreloadedTab != _selectedTabIndex) {
@@ -733,57 +750,117 @@ class _OurProductsPageState extends State<OurProductsPage> {
                     );
                   }
 
-                  return BlocBuilder<LanguageCubit, LanguageState>(
-                    builder: (context, langState) {
-                      final bool isAr = langState.isArabic;
-                      var isMobile = context.isPhone;
+                  // ── Gender-aware color rebuild ──────────────────────────────────
+                  return BlocBuilder<GenderCubit, GenderState>(
+                    builder: (context, genderState) {
+                      final bool isMale = genderState.isMale;
 
-                      return Directionality(
-                        textDirection: isAr
-                            ? TextDirection.rtl
-                            : TextDirection.ltr,
-                        child: AppPageShell(
-                          currentRoute: '/about',
-                          body: _RevealCoordinatorWidget(
-                            child: Padding(
-                              padding:  EdgeInsets.symmetric(horizontal: 24.w),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  SizedBox(height: 24.h),
-                                  _Reveal(
-                                    delay: const Duration(milliseconds: 60),
-                                    direction: _SlideDirection.fromTop,
-                                    duration: const Duration(milliseconds: 600),
-                                    child: _ProductsTabBar(
-                                      selectedIndex: _selectedTabIndex,
-                                      primaryColor: primaryColor,
-                                      isAr: isAr,
-                                      onTabSelected: _onTabSelected,
+                      // ✅ Pick primary color based on current gender
+                      final Color primaryColor = _resolvePrimaryColor(
+                        primaryColorHex: homeData.branding.primaryColor,
+                        malePrimaryColorHex: homeData.branding.malePrimaryColor,
+                        isMale: isMale,
+                      );
+
+                      return BlocBuilder<LanguageCubit, LanguageState>(
+                        builder: (context, langState) {
+                          final bool isAr = langState.isArabic;
+                          var isMobile = context.isPhone;
+
+                          return Directionality(
+                            textDirection: isAr
+                                ? TextDirection.rtl
+                                : TextDirection.ltr,
+                            child: Scaffold(
+                              backgroundColor: Colors.transparent,
+
+                              // ── Fixed Request Demo button — Owner tab only ──────────────
+                              floatingActionButton: _selectedTabIndex == 1
+                                  ? Padding(
+                                padding: EdgeInsets.only(
+                                  bottom:
+                                  MediaQuery.sizeOf(context).height * .3,
+                                  left: MediaQuery.sizeOf(context).width * .7,
+                                ),
+                                child: _Reveal(
+                                  delay: const Duration(milliseconds: 200),
+                                  direction: _SlideDirection.fromBottom,
+                                  duration: const Duration(milliseconds: 650),
+                                  child: customButton(
+                                    title: isAr
+                                        ? 'اطلب للتجربة'
+                                        : 'Request Demo',
+                                    function: () => navigateTo(
+                                      context,
+                                      RequestDemoPage(),
+                                    ),
+                                    textStyle: StyleText.fontSize16Weight500
+                                        .copyWith(color: Colors.white),
+                                    width: 200.w,
+                                    height: 48.h,
+                                    radius: 8.r,
+                                    color: primaryColor,
+                                  ),
+                                ),
+                              )
+                                  : null,
+                              floatingActionButtonLocation:
+                              FloatingActionButtonLocation.centerFloat,
+                              body: AppPageShell(
+                                currentRoute: '/about',
+                                body: _RevealCoordinatorWidget(
+                                  child: Padding(
+                                    padding: EdgeInsets.symmetric(horizontal: 24.w),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                      children: [
+                                        SizedBox(height: 24.h),
+
+                                        // ── Tab bar ──────────────────────────────
+                                        _Reveal(
+                                          delay: const Duration(milliseconds: 60),
+                                          direction: _SlideDirection.fromTop,
+                                          duration: const Duration(
+                                            milliseconds: 600,
+                                          ),
+                                          child: _ProductsTabBar(
+                                            selectedIndex: _selectedTabIndex,
+                                            primaryColor: primaryColor,
+                                            isAr: isAr,
+                                            onTabSelected: _onTabSelected,
+                                          ),
+                                        ),
+
+                                        SizedBox(height: 30.h),
+
+                                        // ── Active tab content ───────────────────
+                                        if (_selectedTabIndex == 0)
+                                          _ClientServiceTab(
+                                            key: const ValueKey('client_tab'),
+                                            primaryColor: primaryColor,
+                                            isAr: isAr,
+                                          )
+                                        else
+                                          _OwnerServiceTab(
+                                            key: const ValueKey('owner_tab'),
+                                            primaryColor: primaryColor,
+                                            isAr: isAr,
+                                          ),
+
+                                        // ── bottom padding so button doesn't cover last item ──
+                                        if (_selectedTabIndex == 1)
+                                          SizedBox(height: 80.h),
+
+                                        SizedBox(height: 40.h),
+                                      ],
                                     ),
                                   ),
-
-                                  SizedBox(height: 30.h),
-
-                                  if (_selectedTabIndex == 0)
-                                    _ClientServiceTab(
-                                      key: const ValueKey('client_tab'),
-                                      primaryColor: primaryColor,
-                                      isAr: isAr,
-                                    )
-                                  else
-                                    _OwnerServiceTab(
-                                      key: const ValueKey('owner_tab'),
-                                      primaryColor: primaryColor,
-                                      isAr: isAr,
-                                    ),
-
-                                  SizedBox(height: 20.h),
-                                ],
+                                ),
                               ),
                             ),
-                          ),
-                        ),
+                          );
+                        },
                       );
                     },
                   );
@@ -811,8 +888,24 @@ class _ClientServiceTab extends StatelessWidget {
     required this.isAr,
   });
 
+  Color? _getMainWidgetColor(BuildContext context) {
+    final homeState = context.watch<HomeCmsCubit>().state;
+    return switch (homeState) {
+      HomeCmsLoaded(:final data) => _parseHex(
+        data.branding.mainWidgetColor,
+        fallback: Colors.transparent,
+      ),
+      HomeCmsSaved(:final data) => _parseHex(
+        data.branding.mainWidgetColor,
+        fallback: Colors.transparent,
+      ),
+      _ => Colors.transparent,
+    };
+  }
+
   @override
   Widget build(BuildContext context) {
+
     return BlocBuilder<ClientServicesCmsCubit, ClientServicesCmsState>(
       builder: (context, state) {
         if (state is ClientServicesCmsError) {
@@ -829,6 +922,7 @@ class _ClientServiceTab extends StatelessWidget {
             ),
           );
         }
+
 
         final data = switch (state) {
           ClientServicesCmsLoaded(:final data) => data,
@@ -855,7 +949,6 @@ class _ClientServiceTab extends StatelessWidget {
 
             SizedBox(height: 20.h),
 
-
             // Download bar
             _Reveal(
               delay: const Duration(milliseconds: 140),
@@ -865,11 +958,11 @@ class _ClientServiceTab extends StatelessWidget {
                 primaryColor: primaryColor,
                 label: isAr
                     ? (data.download.title.ar.isNotEmpty
-                          ? data.download.title.ar
-                          : 'حمّل الآن')
+                    ? data.download.title.ar
+                    : 'حمّل الآن')
                     : (data.download.title.en.isNotEmpty
-                          ? data.download.title.en
-                          : 'Download Now'),
+                    ? data.download.title.en
+                    : 'Download Now'),
                 appStoreLink: data.download.appStoreLink,
                 googlePlayLink: data.download.googlePlayLink,
               ),
@@ -878,7 +971,7 @@ class _ClientServiceTab extends StatelessWidget {
             SizedBox(height: 30.h),
 
             // Mockup sections — staggered Reveal per item
-            // Each mockup section is wrapped in a white container with padding 16 and border radius 8
+            // Mockup sections — staggered Reveal per item
             ...List.generate(mockups.length, (i) {
               final direction = i.isEven
                   ? _SlideDirection.fromLeft
@@ -890,17 +983,23 @@ class _ClientServiceTab extends StatelessWidget {
                 duration: const Duration(milliseconds: 650),
                 child: Padding(
                   padding: EdgeInsets.only(bottom: 30.h),
-                  child: Container(
-                    padding: EdgeInsets.all(16.r),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(8.r),
-                    ),
-                    child: _ClientMockupSectionWidget(
-                      item: mockups[i],
-                      primaryColor: primaryColor,
-                      isAr: isAr,
-                    ),
+                  child: Builder(
+                    builder: (context) {
+                      final Color? backgroundColor = _getMainWidgetColor(context);
+                      return Container(
+                        width: double.infinity,
+                        padding: EdgeInsets.all(16.r),
+                        decoration: BoxDecoration(
+                          color: backgroundColor,  // ← Changed from Colors.white
+                          borderRadius: BorderRadius.circular(16.r),  // ← Changed from 8.r to 16.r
+                        ),
+                        child: _ClientMockupSectionWidget(
+                          item: mockups[i],
+                          primaryColor: primaryColor,
+                          isAr: isAr,
+                        ),
+                      );
+                    },
                   ),
                 ),
               );
@@ -928,6 +1027,7 @@ class _OwnerServiceTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final Color? backgroundColor = _getMainWidgetColor(context);
     return BlocBuilder<OwnerServicesCmsCubit, OwnerServicesCmsState>(
       builder: (context, state) {
         if (state is OwnerServicesCmsError) {
@@ -979,11 +1079,11 @@ class _OwnerServiceTab extends StatelessWidget {
                 primaryColor: primaryColor,
                 label: isAr
                     ? (data.download.title.ar.isNotEmpty
-                          ? data.download.title.ar
-                          : 'حمّل الآن')
+                    ? data.download.title.ar
+                    : 'حمّل الآن')
                     : (data.download.title.en.isNotEmpty
-                          ? data.download.title.en
-                          : 'Download Now'),
+                    ? data.download.title.en
+                    : 'Download Now'),
                 appStoreLink: data.download.appStoreLink,
                 googlePlayLink: data.download.googlePlayLink,
               ),
@@ -992,7 +1092,6 @@ class _OwnerServiceTab extends StatelessWidget {
             SizedBox(height: 30.h),
 
             // Mockup sections — staggered Reveal per item
-            // Each mockup section is wrapped in a white container with padding 16 and border radius 8
             ...List.generate(mockups.length, (i) {
               final direction = i.isEven
                   ? _SlideDirection.fromRight
@@ -1007,8 +1106,8 @@ class _OwnerServiceTab extends StatelessWidget {
                   child: Container(
                     padding: EdgeInsets.all(16.r),
                     decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(8.r),
+                      color: backgroundColor,
+                      borderRadius: BorderRadius.circular(16.r),
                     ),
                     child: _OwnerMockupSectionWidget(
                       item: mockups[i],
@@ -1030,6 +1129,10 @@ class _OwnerServiceTab extends StatelessWidget {
 // CLIENT HEADER HERO
 // ══════════════════════════════════════════════════════════════════════════════
 
+// ══════════════════════════════════════════════════════════════════════════════
+// CLIENT HEADER HERO (WITH MAIN WIDGET COLOR BACKGROUND)
+// ══════════════════════════════════════════════════════════════════════════════
+
 class _ClientHeaderHero extends StatelessWidget {
   final ClientServicesHeaderModel header;
   final Color primaryColor;
@@ -1049,24 +1152,37 @@ class _ClientHeaderHero extends StatelessWidget {
     final title = FormatHelper.capitalize(rawTitle);
     final desc = isAr
         ? (header.description.ar.isNotEmpty
-              ? header.description.ar
-              : header.description.en)
+        ? header.description.ar
+        : header.description.en)
         : (header.description.en.isNotEmpty
-              ? header.description.en
-              : header.description.ar);
+        ? header.description.en
+        : header.description.ar);
     final hasImage = header.svgUrl.isNotEmpty;
 
     if (title.isEmpty && desc.isEmpty && !hasImage)
       return const SizedBox.shrink();
 
+    // Get mainWidgetColor from HomeCmsCubit
+    final Color? backgroundColor = switch (context.watch<HomeCmsCubit>().state) {
+      HomeCmsLoaded(:final data) => _parseHex(
+        data.branding.mainWidgetColor,
+        fallback: Colors.transparent,
+      ),
+      HomeCmsSaved(:final data) => _parseHex(
+        data.branding.mainWidgetColor,
+        fallback: Colors.transparent,
+      ),
+      _ => Colors.transparent,
+    };
+
     final imageWidget = hasImage
         ? _netImg(
-            url: header.svgUrl,
-            height: 220.h,
-            fit: BoxFit.contain,
-            placeholder: SizedBox(height: 220.h),
-            errorWidget: SizedBox(height: 220.h),
-          )
+      url: header.svgUrl,
+      height: 220.h,
+      fit: BoxFit.contain,
+      placeholder: SizedBox(height: 220.h),
+      errorWidget: SizedBox(height: 220.h),
+    )
         : null;
 
     final textWidget = Column(
@@ -1094,104 +1210,13 @@ class _ClientHeaderHero extends StatelessWidget {
       ],
     );
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final isWide = constraints.maxWidth > 600;
-        if (isWide && imageWidget != null) {
-          return Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Expanded(flex: 6, child: textWidget),
-              SizedBox(width: 30.w),
-              Expanded(flex: 4, child: imageWidget),
-            ],
-          );
-        }
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (imageWidget != null) ...[
-              Center(child: imageWidget),
-              SizedBox(height: 16.h),
-            ],
-            textWidget,
-          ],
-        );
-      },
-    );
-  }
-}
-
-// ══════════════════════════════════════════════════════════════════════════════
-// OWNER HEADER HERO
-// ══════════════════════════════════════════════════════════════════════════════
-
-class _OwnerHeaderHero extends StatelessWidget {
-  final OwnerServicesHeaderModel header;
-  final Color primaryColor;
-  final bool isAr;
-
-  const _OwnerHeaderHero({
-    required this.header,
-    required this.primaryColor,
-    required this.isAr,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final rawTitle = isAr
-        ? (header.title.ar.isNotEmpty ? header.title.ar : header.title.en)
-        : (header.title.en.isNotEmpty ? header.title.en : header.title.ar);
-    final title = FormatHelper.capitalize(rawTitle);
-    final desc = isAr
-        ? (header.description.ar.isNotEmpty
-              ? header.description.ar
-              : header.description.en)
-        : (header.description.en.isNotEmpty
-              ? header.description.en
-              : header.description.ar);
-    final hasImage = header.imageUrl.isNotEmpty;
-
-    if (title.isEmpty && desc.isEmpty && !hasImage)
-      return const SizedBox.shrink();
-
-    final imageWidget = hasImage
-        ? _netImg(
-            url: header.imageUrl,
-            height: 220.h,
-            fit: BoxFit.contain,
-            placeholder: SizedBox(height: 220.h),
-            errorWidget: SizedBox(height: 220.h),
-          )
-        : null;
-
-    final textWidget = Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (title.isNotEmpty)
-          Text(
-            title,
-            style: AppTextStyles.font20BlackCairoSemiBold.copyWith(
-              color: primaryColor,
-              fontSize: 28.sp,
-            ),
-          ),
-        if (desc.isNotEmpty) ...[
-          SizedBox(height: 14.h),
-          Text(
-            desc,
-            style: AppTextStyles.font14BlackCairoRegular.copyWith(
-              height: 1.7,
-              color: AppColors.secondaryBlack,
-            ),
-          ),
-        ],
-      ],
-    );
-
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 40.w),
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(20.r),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(16.r),
+      ),
       child: LayoutBuilder(
         builder: (context, constraints) {
           final isWide = constraints.maxWidth > 600;
@@ -1222,6 +1247,130 @@ class _OwnerHeaderHero extends StatelessWidget {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
+// OWNER HEADER HERO
+// ══════════════════════════════════════════════════════════════════════════════
+
+// ══════════════════════════════════════════════════════════════════════════════
+// OWNER HEADER HERO (WITH MAIN WIDGET COLOR BACKGROUND)
+// ══════════════════════════════════════════════════════════════════════════════
+
+class _OwnerHeaderHero extends StatelessWidget {
+  final OwnerServicesHeaderModel header;
+  final Color primaryColor;
+  final bool isAr;
+
+  const _OwnerHeaderHero({
+    required this.header,
+    required this.primaryColor,
+    required this.isAr,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final rawTitle = isAr
+        ? (header.title.ar.isNotEmpty ? header.title.ar : header.title.en)
+        : (header.title.en.isNotEmpty ? header.title.en : header.title.ar);
+    final title = FormatHelper.capitalize(rawTitle);
+    final desc = isAr
+        ? (header.description.ar.isNotEmpty
+        ? header.description.ar
+        : header.description.en)
+        : (header.description.en.isNotEmpty
+        ? header.description.en
+        : header.description.ar);
+    final hasImage = header.imageUrl.isNotEmpty;
+
+    if (title.isEmpty && desc.isEmpty && !hasImage)
+      return const SizedBox.shrink();
+
+    // Get mainWidgetColor from HomeCmsCubit
+    final Color? backgroundColor = switch (context.watch<HomeCmsCubit>().state) {
+      HomeCmsLoaded(:final data) => _parseHex(
+        data.branding.mainWidgetColor,
+        fallback: Colors.transparent,
+      ),
+      HomeCmsSaved(:final data) => _parseHex(
+        data.branding.mainWidgetColor,
+        fallback: Colors.transparent,
+      ),
+      _ => Colors.transparent,
+    };
+
+    final imageWidget = hasImage
+        ? _netImg(
+      url: header.imageUrl,
+      height: 220.h,
+      fit: BoxFit.contain,
+      placeholder: SizedBox(height: 220.h),
+      errorWidget: SizedBox(height: 220.h),
+    )
+        : null;
+
+    final textWidget = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (title.isNotEmpty)
+          Text(
+            title,
+            style: AppTextStyles.font20BlackCairoSemiBold.copyWith(
+              color: primaryColor,
+              fontSize: 28.sp,
+            ),
+          ),
+        if (desc.isNotEmpty) ...[
+          SizedBox(height: 14.h),
+          Text(
+            desc,
+            style: AppTextStyles.font14BlackCairoRegular.copyWith(
+              height: 1.7,
+              color: AppColors.secondaryBlack,
+            ),
+          ),
+        ],
+      ],
+    );
+
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(20.r),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(16.r),
+      ),
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: 40.w),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final isWide = constraints.maxWidth > 600;
+            if (isWide && imageWidget != null) {
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Expanded(flex: 6, child: textWidget),
+                  SizedBox(width: 30.w),
+                  Expanded(flex: 4, child: imageWidget),
+                ],
+              );
+            }
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (imageWidget != null) ...[
+                  Center(child: imageWidget),
+                  SizedBox(height: 16.h),
+                ],
+                textWidget,
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
 // CLIENT MOCKUP SECTION WIDGET
 // ══════════════════════════════════════════════════════════════════════════════
 
@@ -1244,39 +1393,39 @@ class _ClientMockupSectionWidget extends StatelessWidget {
     final title = FormatHelper.capitalize(rawTitle);
     final body = isAr
         ? (item.description.ar.isNotEmpty
-              ? item.description.ar
-              : item.description.en)
+        ? item.description.ar
+        : item.description.en)
         : (item.description.en.isNotEmpty
-              ? item.description.en
-              : item.description.ar);
+        ? item.description.en
+        : item.description.ar);
 
     final imageWidget = item.svgUrl.isNotEmpty
         ? _netImg(
-            url: item.svgUrl,
-            height: 280.h,
-            fit: BoxFit.contain,
-            placeholder: SizedBox(height: 280.h),
-            errorWidget: SizedBox(
-              height: 280.h,
-              child: Center(
-                child: Icon(
-                  Icons.image_outlined,
-                  size: 60.r,
-                  color: AppColors.secondaryBlack.withOpacity(0.3),
-                ),
-              ),
-            ),
-          )
+      url: item.svgUrl,
+      height: 280.h,
+      fit: BoxFit.contain,
+      placeholder: SizedBox(height: 280.h),
+      errorWidget: SizedBox(
+        height: 280.h,
+        child: Center(
+          child: Icon(
+            Icons.image_outlined,
+            size: 60.r,
+            color: AppColors.secondaryBlack.withOpacity(0.3),
+          ),
+        ),
+      ),
+    )
         : SizedBox(
-            height: 280.h,
-            child: Center(
-              child: Icon(
-                Icons.image_outlined,
-                size: 60.r,
-                color: AppColors.secondaryBlack.withOpacity(0.3),
-              ),
-            ),
-          );
+      height: 280.h,
+      child: Center(
+        child: Icon(
+          Icons.image_outlined,
+          size: 60.r,
+          color: AppColors.secondaryBlack.withOpacity(0.3),
+        ),
+      ),
+    );
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -1292,33 +1441,33 @@ class _ClientMockupSectionWidget extends StatelessWidget {
           case MockupLayout.right:
             return isWide
                 ? _SideBySideLayout(
-                    title: title,
-                    body: body,
-                    imageWidget: imageWidget,
-                    primaryColor: primaryColor,
-                    imageOnLeft: false,
-                  )
+              title: title,
+              body: body,
+              imageWidget: imageWidget,
+              primaryColor: primaryColor,
+              imageOnLeft: false,
+            )
                 : _StackedFallback(
-                    title: title,
-                    body: body,
-                    imageWidget: imageWidget,
-                    primaryColor: primaryColor,
-                  );
+              title: title,
+              body: body,
+              imageWidget: imageWidget,
+              primaryColor: primaryColor,
+            );
           case MockupLayout.left:
             return isWide
                 ? _SideBySideLayout(
-                    title: title,
-                    body: body,
-                    imageWidget: imageWidget,
-                    primaryColor: primaryColor,
-                    imageOnLeft: true,
-                  )
+              title: title,
+              body: body,
+              imageWidget: imageWidget,
+              primaryColor: primaryColor,
+              imageOnLeft: true,
+            )
                 : _StackedFallback(
-                    title: title,
-                    body: body,
-                    imageWidget: imageWidget,
-                    primaryColor: primaryColor,
-                  );
+              title: title,
+              body: body,
+              imageWidget: imageWidget,
+              primaryColor: primaryColor,
+            );
         }
       },
     );
@@ -1360,39 +1509,39 @@ class _OwnerMockupSectionWidget extends StatelessWidget {
     final title = FormatHelper.capitalize(rawTitle);
     final body = isAr
         ? (item.description.ar.isNotEmpty
-              ? item.description.ar
-              : item.description.en)
+        ? item.description.ar
+        : item.description.en)
         : (item.description.en.isNotEmpty
-              ? item.description.en
-              : item.description.ar);
+        ? item.description.en
+        : item.description.ar);
 
     final imageWidget = item.imageUrl.isNotEmpty
         ? _netImg(
-            url: item.imageUrl,
-            height: 280.h,
-            fit: BoxFit.contain,
-            placeholder: SizedBox(height: 280.h),
-            errorWidget: SizedBox(
-              height: 280.h,
-              child: Center(
-                child: Icon(
-                  Icons.image_outlined,
-                  size: 60.r,
-                  color: AppColors.secondaryBlack.withOpacity(0.3),
-                ),
-              ),
-            ),
-          )
+      url: item.imageUrl,
+      height: 280.h,
+      fit: BoxFit.contain,
+      placeholder: SizedBox(height: 280.h),
+      errorWidget: SizedBox(
+        height: 280.h,
+        child: Center(
+          child: Icon(
+            Icons.image_outlined,
+            size: 60.r,
+            color: AppColors.secondaryBlack.withOpacity(0.3),
+          ),
+        ),
+      ),
+    )
         : SizedBox(
-            height: 280.h,
-            child: Center(
-              child: Icon(
-                Icons.image_outlined,
-                size: 60.r,
-                color: AppColors.secondaryBlack.withOpacity(0.3),
-              ),
-            ),
-          );
+      height: 280.h,
+      child: Center(
+        child: Icon(
+          Icons.image_outlined,
+          size: 60.r,
+          color: AppColors.secondaryBlack.withOpacity(0.3),
+        ),
+      ),
+    );
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -1408,33 +1557,33 @@ class _OwnerMockupSectionWidget extends StatelessWidget {
           case _MockupAlign.right:
             return isWide
                 ? _SideBySideLayout(
-                    title: title,
-                    body: body,
-                    imageWidget: imageWidget,
-                    primaryColor: primaryColor,
-                    imageOnLeft: false,
-                  )
+              title: title,
+              body: body,
+              imageWidget: imageWidget,
+              primaryColor: primaryColor,
+              imageOnLeft: false,
+            )
                 : _StackedFallback(
-                    title: title,
-                    body: body,
-                    imageWidget: imageWidget,
-                    primaryColor: primaryColor,
-                  );
+              title: title,
+              body: body,
+              imageWidget: imageWidget,
+              primaryColor: primaryColor,
+            );
           case _MockupAlign.left:
             return isWide
                 ? _SideBySideLayout(
-                    title: title,
-                    body: body,
-                    imageWidget: imageWidget,
-                    primaryColor: primaryColor,
-                    imageOnLeft: true,
-                  )
+              title: title,
+              body: body,
+              imageWidget: imageWidget,
+              primaryColor: primaryColor,
+              imageOnLeft: true,
+            )
                 : _StackedFallback(
-                    title: title,
-                    body: body,
-                    imageWidget: imageWidget,
-                    primaryColor: primaryColor,
-                  );
+              title: title,
+              body: body,
+              imageWidget: imageWidget,
+              primaryColor: primaryColor,
+            );
         }
       },
     );
@@ -1445,6 +1594,10 @@ enum _MockupAlign { left, centered, right }
 
 // ══════════════════════════════════════════════════════════════════════════════
 // DOWNLOAD NOW BAR
+// ══════════════════════════════════════════════════════════════════════════════
+
+// ══════════════════════════════════════════════════════════════════════════════
+// DOWNLOAD NOW BAR (WITH MAIN WIDGET COLOR BACKGROUND)
 // ══════════════════════════════════════════════════════════════════════════════
 
 class _DownloadNowBar extends StatelessWidget {
@@ -1460,15 +1613,37 @@ class _DownloadNowBar extends StatelessWidget {
     required this.googlePlayLink,
   });
 
+  void _launchUrl(String url) {
+    if (url.isEmpty) return;
+    html.window.open(url, '_blank');
+  }
+
   @override
   Widget build(BuildContext context) {
+    final isMobile = MediaQuery.of(context).size.width < 600;
+
+    // Get mainWidgetColor from HomeCmsCubit
+    final Color? backgroundColor = switch (context.watch<HomeCmsCubit>().state) {
+      HomeCmsLoaded(:final data) => _parseHex(
+        data.branding.mainWidgetColor,
+        fallback: Colors.transparent,
+      ),
+      HomeCmsSaved(:final data) => _parseHex(
+        data.branding.mainWidgetColor,
+        fallback: Colors.transparent,
+      ),
+      _ => Colors.transparent,
+    };
+
     return Container(
+      width: double.infinity,
       padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 14.h),
       decoration: BoxDecoration(
-        color: AppColors.field,
-        borderRadius: BorderRadius.circular(8.r),
+        color: backgroundColor,  // ← Changed from AppColors.field
+        borderRadius: BorderRadius.circular(16.r),  // ← Changed from 8.r to 16.r
       ),
-      child: Wrap(
+      child: isMobile
+          ? Wrap(
         crossAxisAlignment: WrapCrossAlignment.center,
         spacing: 10.w,
         runSpacing: 8.h,
@@ -1481,11 +1656,31 @@ class _DownloadNowBar extends StatelessWidget {
           ),
           _MiniStoreBadge(
             svgAsset: 'assets/beauty/home/google_play.svg',
-            onTap: googlePlayLink.isNotEmpty ? () {} : null,
+            onTap: googlePlayLink.isNotEmpty ? () => _launchUrl(googlePlayLink) : null,
           ),
           _MiniStoreBadge(
             svgAsset: 'assets/beauty/home/app_store.svg',
-            onTap: appStoreLink.isNotEmpty ? () {} : null,
+            onTap: appStoreLink.isNotEmpty ? () => _launchUrl(appStoreLink) : null,
+          ),
+        ],
+      )
+          : Row(
+        children: [
+          Text(
+            label,
+            style: AppTextStyles.font14BlackCairoMedium.copyWith(
+              color: primaryColor,
+            ),
+          ),
+          const Spacer(),
+          _MiniStoreBadge(
+            svgAsset: 'assets/beauty/home/google_play.svg',
+            onTap: googlePlayLink.isNotEmpty ? () => _launchUrl(googlePlayLink) : null,
+          ),
+          SizedBox(width: 10.w),
+          _MiniStoreBadge(
+            svgAsset: 'assets/beauty/home/app_store.svg',
+            onTap: appStoreLink.isNotEmpty ? () => _launchUrl(appStoreLink) : null,
           ),
         ],
       ),
@@ -1511,7 +1706,8 @@ class _MiniStoreBadge extends StatelessWidget {
             final h = MediaQuery.of(context).size.width < 600 ? 30.h : 36.h;
             return SvgPicture.asset(svgAsset, height: h, fit: BoxFit.contain);
           },
-        ),      ),
+        ),
+      ),
     );
   }
 }
@@ -1519,6 +1715,25 @@ class _MiniStoreBadge extends StatelessWidget {
 // ══════════════════════════════════════════════════════════════════════════════
 // LAYOUT WIDGETS
 // ══════════════════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════════════════
+// LAYOUT WIDGETS (WITH MAIN WIDGET COLOR BACKGROUND)
+// ══════════════════════════════════════════════════════════════════════════════
+
+// Helper function to get mainWidgetColor
+Color? _getMainWidgetColor(BuildContext context) {
+  final homeState = context.watch<HomeCmsCubit>().state;
+  return switch (homeState) {
+    HomeCmsLoaded(:final data) => _parseHex(
+      data.branding.mainWidgetColor,
+      fallback: Colors.transparent,
+    ),
+    HomeCmsSaved(:final data) => _parseHex(
+      data.branding.mainWidgetColor,
+      fallback: Colors.transparent,
+    ),
+    _ => Colors.transparent,
+  };
+}
 
 class _CenterLayout extends StatelessWidget {
   final String title;
@@ -1535,28 +1750,37 @@ class _CenterLayout extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        imageWidget,
-        SizedBox(height: 20.h),
-        Text(
-          title,
-          style: AppTextStyles.font20BlackCairoSemiBold,
-          textAlign: TextAlign.center,
-        ),
-        SizedBox(height: 12.h),
-        Padding(
-          padding: EdgeInsets.symmetric(horizontal: 20.w),
-          child: Text(
-            body,
-            style: AppTextStyles.font14BlackCairoRegular.copyWith(
-              height: 1.7,
-              color: AppColors.secondaryBlack,
-            ),
+    final Color? backgroundColor = _getMainWidgetColor(context);
+
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(20.r),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(16.r),
+      ),
+      child: Column(
+        children: [
+          imageWidget,
+          SizedBox(height: 20.h),
+          Text(
+            title,
+            style: StyleText.fontSize18Weight500,
             textAlign: TextAlign.center,
           ),
-        ),
-      ],
+          SizedBox(height: 12.h),
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: 20.w),
+            child: Text(
+              body,
+              style: StyleText.fontSize16Weight400.copyWith(
+                height: 1.7,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -1578,7 +1802,7 @@ class _SideBySideLayout extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isArabic = Localizations.localeOf(context).languageCode == 'ar';
+    final Color? backgroundColor = _getMainWidgetColor(context);
 
     final textWidget = Column(
       mainAxisAlignment: MainAxisAlignment.start,
@@ -1602,48 +1826,27 @@ class _SideBySideLayout extends StatelessWidget {
       ],
     );
 
-    return Stack(
-      alignment: AlignmentGeometry.bottomRight,
-      children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: imageOnLeft
-              ? [
-                  Expanded(flex: 4, child: imageWidget),
-                  SizedBox(width: 30.w),
-                  Expanded(flex: 6, child: textWidget),
-                ]
-              : [
-                  Expanded(flex: 6, child: textWidget),
-                  SizedBox(width: 30.w),
-                  Expanded(flex: 4, child: imageWidget),
-                ],
-        ),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            _Reveal(
-              delay: const Duration(milliseconds: 140),
-              direction: _SlideDirection.fromLeft,
-              duration: const Duration(milliseconds: 650),
-              child: customButton(
-                width: 150.w,
-                height: 36.h,
-                textStyle: StyleText.fontSize16Weight500.copyWith(
-                    color: Colors.white
-                ),
-                radius: 4.r,
-                color: primaryColor,
-                title: isArabic ? 'اطلب للتجربة' : 'Request Demo',
-
-                function: () {
-                  navigateTo(context, RequestDemoPage());
-                },
-              ),
-            ),
-          ],
-        ),
-      ],
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(20.r),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(16.r),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: imageOnLeft
+            ? [
+          Expanded(flex: 4, child: imageWidget),
+          SizedBox(width: 30.w),
+          Expanded(flex: 6, child: textWidget),
+        ]
+            : [
+          Expanded(flex: 6, child: textWidget),
+          SizedBox(width: 30.w),
+          Expanded(flex: 4, child: imageWidget),
+        ],
+      ),
     );
   }
 }
@@ -1663,46 +1866,36 @@ class _StackedFallback extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isArabic = Localizations.localeOf(context).languageCode == 'ar';
+    final Color? backgroundColor = _getMainWidgetColor(context);
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Center(child: imageWidget),
-        SizedBox(height: 16.h),
-        Text(
-          title,
-          style: AppTextStyles.font20BlackCairoSemiBold.copyWith(
-            color: primaryColor,
-          ),
-        ),
-        SizedBox(height: 12.h),
-        Text(
-          body,
-          style: AppTextStyles.font14BlackCairoRegular.copyWith(
-            height: 1.7,
-            color: AppColors.secondaryBlack,
-          ),
-        ),
-        SizedBox(height: 16.h),
-        // ✅ Request Demo button — same as desktop
-        Align(
-          alignment: isArabic ? Alignment.centerRight : Alignment.centerRight,
-          child: customButton(
-            width: 150.w,
-            height: 36.h,
-            textStyle: StyleText.fontSize16Weight500.copyWith(
-              color: Colors.white,
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(20.r),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(16.r),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(child: imageWidget),
+          SizedBox(height: 16.h),
+          Text(
+            title,
+            style: AppTextStyles.font20BlackCairoSemiBold.copyWith(
+              color: primaryColor,
             ),
-            radius: 4.r,
-            color: primaryColor,
-            title: isArabic ? 'اطلب للتجربة' : 'Request Demo',
-            function: () {
-              navigateTo(context, RequestDemoPage());
-            },
           ),
-        ),
-      ],
+          SizedBox(height: 12.h),
+          Text(
+            body,
+            style: AppTextStyles.font14BlackCairoRegular.copyWith(
+              height: 1.7,
+              color: AppColors.secondaryBlack,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

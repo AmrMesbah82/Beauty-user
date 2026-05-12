@@ -1,14 +1,4 @@
 /// File Name: request_demo_page.dart
-///
-/// PUBLIC-FACING page — matches Figma design exactly:
-///   • Header SVG above a single white card
-///   • Mobile: all fields full-width (one per row)
-///   • Desktop: two fields side by side
-///   • Each field label has a prefix SVG icon via labelPrefixSvg
-///   • Uses CustomValidatedTextFieldMaster for text inputs
-///   • Uses CustomDropdownFormFieldInvMaster for dropdowns
-///   • Send Request button below the card
-///   • Confirm screen after success
 
 import 'dart:ui' as ui;
 
@@ -24,6 +14,7 @@ import 'package:beauty_user/core/widget/custom_dropdwon.dart';
 import 'package:beauty_user/core/widget/textfield.dart';
 import 'package:beauty_user/theme/new_theme.dart';
 
+import '../../controller/home/lang_state.dart';
 import '../../controller/request/request_demo_cubit.dart';
 import '../../controller/request/request_demo_state.dart';
 import '../../model/request/request_demo_model.dart';
@@ -106,46 +97,47 @@ class _C {
   static const Color iconCol = Color(0xFFD16F9A);
 }
 
-// ── Breakpoint ───────────────────────────────────────────────────────────────
 const double _kDesktopBreak = 600;
 
-// ── Static dropdown options ──────────────────────────────────────────────────
-const List<Map<String, String>> _kCountries = [
-  {'key': 'egypt',        'value': 'Egypt'},
-  {'key': 'saudi_arabia', 'value': 'Saudi Arabia'},
-  {'key': 'uae',          'value': 'UAE'},
-  {'key': 'kuwait',       'value': 'Kuwait'},
-  {'key': 'qatar',        'value': 'Qatar'},
-  {'key': 'bahrain',      'value': 'Bahrain'},
-  {'key': 'jordan',       'value': 'Jordan'},
-  {'key': 'lebanon',      'value': 'Lebanon'},
+// ════════════════════════════════════════════════════════════════════════════
+// BILINGUAL STATIC DATA
+// ════════════════════════════════════════════════════════════════════════════
+const List<Map<String, String>> _kCountriesRaw = [
+  {'key': 'egypt',        'value_en': 'Egypt',        'value_ar': 'مصر'},
+  {'key': 'saudi_arabia', 'value_en': 'Saudi Arabia', 'value_ar': 'المملكة العربية السعودية'},
+  {'key': 'uae',          'value_en': 'UAE',           'value_ar': 'الإمارات'},
+  {'key': 'kuwait',       'value_en': 'Kuwait',        'value_ar': 'الكويت'},
+  {'key': 'qatar',        'value_en': 'Qatar',         'value_ar': 'قطر'},
+  {'key': 'bahrain',      'value_en': 'Bahrain',       'value_ar': 'البحرين'},
+  {'key': 'jordan',       'value_en': 'Jordan',        'value_ar': 'الأردن'},
+  {'key': 'lebanon',      'value_en': 'Lebanon',       'value_ar': 'لبنان'},
 ];
 
-const List<Map<String, String>> _kCities = [
-  {'key': 'cairo',       'value': 'Cairo'},
-  {'key': 'alexandria',  'value': 'Alexandria'},
-  {'key': 'riyadh',      'value': 'Riyadh'},
-  {'key': 'jeddah',      'value': 'Jeddah'},
-  {'key': 'dubai',       'value': 'Dubai'},
-  {'key': 'abu_dhabi',   'value': 'Abu Dhabi'},
-  {'key': 'kuwait_city', 'value': 'Kuwait City'},
-  {'key': 'doha',        'value': 'Doha'},
+const List<Map<String, String>> _kCitiesRaw = [
+  {'key': 'cairo',       'value_en': 'Cairo',       'value_ar': 'القاهرة'},
+  {'key': 'alexandria',  'value_en': 'Alexandria',  'value_ar': 'الإسكندرية'},
+  {'key': 'riyadh',      'value_en': 'Riyadh',      'value_ar': 'الرياض'},
+  {'key': 'jeddah',      'value_en': 'Jeddah',      'value_ar': 'جدة'},
+  {'key': 'dubai',       'value_en': 'Dubai',       'value_ar': 'دبي'},
+  {'key': 'abu_dhabi',   'value_en': 'Abu Dhabi',   'value_ar': 'أبوظبي'},
+  {'key': 'kuwait_city', 'value_en': 'Kuwait City', 'value_ar': 'مدينة الكويت'},
+  {'key': 'doha',        'value_en': 'Doha',        'value_ar': 'الدوحة'},
 ];
 
-const List<Map<String, String>> _kBranches = [
-  {'key': '1',     'value': '1'},
-  {'key': '2_5',   'value': '2 - 5'},
-  {'key': '6_10',  'value': '6 - 10'},
-  {'key': '11_20', 'value': '11 - 20'},
-  {'key': '20+',   'value': '20+'},
+const List<Map<String, String>> _kBranchesRaw = [
+  {'key': '1',     'value_en': '1',       'value_ar': '١'},
+  {'key': '2_5',   'value_en': '2 - 5',   'value_ar': '٢ - ٥'},
+  {'key': '6_10',  'value_en': '6 - 10',  'value_ar': '٦ - ١٠'},
+  {'key': '11_20', 'value_en': '11 - 20', 'value_ar': '١١ - ٢٠'},
+  {'key': '20+',   'value_en': '20+',     'value_ar': '٢٠+'},
 ];
 
-const List<Map<String, String>> _kEmployees = [
-  {'key': '1_5',   'value': '1 - 5'},
-  {'key': '6_15',  'value': '6 - 15'},
-  {'key': '16_30', 'value': '16 - 30'},
-  {'key': '31_50', 'value': '31 - 50'},
-  {'key': '50+',   'value': '50+'},
+const List<Map<String, String>> _kEmployeesRaw = [
+  {'key': '1_5',   'value_en': '1 - 5',   'value_ar': '١ - ٥'},
+  {'key': '6_15',  'value_en': '6 - 15',  'value_ar': '٦ - ١٥'},
+  {'key': '16_30', 'value_en': '16 - 30', 'value_ar': '١٦ - ٣٠'},
+  {'key': '31_50', 'value_en': '31 - 50', 'value_ar': '٣١ - ٥٠'},
+  {'key': '50+',   'value_en': '50+',     'value_ar': '٥٠+'},
 ];
 
 const List<Map<String, String>> _kPhoneCodes = [
@@ -160,6 +152,52 @@ const List<Map<String, String>> _kPhoneCodes = [
   {'key': '+1',   'value': '🇺🇸 +1'},
   {'key': '+44',  'value': '🇬🇧 +44'},
 ];
+
+List<Map<String, String>> _localise(
+    List<Map<String, String>> raw, bool isAr) {
+  return raw
+      .map((e) => {
+    'key':   e['key']!,
+    'value': isAr ? e['value_ar']! : e['value_en']!,
+  })
+      .toList();
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// LOCALIZED STRINGS
+// ════════════════════════════════════════════════════════════════════════════
+class _S {
+  final bool isAr;
+  const _S(this.isAr);
+
+  String get salonInfo     => isAr ? 'معلومات الصالون'               : 'Salon Information';
+  String get salonName     => isAr ? 'اسم الصالون'                   : 'Salon Name';
+  String get country       => isAr ? 'الدولة'                        : 'Country';
+  String get city          => isAr ? 'المدينة'                       : 'City';
+  String get branches      => isAr ? 'الفروع'                        : 'Branches';
+  String get noBranches    => isAr ? 'عدد الفروع'                    : 'No.Branches';
+  String get noEmployees   => isAr ? 'عدد الموظفين'                  : 'No.Employees';
+  String get contactInfo   => isAr ? 'معلومات التواصل'               : 'Contact Information';
+  String get firstName     => isAr ? 'الاسم الأول'                   : 'First Name';
+  String get lastName      => isAr ? 'الاسم الأخير'                  : 'Last Name';
+  String get phoneNumber   => isAr ? 'رقم الهاتف'                    : 'Phone Number';
+  String get email         => isAr ? 'البريد الإلكتروني'             : 'Email';
+  String get demoQuestions => isAr ? 'أسئلة تجريبية'                 : 'Demo Related Questions';
+  String get sendRequest   => isAr ? 'إرسال الطلب'                   : 'Send Request';
+  String get chooseHere    => isAr ? 'اختر'                          : 'Choose here';
+  String get textHere      => isAr ? 'أدخل هنا'                      : 'Text here';
+  String get fieldRequired => isAr ? 'هذا الحقل مطلوب'               : 'This field is required.';
+  String get submitError   => isAr ? 'حدث خطأ، يرجى المحاولة مجدداً' : 'An error occurred, please try again.';
+  String get confirmTitle  => isAr
+      ? 'جارٍ الانتظار حتى يتصل بك فريق خدمة العملاء'
+      : 'Waiting till Customer Services Call You';
+  String get confirmDesc   => isAr
+      ? 'تم إرسال طلب العرض التوضيحي بنجاح، شكراً لك! سنتواصل معك قريباً لتأكيد التفاصيل.'
+      : "Your demo request has been successfully submitted, thank you! We'll be in touch soon to confirm the details.";
+  String get submitAnother => isAr ? 'إرسال طلب آخر' : 'Submit Another Request';
+
+  TextDirection get td => isAr ? TextDirection.rtl : TextDirection.ltr;
+}
 
 // ════════════════════════════════════════════════════════════════════════════
 // ENTRY POINT
@@ -177,54 +215,65 @@ class RequestDemoPage extends StatelessWidget {
   }
 }
 
+// ════════════════════════════════════════════════════════════════════════════
+// _INNER
+// ════════════════════════════════════════════════════════════════════════════
 class _Inner extends StatelessWidget {
   final String gender;
   const _Inner({required this.gender});
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<RequestDemoCmsCubit, RequestDemoCmsState>(
-      builder: (ctx, cmsState) {
-        if (cmsState is RequestDemoCmsInitial ||
-            cmsState is RequestDemoCmsLoading) {
-          return const Scaffold(
-            backgroundColor: _C.back,
-            body: Center(child: CircularProgressIndicator(color: _C.primary)),
-          );
-        }
-        if (cmsState is RequestDemoCmsError) {
-          return Scaffold(
-            backgroundColor: _C.back,
-            body: Center(
-              child: Text(cmsState.message,
-                  style: StyleText.fontSize14Weight600
-                      .copyWith(color: _C.error)),
-            ),
-          );
-        }
+    return BlocBuilder<LanguageCubit, LanguageState>(
+      builder: (context, langState) {
+        final bool isAr = langState.isArabic;
 
-        RequestDemoPageModel? m;
-        if (cmsState is RequestDemoCmsLoaded) m = cmsState.data;
-        if (cmsState is RequestDemoCmsSaved)  m = cmsState.data;
-        m ??= ctx.read<RequestDemoCmsCubit>().current;
+        return BlocBuilder<RequestDemoCmsCubit, RequestDemoCmsState>(
+          builder: (ctx, cmsState) {
+            if (cmsState is RequestDemoCmsInitial ||
+                cmsState is RequestDemoCmsLoading) {
+              return const Scaffold(
+                backgroundColor: _C.back,
+                body: Center(
+                    child: CircularProgressIndicator(color: _C.primary)),
+              );
+            }
+            if (cmsState is RequestDemoCmsError) {
+              return Scaffold(
+                backgroundColor: _C.back,
+                body: Center(
+                  child: Text(cmsState.message,
+                      style: StyleText.fontSize14Weight600
+                          .copyWith(color: _C.error)),
+                ),
+              );
+            }
 
-        return BlocConsumer<_SubmitCubit, _SubmitState>(
-          listener: (ctx, s) {
-            if (s is _SubmitError) {
-              ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
-                content: Text(s.message),
-                backgroundColor: _C.error,
-              ));
-            }
-          },
-          builder: (ctx, submitState) {
-            if (submitState is _SubmitSuccess) {
-              return _ConfirmScreen(model: m!);
-            }
-            return _FormScreen(
-              model: m!,
-              gender: gender,
-              isLoading: submitState is _SubmitLoading,
+            RequestDemoPageModel? m;
+            if (cmsState is RequestDemoCmsLoaded) m = cmsState.data;
+            if (cmsState is RequestDemoCmsSaved)  m = cmsState.data;
+            m ??= ctx.read<RequestDemoCmsCubit>().current;
+
+            return BlocConsumer<_SubmitCubit, _SubmitState>(
+              listener: (ctx, s) {
+                if (s is _SubmitError) {
+                  ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
+                    content: Text(_S(isAr).submitError),
+                    backgroundColor: _C.error,
+                  ));
+                }
+              },
+              builder: (ctx, submitState) {
+                if (submitState is _SubmitSuccess) {
+                  return _ConfirmScreen(model: m!, isAr: isAr);
+                }
+                return _FormScreen(
+                  model:     m!,
+                  gender:    gender,
+                  isLoading: submitState is _SubmitLoading,
+                  isAr:      isAr,
+                );
+              },
             );
           },
         );
@@ -240,11 +289,13 @@ class _FormScreen extends StatefulWidget {
   final RequestDemoPageModel model;
   final String gender;
   final bool isLoading;
+  final bool isAr;
 
   const _FormScreen({
     required this.model,
     required this.gender,
     required this.isLoading,
+    required this.isAr,
   });
 
   @override
@@ -266,7 +317,7 @@ class _FormScreenState extends State<_FormScreen> {
   String? _noEmployees;
   String  _phoneCode = '+20';
 
-  final Map<String, dynamic> _answers = {};
+  final Map<String, dynamic>               _answers        = {};
   final Map<String, TextEditingController> _dynControllers = {};
 
   @override
@@ -350,17 +401,30 @@ class _FormScreenState extends State<_FormScreen> {
     );
   }
 
+  // ── helper: build a hint Text with correct direction ──────────────────────
+  Widget _hint(_S str) => Text(
+    str.chooseHere,
+    textDirection: str.td,
+    style: StyleText.fontSize12Weight400.copyWith(color: _C.hint),
+  );
+
   @override
   Widget build(BuildContext context) {
-    final m        = widget.model;
-    final isAr     = Localizations.localeOf(context).languageCode == 'ar';
+    final isAr     = widget.isAr;
+    final str      = _S(isAr);
     final width    = MediaQuery.of(context).size.width;
     final isMobile = width < _kDesktopBreak;
+    final m        = widget.model;
+
+    final countries = _localise(_kCountriesRaw, isAr);
+    final cities    = _localise(_kCitiesRaw,    isAr);
+    final branches  = _localise(_kBranchesRaw,  isAr);
+    final employees = _localise(_kEmployeesRaw, isAr);
 
     return Scaffold(
       backgroundColor: _C.back,
       body: AppPageShell(
-        currentRoute: '/Demo',
+        currentRoute: 'our products',
         body: SingleChildScrollView(
           child: Center(
             child: ConstrainedBox(
@@ -371,15 +435,14 @@ class _FormScreenState extends State<_FormScreen> {
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
 
-                    // ── Header SVG ─────────────────────────────────────────
                     if (m.headerSvgUrl.isNotEmpty)
                       Container(
-                        width: double.infinity,
-                        height: 260.h,
+                        width:   double.infinity,
+                        height:  260.h,
                         padding: EdgeInsets.all(12.w),
                         child: SvgPicture.network(
                           m.headerSvgUrl,
-                          fit: BoxFit.contain,
+                          fit:                BoxFit.contain,
                           placeholderBuilder: (_) =>
                           const Center(child: CircleProgressMaster()),
                         ),
@@ -387,46 +450,41 @@ class _FormScreenState extends State<_FormScreen> {
 
                     SizedBox(height: 14.h),
 
-                    // ── Page title ─────────────────────────────────────────
                     if ((isAr ? m.headerTitle.ar : m.headerTitle.en).isNotEmpty)
                       Text(
                         isAr ? m.headerTitle.ar : m.headerTitle.en,
                         textAlign: TextAlign.center,
                         style: StyleText.fontSize20Weight600.copyWith(
-                          color: _C.label,
+                          color:      _C.label,
                           fontWeight: FontWeight.w800,
                         ),
                       ),
 
                     SizedBox(height: 20.h),
 
-                    // ── White card ─────────────────────────────────────────
                     Container(
-                      width: double.infinity,
+                      width:   double.infinity,
                       padding: EdgeInsets.all(20.w),
                       decoration: BoxDecoration(
-                        color: _C.card,
+                        color:        _C.card,
                         borderRadius: BorderRadius.circular(8.r),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
 
-                          // ─── Salon Information ───────────────────────────
-                          _sectionTitle(
-                              isAr ? 'معلومات الصالون' : 'Salon Information'),
+                          _sectionTitle(str.salonInfo),
                           SizedBox(height: 12.h),
 
-                          // Salon Name — always full width
                           CustomValidatedTextFieldMaster(
-                            label:            isAr ? 'اسم الصالون' : 'Salon Name',
-                            hint:             isAr ? 'أدخل هنا' : 'Text here',
+                            label:            str.salonName,
+                            hint:             str.textHere,
                             controller:       _salonName,
                             height:           36,
                             submitted:        _sub,
                             fillColor:        const Color(0xFFF6F6F6),
                             primaryColor:     _C.primary,
-                            textDirection:    isAr ? ui.TextDirection.rtl : ui.TextDirection.ltr,
+                            textDirection:    str.td,
                             textAlign:        isAr ? TextAlign.right : TextAlign.left,
                             labelPrefixSvg:   'assets/demos/salone_name.svg',
                             labelPrefixColor: _C.iconCol,
@@ -434,32 +492,29 @@ class _FormScreenState extends State<_FormScreen> {
 
                           SizedBox(height: 10.h),
 
-                          // Country + City
                           _twoOrOne(
                             isMobile: isMobile,
                             left: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 CustomDropdownFormFieldInvMaster(
-                                  label:            isAr ? 'الدولة' : 'Country',
-                                  hint: Text(
-                                    isAr ? 'اختر' : 'Choose here',
-                                    style: StyleText.fontSize12Weight400
-                                        .copyWith(color: _C.hint),
-                                  ),
+                                  label:            str.country,
+
+                                  hint:             _hint(str),
                                   selectedValue:    _country,
-                                  items:            _kCountries,
+                                  items:            countries,
                                   widthIcon:        18,
                                   heightIcon:       18,
                                   height:           36,
                                   dropdownColor:    const Color(0xFFF6F6F6),
                                   primaryColor:     _C.primary,
-                                  onChanged:        (v) => setState(() => _country = v),
+                                  textDirection:    str.td,        // ← RTL/LTR
+                                  onChanged: (v) => setState(() => _country = v),
                                   labelPrefixSvg:   'assets/demos/country_city.svg',
                                   labelPrefixColor: _C.iconCol,
                                 ),
                                 if (_sub && _country == null)
-                                  _errText(isAr)
+                                  _errText(str)
                                 else
                                   SizedBox(height: 18.h),
                               ],
@@ -468,25 +523,22 @@ class _FormScreenState extends State<_FormScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 CustomDropdownFormFieldInvMaster(
-                                  label:            isAr ? 'المدينة' : 'City',
-                                  hint: Text(
-                                    isAr ? 'اختر' : 'Choose here',
-                                    style: StyleText.fontSize12Weight400
-                                        .copyWith(color: _C.hint),
-                                  ),
+                                  label:            str.city,
+                                  hint:             _hint(str),
                                   selectedValue:    _city,
-                                  items:            _kCities,
+                                  items:            cities,
                                   widthIcon:        18,
                                   heightIcon:       18,
                                   height:           36,
                                   dropdownColor:    const Color(0xFFF6F6F6),
                                   primaryColor:     _C.primary,
-                                  onChanged:        (v) => setState(() => _city = v),
+                                  textDirection:    str.td,        // ← RTL/LTR
+                                  onChanged: (v) => setState(() => _city = v),
                                   labelPrefixSvg:   'assets/demos/country_city.svg',
                                   labelPrefixColor: _C.iconCol,
                                 ),
                                 if (_sub && _city == null)
-                                  _errText(isAr)
+                                  _errText(str)
                                 else
                                   SizedBox(height: 18.h),
                               ],
@@ -495,40 +547,33 @@ class _FormScreenState extends State<_FormScreen> {
 
                           SizedBox(height: 14.h),
 
-                          // Branches label
-                          Text(
-                            isAr ? 'الفروع' : 'Branches',
-                            style: StyleText.fontSize16Weight600
-                                .copyWith(color: _C.section),
-                          ),
+                          Text(str.branches,
+                              style: StyleText.fontSize16Weight600
+                                  .copyWith(color: _C.section)),
                           SizedBox(height: 10.h),
 
-                          // No.Branches + No.Employees
                           _twoOrOne(
                             isMobile: isMobile,
                             left: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 CustomDropdownFormFieldInvMaster(
-                                  label:            isAr ? 'عدد الفروع' : 'No.Branches',
-                                  hint: Text(
-                                    isAr ? 'اختر' : 'Choose here',
-                                    style: StyleText.fontSize12Weight400
-                                        .copyWith(color: _C.hint),
-                                  ),
+                                  label:            str.noBranches,
+                                  hint:             _hint(str),
                                   selectedValue:    _noBranches,
-                                  items:            _kBranches,
+                                  items:            branches,
                                   widthIcon:        18,
                                   heightIcon:       18,
                                   height:           36,
                                   dropdownColor:    const Color(0xFFF6F6F6),
                                   primaryColor:     _C.primary,
-                                  onChanged:        (v) => setState(() => _noBranches = v),
+                                  textDirection:    str.td,        // ← RTL/LTR
+                                  onChanged: (v) => setState(() => _noBranches = v),
                                   labelPrefixSvg:   'assets/demos/no_branch.svg',
                                   labelPrefixColor: _C.iconCol,
                                 ),
                                 if (_sub && _noBranches == null)
-                                  _errText(isAr)
+                                  _errText(str)
                                 else
                                   SizedBox(height: 18.h),
                               ],
@@ -537,25 +582,22 @@ class _FormScreenState extends State<_FormScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 CustomDropdownFormFieldInvMaster(
-                                  label:            isAr ? 'عدد الموظفين' : 'No.Employees',
-                                  hint: Text(
-                                    isAr ? 'اختر' : 'Choose here',
-                                    style: StyleText.fontSize12Weight400
-                                        .copyWith(color: _C.hint),
-                                  ),
+                                  label:            str.noEmployees,
+                                  hint:             _hint(str),
                                   selectedValue:    _noEmployees,
-                                  items:            _kEmployees,
+                                  items:            employees,
                                   widthIcon:        18,
                                   heightIcon:       18,
                                   height:           36,
                                   dropdownColor:    const Color(0xFFF6F6F6),
                                   primaryColor:     _C.primary,
-                                  onChanged:        (v) => setState(() => _noEmployees = v),
+                                  textDirection:    str.td,        // ← RTL/LTR
+                                  onChanged: (v) => setState(() => _noEmployees = v),
                                   labelPrefixSvg:   'assets/demos/no_employee.svg',
                                   labelPrefixColor: _C.iconCol,
                                 ),
                                 if (_sub && _noEmployees == null)
-                                  _errText(isAr)
+                                  _errText(str)
                                 else
                                   SizedBox(height: 18.h),
                               ],
@@ -564,36 +606,33 @@ class _FormScreenState extends State<_FormScreen> {
 
                           SizedBox(height: 20.h),
 
-                          // ─── Contact Information ─────────────────────────
-                          _sectionTitle(
-                              isAr ? 'معلومات التواصل' : 'Contact  Information'),
+                          _sectionTitle(str.contactInfo),
                           SizedBox(height: 12.h),
 
-                          // First Name + Last Name
                           _twoOrOne(
                             isMobile: isMobile,
                             left: CustomValidatedTextFieldMaster(
-                              label:            isAr ? 'الاسم الأول' : 'First Name',
-                              hint:             isAr ? 'أدخل هنا' : 'Text here',
+                              label:            str.firstName,
+                              hint:             str.textHere,
                               controller:       _firstName,
                               height:           36,
                               submitted:        _sub,
                               fillColor:        const Color(0xFFF6F6F6),
                               primaryColor:     _C.primary,
-                              textDirection:    isAr ? ui.TextDirection.rtl : ui.TextDirection.ltr,
+                              textDirection:    str.td,
                               textAlign:        isAr ? TextAlign.right : TextAlign.left,
                               labelPrefixSvg:   'assets/demos/name.svg',
                               labelPrefixColor: _C.iconCol,
                             ),
                             right: CustomValidatedTextFieldMaster(
-                              label:            isAr ? 'الاسم الأخير' : 'Last Name',
-                              hint:             isAr ? 'أدخل هنا' : 'Text here',
+                              label:            str.lastName,
+                              hint:             str.textHere,
                               controller:       _lastName,
                               height:           36,
                               submitted:        _sub,
                               fillColor:        const Color(0xFFF6F6F6),
                               primaryColor:     _C.primary,
-                              textDirection:    isAr ? ui.TextDirection.rtl : ui.TextDirection.ltr,
+                              textDirection:    str.td,
                               textAlign:        isAr ? TextAlign.right : TextAlign.left,
                               labelPrefixSvg:   'assets/demos/name.svg',
                               labelPrefixColor: _C.iconCol,
@@ -602,34 +641,31 @@ class _FormScreenState extends State<_FormScreen> {
 
                           SizedBox(height: 10.h),
 
-                          // Phone + Email
                           _twoOrOne(
                             isMobile: isMobile,
-                            left:  _phoneField(isAr),
+                            left:  _phoneField(str, isAr),
                             right: CustomValidatedTextFieldMaster(
-                              label:            isAr ? 'البريد الإلكتروني' : 'Email',
-                              hint:             isAr ? 'أدخل هنا' : 'Text here',
+                              label:            str.email,
+                              hint:             str.textHere,
                               controller:       _email,
                               height:           36,
                               submitted:        _sub,
                               fillColor:        const Color(0xFFF6F6F6),
                               primaryColor:     _C.primary,
                               textDirection:    ui.TextDirection.ltr,
-                              textAlign:        TextAlign.left,
+                              textAlign:        isAr ? TextAlign.right : TextAlign.left,
+
                               labelPrefixSvg:   'assets/demos/email.svg',
                               labelPrefixColor: _C.iconCol,
                             ),
                           ),
 
-                          // ─── Dynamic Demo Questions ──────────────────────
                           if (m.demoQuestions.isNotEmpty) ...[
                             SizedBox(height: 20.h),
-                            _sectionTitle(isAr
-                                ? 'أسئلة تجريبية'
-                                : 'Demo Related Questions'),
+                            _sectionTitle(str.demoQuestions),
                             SizedBox(height: 12.h),
                             _buildDynamicQuestions(
-                                m.demoQuestions, isAr, isMobile),
+                                m.demoQuestions, str, isAr, isMobile),
                           ],
                         ],
                       ),
@@ -637,16 +673,14 @@ class _FormScreenState extends State<_FormScreen> {
 
                     SizedBox(height: 20.h),
 
-                    // ── Send Request Button ────────────────────────────────
                     SizedBox(
-                      width: isMobile ? double.infinity : 400.w,
+                      width:  isMobile ? double.infinity : 400.w,
                       height: 50.h,
                       child: ElevatedButton(
                         onPressed: widget.isLoading ? null : _submit,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: _C.primary,
-                          disabledBackgroundColor:
-                          _C.primary.withOpacity(0.6),
+                          backgroundColor:         _C.primary,
+                          disabledBackgroundColor: _C.primary.withOpacity(0.6),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(6.r),
                           ),
@@ -654,18 +688,14 @@ class _FormScreenState extends State<_FormScreen> {
                         ),
                         child: widget.isLoading
                             ? SizedBox(
-                          width: 22.w,
+                          width:  22.w,
                           height: 22.h,
                           child: const CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2,
-                          ),
+                              color: Colors.white, strokeWidth: 2),
                         )
-                            : Text(
-                          isAr ? 'إرسال الطلب' : 'Send Request',
-                          style: StyleText.fontSize16Weight600
-                              .copyWith(color: Colors.white),
-                        ),
+                            : Text(str.sendRequest,
+                            style: StyleText.fontSize16Weight600
+                                .copyWith(color: Colors.white)),
                       ),
                     ),
 
@@ -680,13 +710,11 @@ class _FormScreenState extends State<_FormScreen> {
     );
   }
 
-  // ── Section title ─────────────────────────────────────────────────────────
   Widget _sectionTitle(String t) => Text(
     t,
     style: StyleText.fontSize16Weight600.copyWith(color: _C.section),
   );
 
-  // ── Responsive two-or-one layout ─────────────────────────────────────────
   Widget _twoOrOne({
     required bool isMobile,
     required Widget left,
@@ -695,11 +723,7 @@ class _FormScreenState extends State<_FormScreen> {
     if (isMobile) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          left,
-          SizedBox(height: 10.h),
-          right,
-        ],
+        children: [left, SizedBox(height: 10.h), right],
       );
     }
     return Row(
@@ -712,30 +736,25 @@ class _FormScreenState extends State<_FormScreen> {
     );
   }
 
-  // ── Phone field (code picker + number) ───────────────────────────────────
-  Widget _phoneField(bool isAr) {
+  Widget _phoneField(_S str, bool isAr) {
     final isEmpty = _sub && _phoneNumber.text.trim().isEmpty;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // ── Label row (matches labelPrefixSvg style used across all fields) ──
         Row(
-          mainAxisSize: MainAxisSize.min,
+          mainAxisSize:       MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             SvgPicture.asset(
               'assets/demos/phone.svg',
-              width:  14.w,
-              height: 14.h,
-              colorFilter: const ColorFilter.mode(
-                  _C.iconCol, BlendMode.srcIn),
+              width:       14.w,
+              height:      14.h,
+              colorFilter: const ColorFilter.mode(_C.iconCol, BlendMode.srcIn),
             ),
             SizedBox(width: 5.w),
-            Text(
-              isAr ? 'رقم الهاتف' : 'Phone Number',
-              style: StyleText.fontSize14Weight400.copyWith(
-                  color: const Color(0xFF333333)),
-            ),
+            Text(str.phoneNumber,
+                style: StyleText.fontSize14Weight400
+                    .copyWith(color: const Color(0xFF333333))),
           ],
         ),
         SizedBox(height: 6.h),
@@ -744,17 +763,17 @@ class _FormScreenState extends State<_FormScreen> {
           child: Row(
             children: [
               Container(
-                height: 36.h,
+                height:  36.h,
                 padding: EdgeInsets.symmetric(horizontal: 6.w),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF6F6F6),
+                  color:        const Color(0xFFF6F6F6),
                   borderRadius: BorderRadius.circular(4.r),
                 ),
                 child: DropdownButtonHideUnderline(
                   child: DropdownButton<String>(
-                    value: _phoneCode,
+                    value:   _phoneCode,
                     isDense: true,
-                    style: StyleText.fontSize12Weight400
+                    style:   StyleText.fontSize12Weight400
                         .copyWith(color: _C.label),
                     items: _kPhoneCodes
                         .map((e) => DropdownMenuItem(
@@ -771,18 +790,18 @@ class _FormScreenState extends State<_FormScreen> {
               SizedBox(width: 4.w),
               Expanded(
                 child: SizedBox(
-                  height: 36.h,
+                  height: 40.h,
                   child: TextField(
-                    controller: _phoneNumber,
+                    controller:   _phoneNumber,
                     keyboardType: TextInputType.phone,
                     style: StyleText.fontSize12Weight400
                         .copyWith(color: _C.label),
                     decoration: InputDecoration(
-                      hintText:  isAr ? 'رقم الهاتف' : 'Phone Number *',
+                      hintText:  str.phoneNumber,
                       hintStyle: StyleText.fontSize12Weight400
                           .copyWith(color: _C.hint),
                       contentPadding: EdgeInsets.symmetric(
-                          horizontal: 8.w, vertical: 10.h),
+                          horizontal: 8.w, vertical: 13.h),
                       filled:    true,
                       fillColor: const Color(0xFFF6F6F6),
                       isDense:   true,
@@ -793,8 +812,8 @@ class _FormScreenState extends State<_FormScreen> {
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(4.r),
-                        borderSide: const BorderSide(
-                            color: _C.primary, width: 1.5),
+                        borderSide:
+                        const BorderSide(color: _C.primary, width: 1.5),
                       ),
                     ),
                     onChanged: (_) {
@@ -809,7 +828,7 @@ class _FormScreenState extends State<_FormScreen> {
         if (isEmpty)
           Padding(
             padding: EdgeInsets.only(top: 4.h, left: 4.w),
-            child: _errText(isAr),
+            child: _errText(str),
           )
         else
           SizedBox(height: 18.h),
@@ -817,9 +836,12 @@ class _FormScreenState extends State<_FormScreen> {
     );
   }
 
-  // ── Dynamic questions — pair them on desktop, stack on mobile ─────────────
   Widget _buildDynamicQuestions(
-      List<DemoQuestionModel> questions, bool isAr, bool isMobile) {
+      List<DemoQuestionModel> questions,
+      _S str,
+      bool isAr,
+      bool isMobile,
+      ) {
     if (isMobile) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -829,13 +851,11 @@ class _FormScreenState extends State<_FormScreen> {
           return Padding(
             padding: EdgeInsets.only(
                 bottom: i < questions.length - 1 ? 12.h : 0),
-            child: _dynQuestion(q, isAr),
+            child: _dynQuestion(q, str, isAr),
           );
         }).toList(),
       );
     }
-
-    // Desktop: pair questions into rows of 2
     final List<Widget> rows = [];
     for (int i = 0; i < questions.length; i += 2) {
       final left  = questions[i];
@@ -847,25 +867,23 @@ class _FormScreenState extends State<_FormScreen> {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(child: _dynQuestion(left, isAr)),
+              Expanded(child: _dynQuestion(left, str, isAr)),
               SizedBox(width: 12.w),
               Expanded(
-                  child: right != null
-                      ? _dynQuestion(right, isAr)
-                      : const SizedBox.shrink()),
+                child: right != null
+                    ? _dynQuestion(right, str, isAr)
+                    : const SizedBox.shrink(),
+              ),
             ],
           ),
         ),
       );
     }
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: rows,
-    );
+        crossAxisAlignment: CrossAxisAlignment.start, children: rows);
   }
 
-  // ── Single dynamic question ───────────────────────────────────────────────
-  Widget _dynQuestion(DemoQuestionModel q, bool isAr) {
+  Widget _dynQuestion(DemoQuestionModel q, _S str, bool isAr) {
     final qLabel   = isAr ? q.question.ar : q.question.en;
     final iconPath = _iconForQuestion(q.id);
     final hasError = _sub &&
@@ -878,13 +896,13 @@ class _FormScreenState extends State<_FormScreen> {
       _dynControllers.putIfAbsent(q.id, () => TextEditingController());
       return CustomValidatedTextFieldMaster(
         label:            '$qLabel${q.required ? ' *' : ''}',
-        hint:             isAr ? 'أدخل هنا' : 'Text here',
+        hint:             str.textHere,
         controller:       _dynControllers[q.id]!,
         height:           36,
         submitted:        _sub,
         fillColor:        const Color(0xFFF6F6F6),
         primaryColor:     _C.primary,
-        textDirection:    isAr ? ui.TextDirection.rtl : ui.TextDirection.ltr,
+        textDirection:    str.td,
         textAlign:        isAr ? TextAlign.right : TextAlign.left,
         labelPrefixSvg:   iconPath,
         labelPrefixColor: _C.iconCol,
@@ -904,8 +922,9 @@ class _FormScreenState extends State<_FormScreen> {
       children: [
         CustomDropdownFormFieldInvMaster(
           label:            '$qLabel${q.required ? ' *' : ''}',
-          hint: Text(
-            isAr ? 'اختر' : 'Choose here',
+          hint:             Text(
+            str.chooseHere,
+            textDirection: str.td,
             style: StyleText.fontSize12Weight400.copyWith(color: _C.hint),
           ),
           selectedValue:    _answers[q.id] as String?,
@@ -915,6 +934,7 @@ class _FormScreenState extends State<_FormScreen> {
           height:           36,
           dropdownColor:    const Color(0xFFF6F6F6),
           primaryColor:     _C.primary,
+          textDirection:    str.td,                          // ← RTL/LTR
           onChanged:        (v) => setState(() => _answers[q.id] = v),
           labelPrefixSvg:   iconPath,
           labelPrefixColor: _C.iconCol,
@@ -922,7 +942,7 @@ class _FormScreenState extends State<_FormScreen> {
         if (hasError)
           Padding(
             padding: EdgeInsets.only(top: 4.h, left: 4.w),
-            child: _errText(isAr),
+            child: _errText(str),
           )
         else
           SizedBox(height: 18.h),
@@ -930,7 +950,6 @@ class _FormScreenState extends State<_FormScreen> {
     );
   }
 
-  /// Maps a question id to the correct local SVG asset.
   String _iconForQuestion(String id) {
     final lower = id.toLowerCase();
     if (lower.contains('primary') || lower.contains('reason')) {
@@ -942,8 +961,8 @@ class _FormScreenState extends State<_FormScreen> {
     return 'assets/demos/primary_reson.svg';
   }
 
-  Widget _errText(bool isAr) => Text(
-    isAr ? 'هذا الحقل مطلوب' : 'This field is required.',
+  Widget _errText(_S str) => Text(
+    str.fieldRequired,
     style: TextStyle(
       fontSize:   10.sp,
       fontWeight: FontWeight.w700,
@@ -957,25 +976,24 @@ class _FormScreenState extends State<_FormScreen> {
 // ════════════════════════════════════════════════════════════════════════════
 class _ConfirmScreen extends StatelessWidget {
   final RequestDemoPageModel model;
-  const _ConfirmScreen({required this.model});
+  final bool isAr;
+  const _ConfirmScreen({required this.model, required this.isAr});
 
   @override
   Widget build(BuildContext context) {
-    final isAr   = Localizations.localeOf(context).languageCode == 'ar';
+    final str    = _S(isAr);
     final svgUrl = model.confirmSvgUrl;
-    final title  = (isAr ? model.confirmTitle.ar : model.confirmTitle.en)
-        .isNotEmpty
+    final title  =
+    (isAr ? model.confirmTitle.ar : model.confirmTitle.en).isNotEmpty
         ? (isAr ? model.confirmTitle.ar : model.confirmTitle.en)
-        : 'Waiting till Customer Services Call You';
-    final desc   = (isAr
-        ? model.confirmDescription.ar
-        : model.confirmDescription.en)
+        : str.confirmTitle;
+    final desc   =
+    (isAr ? model.confirmDescription.ar : model.confirmDescription.en)
         .isNotEmpty
         ? (isAr
         ? model.confirmDescription.ar
         : model.confirmDescription.en)
-        : "Your demo request has been successfully submitted, thank you! "
-        "We'll be in touch soon to confirm the details.";
+        : str.confirmDesc;
 
     return Scaffold(
       backgroundColor: _C.back,
@@ -985,10 +1003,10 @@ class _ConfirmScreen extends StatelessWidget {
           child: Padding(
             padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 40.h),
             child: Container(
-              width: double.infinity,
+              width:   double.infinity,
               padding: EdgeInsets.all(32.w),
               decoration: BoxDecoration(
-                color: _C.card,
+                color:        _C.card,
                 borderRadius: BorderRadius.circular(12.r),
               ),
               child: Column(
@@ -997,8 +1015,8 @@ class _ConfirmScreen extends StatelessWidget {
                   if (svgUrl.isNotEmpty)
                     SvgPicture.network(
                       svgUrl,
-                      height: 220.h,
-                      fit: BoxFit.contain,
+                      height:             220.h,
+                      fit:                BoxFit.contain,
                       placeholderBuilder: (_) =>
                       const Center(child: CircleProgressMaster()),
                     )
@@ -1008,41 +1026,36 @@ class _ConfirmScreen extends StatelessWidget {
 
                   SizedBox(height: 24.h),
 
-                  Text(
-                    title,
-                    textAlign: TextAlign.center,
-                    style: StyleText.fontSize20Weight600.copyWith(
-                        color: _C.primary, fontWeight: FontWeight.w700),
-                  ),
+                  Text(title,
+                      textAlign: TextAlign.center,
+                      style: StyleText.fontSize20Weight600.copyWith(
+                          color: _C.primary, fontWeight: FontWeight.w700)),
 
                   SizedBox(height: 12.h),
 
-                  Text(
-                    desc,
-                    textAlign: TextAlign.center,
-                    style: StyleText.fontSize12Weight400
-                        .copyWith(color: _C.label, height: 1.6),
-                  ),
+                  Text(desc,
+                      textAlign: TextAlign.center,
+                      style: StyleText.fontSize12Weight400
+                          .copyWith(color: _C.label, height: 1.6)),
 
                   SizedBox(height: 32.h),
 
                   SizedBox(
-                    width: double.infinity,
+                    width:  double.infinity,
                     height: 46.h,
-                    child: OutlinedButton(
-                      onPressed: () =>
-                          context.read<_SubmitCubit>().reset(),
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: _C.primary),
+                    child: ElevatedButton(
+                      onPressed: () => context.read<_SubmitCubit>().reset(),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: _C.primary,
+                        elevation:       0,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8.r),
                         ),
                       ),
-                      child: Text(
-                        isAr ? 'إرسال طلب آخر' : 'Submit Another Request',
-                        style: StyleText.fontSize14Weight600
-                            .copyWith(color: _C.primary),
-                      ),
+                      child: Text(str.submitAnother,
+                          style: StyleText.fontSize14Weight600
+                              .copyWith(color: _C.primary)),
                     ),
                   ),
                 ],

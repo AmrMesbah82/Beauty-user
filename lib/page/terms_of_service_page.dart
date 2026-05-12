@@ -5,12 +5,17 @@
 // FIXED:   Download buttons now show language-aware label and URL
 //          AR mode → Arabic PDF button only
 //          EN mode → English PDF button only
+// FIXED:   svgUrl now passed to _TermsHeaderDesktop and _TermsHeaderMobile
+// UPDATED: Primary color is now gender-aware — uses malePrimaryColor when
+//          GenderCubit reports male, primaryColor when female.
 
 // ignore_for_file: avoid_web_libraries_in_flutter
 import 'dart:html' as html;
 import 'dart:typed_data';
 import 'dart:ui_web' as ui_web;
 
+import 'package:beauty_user/controller/gender/gender_cubit.dart';
+import 'package:beauty_user/controller/gender/gender_state.dart';
 import 'package:beauty_user/controller/home/home_cubit.dart';
 import 'package:beauty_user/controller/home/home_state.dart';
 import 'package:beauty_user/controller/home/lang_state.dart';
@@ -54,12 +59,24 @@ String _ab(AboutBilingualText b, bool isRtl) {
   return v.isNotEmpty ? v : b.en;
 }
 
-Color _parseColor(String hex, {required Color fallback}) {
+Color _parseHex(String hex, {required Color fallback}) {
   try {
     final h = hex.replaceAll('#', '');
     if (h.length == 6) return Color(int.parse('FF$h', radix: 16));
   } catch (_) {}
   return fallback;
+}
+
+// ── Gender-aware primary color helper ────────────────────────────────────────
+/// Returns malePrimaryColor when [isMale] is true, otherwise primaryColor.
+Color _resolvePrimaryColor({
+  required String primaryColorHex,
+  required String malePrimaryColorHex,
+  required bool isMale,
+}) {
+  final hex = isMale ? malePrimaryColorHex : primaryColorHex;
+  return _parseHex(hex,
+      fallback: isMale ? const Color(0xFF1565C0) : _kDefaultGreen);
 }
 
 ({int topTab, int subTab}) _resolveTabParam(String? raw) {
@@ -140,14 +157,14 @@ Widget _netImg({
       : 'cover';
 
   // ✅ Guard against double.infinity — crashes toInt() on web (dart2js)
-  String _safeSize(double? v) {
+  String safeSize(double? v) {
     if (v == null) return 'null';
     if (v.isInfinite || v.isNaN) return 'fill';
     return v.toInt().toString();
   }
 
   final viewId =
-      'svg-terms-user-${url.hashCode}-${_safeSize(width)}-${_safeSize(height)}';
+      'svg-terms-user-${url.hashCode}-${safeSize(width)}-${safeSize(height)}';
 
   ui_web.platformViewRegistry.registerViewFactory(viewId, (int id) {
     final img = html.ImageElement()
@@ -173,11 +190,6 @@ Widget _netImg({
 
   return inner;
 }
-
-// ══════════════════════════════════════════════════════════════════════════════
-// Preload helpers
-// ══════════════════════════════════════════════════════════════════════════════
-
 
 // ══════════════════════════════════════════════════════════════════════════════
 // Reveal animation system
@@ -488,34 +500,33 @@ class _TermsOfServicePageViewState extends State<_TermsOfServicePageView> {
           HomeCmsSaved(:final data) => data.branding.logoUrl,
           _ => context.read<HomeCmsCubit>().current.branding.logoUrl,
         };
-        final Color primaryColor = switch (homeState) {
-          HomeCmsLoaded(:final data) => _parseColor(
-            data.branding.primaryColor,
-            fallback: _kDefaultGreen,
-          ),
-          HomeCmsSaved(:final data) => _parseColor(
-            data.branding.primaryColor,
-            fallback: _kDefaultGreen,
-          ),
-          _ => _kDefaultGreen,
+        final String primaryColorHex = switch (homeState) {
+          HomeCmsLoaded(:final data) => data.branding.primaryColor,
+          HomeCmsSaved(:final data) => data.branding.primaryColor,
+          _ => '',
+        };
+        final String malePrimaryColorHex = switch (homeState) {
+          HomeCmsLoaded(:final data) => data.branding.malePrimaryColor,
+          HomeCmsSaved(:final data) => data.branding.malePrimaryColor,
+          _ => '',
         };
         final Color secondaryColor = switch (homeState) {
-          HomeCmsLoaded(:final data) => _parseColor(
+          HomeCmsLoaded(:final data) => _parseHex(
             data.branding.secondaryColor,
             fallback: _kGreenLight,
           ),
-          HomeCmsSaved(:final data) => _parseColor(
+          HomeCmsSaved(:final data) => _parseHex(
             data.branding.secondaryColor,
             fallback: _kGreenLight,
           ),
           _ => _kGreenLight,
         };
         final Color backgroundColor = switch (homeState) {
-          HomeCmsLoaded(:final data) => _parseColor(
+          HomeCmsLoaded(:final data) => _parseHex(
             data.branding.backgroundColor,
             fallback: AppColors.background,
           ),
-          HomeCmsSaved(:final data) => _parseColor(
+          HomeCmsSaved(:final data) => _parseHex(
             data.branding.backgroundColor,
             fallback: AppColors.background,
           ),
@@ -557,11 +568,11 @@ class _TermsOfServicePageViewState extends State<_TermsOfServicePageView> {
                 ),
               );
             final Color loaderBg = switch (homeState) {
-              HomeCmsLoaded(:final data) => _parseColor(
+              HomeCmsLoaded(:final data) => _parseHex(
                 data.branding.backgroundColor,
                 fallback: AppColors.background,
               ),
-              HomeCmsSaved(:final data) => _parseColor(
+              HomeCmsSaved(:final data) => _parseHex(
                 data.branding.backgroundColor,
                 fallback: AppColors.background,
               ),
@@ -573,91 +584,115 @@ class _TermsOfServicePageViewState extends State<_TermsOfServicePageView> {
                 backgroundColor: loaderBg,
               );
 
-            return BlocBuilder<LanguageCubit, LanguageState>(
-              builder: (context, langState) {
-                final bool isRtl = langState.isArabic;
-                final double w = MediaQuery.of(context).size.width;
-                return Directionality(
-                  textDirection:
-                  isRtl ? TextDirection.rtl : TextDirection.ltr,
-                  child: Scaffold(
-                    backgroundColor: backgroundColor,
-                    body: _RevealCoordinatorWidget(
-                      child: Column(
-                        children: [
-                          // ✅ Navbar
-                          Material(
-                            color: backgroundColor,
-                            elevation: 0,
-                            child: AppNavbar(currentRoute: '/terms'),
-                          ),
+            // ── Gender-aware color rebuild ──────────────────────────────────
+            return BlocBuilder<GenderCubit, GenderState>(
+              builder: (context, genderState) {
+                final bool isMale = genderState.isMale;
 
-                          // ✅ Scrollable content
-                          Expanded(
-                            child: SingleChildScrollView(
-                              child: Column(
-                                crossAxisAlignment:
-                                CrossAxisAlignment.stretch,
-                                children: [
-                                  _Reveal(
-                                    delay:
-                                    const Duration(milliseconds: 80),
-                                    direction: isRtl
-                                        ? _SlideDirection.fromRight
-                                        : _SlideDirection.fromLeft,
-                                    duration: const Duration(
-                                        milliseconds: 650),
-                                    child: w < _BP.mobile
-                                        ? _TermsHeaderMobile(
-                                      isRtl: isRtl,
-                                      primaryColor: primaryColor,
-                                    )
-                                        : _TermsHeaderDesktop(
-                                      isRtl: isRtl,
-                                      primaryColor: primaryColor,
-                                    ),
-                                  ),
-                                  w < _BP.mobile
-                                      ? _TermsBodyMobile(
-                                    termsModel: termsModel!,
-                                    isRtl: isRtl,
-                                    primaryColor: primaryColor,
-                                    secondaryColor: secondaryColor,
-                                    logoUrl: logoUrl,
-                                    initialTopTab: _tabParamApplied
-                                        ? null
-                                        : _initialTopTab,
-                                    onTabApplied: () =>
-                                    _tabParamApplied = true,
-                                  )
-                                      : _TermsBodyDesktop(
-                                    termsModel: termsModel!,
-                                    isRtl: isRtl,
-                                    primaryColor: primaryColor,
-                                    secondaryColor: secondaryColor,
-                                    logoUrl: logoUrl,
-                                    initialTopTab: _tabParamApplied
-                                        ? null
-                                        : _initialTopTab,
-                                    onTabApplied: () =>
-                                    _tabParamApplied = true,
-                                  ),
-                                ],
+                // ✅ Pick primary color based on current gender
+                final Color primaryColor = _resolvePrimaryColor(
+                  primaryColorHex: primaryColorHex,
+                  malePrimaryColorHex: malePrimaryColorHex,
+                  isMale: isMale,
+                );
+
+                return BlocBuilder<LanguageCubit, LanguageState>(
+                  builder: (context, langState) {
+                    final bool isRtl = langState.isArabic;
+                    final double w = MediaQuery.of(context).size.width;
+
+                    // ── SVG to show in the page header ─────────────────────────
+                    final String headerSvgUrl =
+                        termsModel!.termsAndConditions.svgUrl;
+
+                    return Directionality(
+                      textDirection:
+                      isRtl ? TextDirection.rtl : TextDirection.ltr,
+                      child: Scaffold(
+                        backgroundColor: backgroundColor,
+                        body: _RevealCoordinatorWidget(
+                          child: Column(
+                            children: [
+                              // ✅ Navbar
+                              Material(
+                                color: backgroundColor,
+                                elevation: 0,
+                                child: AppNavbar(currentRoute: '/terms'),
                               ),
-                            ),
-                          ),
 
-                          // ✅ Footer
-                          _Reveal(
-                            delay: const Duration(milliseconds: 100),
-                            direction: _SlideDirection.fromBottom,
-                            duration: const Duration(milliseconds: 600),
-                            child: const AppFooter(),
+                              // ✅ Scrollable content
+                              Expanded(
+                                child: SingleChildScrollView(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                    CrossAxisAlignment.stretch,
+                                    children: [
+                                      // ── Page header with SVG ────────────────
+                                      _Reveal(
+                                        delay:
+                                        const Duration(milliseconds: 80),
+                                        direction: isRtl
+                                            ? _SlideDirection.fromRight
+                                            : _SlideDirection.fromLeft,
+                                        duration: const Duration(
+                                            milliseconds: 650),
+                                        child: w < _BP.mobile
+                                            ? _TermsHeaderMobile(
+                                          isRtl: isRtl,
+                                          primaryColor: primaryColor,
+                                          svgUrl: headerSvgUrl,
+                                        )
+                                            : _TermsHeaderDesktop(
+                                          isRtl: isRtl,
+                                          primaryColor: primaryColor,
+                                          svgUrl: headerSvgUrl,
+                                        ),
+                                      ),
+
+                                      // ── Body (tabs + doc panels) ───────────
+                                      w < _BP.mobile
+                                          ? _TermsBodyMobile(
+                                        termsModel: termsModel,
+                                        isRtl: isRtl,
+                                        primaryColor: primaryColor,
+                                        secondaryColor: secondaryColor,
+                                        logoUrl: logoUrl,
+                                        initialTopTab: _tabParamApplied
+                                            ? null
+                                            : _initialTopTab,
+                                        onTabApplied: () =>
+                                        _tabParamApplied = true,
+                                      )
+                                          : _TermsBodyDesktop(
+                                        termsModel: termsModel,
+                                        isRtl: isRtl,
+                                        primaryColor: primaryColor,
+                                        secondaryColor: secondaryColor,
+                                        logoUrl: logoUrl,
+                                        initialTopTab: _tabParamApplied
+                                            ? null
+                                            : _initialTopTab,
+                                        onTabApplied: () =>
+                                        _tabParamApplied = true,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+
+                              // ✅ Footer
+                              _Reveal(
+                                delay: const Duration(milliseconds: 100),
+                                direction: _SlideDirection.fromBottom,
+                                duration: const Duration(milliseconds: 600),
+                                child: const AppFooter(),
+                              ),
+                            ],
                           ),
-                        ],
+                        ),
                       ),
-                    ),
-                  ),
+                    );
+                  },
                 );
               },
             );
@@ -675,10 +710,14 @@ class _TermsOfServicePageViewState extends State<_TermsOfServicePageView> {
 class _TermsHeaderDesktop extends StatelessWidget {
   final bool isRtl;
   final Color primaryColor;
+  final String svgUrl;
+
   const _TermsHeaderDesktop({
     required this.isRtl,
     required this.primaryColor,
+    required this.svgUrl,
   });
+
   @override
   Widget build(BuildContext context) {
     final double screenW = MediaQuery.of(context).size.width,
@@ -686,16 +725,35 @@ class _TermsHeaderDesktop extends StatelessWidget {
     final double hPad =
     ((screenW - contentW) / 2).clamp(36.0, double.infinity);
     final String title = isRtl ? 'الشروط والخدمة' : 'Terms of Service';
+
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: hPad, vertical: 36.h),
-      child: Text(
-        title,
-        textAlign: isRtl ? TextAlign.right : TextAlign.left,
-        style: StyleText.fontSize45Weight600.copyWith(
-          fontSize: 48.sp,
-          fontWeight: FontWeight.w700,
-          color: primaryColor,
-        ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          // ── SVG before title ───────────────────────────────────────
+          if (svgUrl.isNotEmpty) ...[
+            _netImg(
+              url: svgUrl,
+              width: 120.w,
+              height: 120.w,
+              fit: BoxFit.contain,
+            ),
+            SizedBox(width: 24.w),
+          ],
+          // ── Title ──────────────────────────────────────────────────
+          Expanded(
+            child: Text(
+              title,
+              textAlign: isRtl ? TextAlign.right : TextAlign.left,
+              style: StyleText.fontSize45Weight600.copyWith(
+                fontSize: 48.sp,
+                fontWeight: FontWeight.w700,
+                color: primaryColor,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -704,23 +762,46 @@ class _TermsHeaderDesktop extends StatelessWidget {
 class _TermsHeaderMobile extends StatelessWidget {
   final bool isRtl;
   final Color primaryColor;
+  final String svgUrl;
+
   const _TermsHeaderMobile({
     required this.isRtl,
     required this.primaryColor,
+    required this.svgUrl,
   });
+
   @override
   Widget build(BuildContext context) {
     final String title = isRtl ? 'الشروط والخدمة' : 'Terms of Service';
+
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 20.h),
-      child: Text(
-        title,
-        textAlign: isRtl ? TextAlign.right : TextAlign.left,
-        style: StyleText.fontSize45Weight600.copyWith(
-          fontSize: 28.sp,
-          fontWeight: FontWeight.w900,
-          color: primaryColor,
-        ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          // ── SVG before title ───────────────────────────────────────
+          if (svgUrl.isNotEmpty) ...[
+            _netImg(
+              url: svgUrl,
+              width: 56.w,
+              height: 56.w,
+              fit: BoxFit.contain,
+            ),
+            SizedBox(width: 12.w),
+          ],
+          // ── Title ──────────────────────────────────────────────────
+          Expanded(
+            child: Text(
+              title,
+              textAlign: isRtl ? TextAlign.right : TextAlign.left,
+              style: StyleText.fontSize45Weight600.copyWith(
+                fontSize: 28.sp,
+                fontWeight: FontWeight.w900,
+                color: primaryColor,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -762,15 +843,12 @@ class _TermsBodyDesktopState extends State<_TermsBodyDesktop> {
     );
   }
 
-  // ── Language-aware download button ──
-  // AR mode  → shows Arabic PDF + Arabic label
-  // EN mode  → shows English PDF + English label
   Widget _downloadButton({
     required bool isRtl,
     required String attachEnUrl,
     required String attachArUrl,
-    required String sectionLabelEn, // e.g. "Terms and Conditions"
-    required String sectionLabelAr, // e.g. "الشروط والأحكام"
+    required String sectionLabelEn,
+    required String sectionLabelAr,
   }) {
     final String url = isRtl ? attachArUrl : attachEnUrl;
     if (url.isEmpty) return const SizedBox.shrink();
@@ -806,7 +884,6 @@ class _TermsBodyDesktopState extends State<_TermsBodyDesktop> {
     );
   }
 
-  /// Desktop doc panel
   Widget _docPanel({
     required String description,
     required String svgUrl,
@@ -816,6 +893,20 @@ class _TermsBodyDesktopState extends State<_TermsBodyDesktop> {
     required String sectionLabelAr,
     required String lastUpdate,
   }) {
+    // Get mainWidgetColor from HomeCmsCubit
+    final homeState = context.watch<HomeCmsCubit>().state;
+    final Color? mainWidgetColor = switch (homeState) {
+      HomeCmsLoaded(:final data) => _parseHex(
+        data.branding.mainWidgetColor,
+        fallback: Colors.transparent,
+      ),
+      HomeCmsSaved(:final data) => _parseHex(
+        data.branding.mainWidgetColor,
+        fallback: Colors.transparent,
+      ),
+      _ => Colors.transparent,
+    };
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -823,17 +914,16 @@ class _TermsBodyDesktopState extends State<_TermsBodyDesktop> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ── White card ──
               Container(
+                width: double.infinity,
                 padding: EdgeInsets.all(16.r),
                 decoration: BoxDecoration(
-                  color: _kSurface,
+                  color: mainWidgetColor,  // ← Changed from _kSurface to mainWidgetColor
                   borderRadius: BorderRadius.circular(12.r),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Logo (start) + Date (end) — respects Directionality
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       crossAxisAlignment: CrossAxisAlignment.center,
@@ -854,8 +944,7 @@ class _TermsBodyDesktopState extends State<_TermsBodyDesktop> {
                               fontFamily: 'Cairo',
                               fontSize: 11.sp,
                               fontWeight: FontWeight.w400,
-                              color: AppColors.secondaryBlack
-                                  .withOpacity(0.6),
+                              color: AppColors.secondaryBlack.withOpacity(0.6),
                             ),
                           ),
                       ],
@@ -871,8 +960,6 @@ class _TermsBodyDesktopState extends State<_TermsBodyDesktop> {
                   ],
                 ),
               ),
-
-              // ── Single language-aware download button ──
               SizedBox(height: 12.h),
               _downloadButton(
                 isRtl: widget.isRtl,
@@ -1059,9 +1146,7 @@ class _DesktopTopTabItemState extends State<_DesktopTopTabItem> {
                 widget.label,
                 style: StyleText.fontSize14Weight400.copyWith(
                   fontWeight: sel ? FontWeight.w700 : FontWeight.w500,
-                  color: sel
-                      ? widget.primaryColor
-                      : AppColors.secondaryBlack,
+                  color: sel ? widget.primaryColor : AppColors.secondaryBlack,
                 ),
               ),
             ],
@@ -1112,8 +1197,6 @@ class _TermsBodyMobileState extends State<_TermsBodyMobile> {
     BiText(ar: 'الشروط والأحكام', en: 'Terms and Conditions'),
     BiText(ar: 'سياسة الخصوصية', en: 'Privacy Policy'),
   ];
-
-
 
   @override
   Widget build(BuildContext context) {
@@ -1306,9 +1389,10 @@ class _MobileTopTabItemState extends State<_MobileTopTabItem> {
 
 // ══════════════════════════════════════════════════════════════════════════════
 // Mobile Doc Panel
-// FIXED: isRtl parameter added — download button now shows correct language
-//        AR → Arabic PDF + Arabic label
-//        EN → English PDF + English label
+// ══════════════════════════════════════════════════════════════════════════════
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Mobile Doc Panel (WITH MAIN WIDGET COLOR BACKGROUND)
 // ══════════════════════════════════════════════════════════════════════════════
 
 class _MobileDocPanel extends StatelessWidget {
@@ -1321,7 +1405,7 @@ class _MobileDocPanel extends StatelessWidget {
   final Color primaryColor;
   final String logoUrl;
   final String lastUpdate;
-  final bool isRtl; // ← ADDED
+  final bool isRtl;
 
   const _MobileDocPanel({
     required this.description,
@@ -1336,8 +1420,23 @@ class _MobileDocPanel extends StatelessWidget {
     required this.isRtl,
   });
 
+  // Get mainWidgetColor from HomeCmsCubit
+  Color? _getMainWidgetColor(BuildContext context) {
+    final homeState = context.watch<HomeCmsCubit>().state;
+    return switch (homeState) {
+      HomeCmsLoaded(:final data) => _parseHex(
+        data.branding.mainWidgetColor,
+        fallback: Colors.transparent,
+      ),
+      HomeCmsSaved(:final data) => _parseHex(
+        data.branding.mainWidgetColor,
+        fallback: Colors.transparent,
+      ),
+      _ => Colors.transparent,
+    };
+  }
+
   Widget _downloadBtn(BuildContext context) {
-    // Pick the correct URL and label based on current language
     final String url = isRtl ? attachArUrl : attachEnUrl;
     if (url.isEmpty) return const SizedBox.shrink();
 
@@ -1382,16 +1481,15 @@ class _MobileDocPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // ✅ Hide the last update row entirely if the value is blank/null
-    final bool hasLastUpdate =
-        lastUpdate.isNotEmpty &&
-            !lastUpdate.endsWith(': ') &&
-            !lastUpdate.endsWith(': null');
+    final bool hasLastUpdate = lastUpdate.isNotEmpty &&
+        !lastUpdate.endsWith(': ') &&
+        !lastUpdate.endsWith(': null');
+    final Color? backgroundColor = _getMainWidgetColor(context);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // ── SVG image on top (full width, respects RTL via Directionality) ──
+        // ── SVG image on top ──
         if (svgUrl.isNotEmpty) ...[
           SizedBox(
             width: double.infinity,
@@ -1406,10 +1504,11 @@ class _MobileDocPanel extends StatelessWidget {
           SizedBox(height: 14.h),
         ],
 
-        // ── White card ──
+        // ── Card with background color ──
         Container(
+          width: double.infinity,
           decoration: BoxDecoration(
-            color: _kSurface,
+            color: backgroundColor,  // ← Changed from _kSurface to backgroundColor
             borderRadius: BorderRadius.circular(12.r),
           ),
           child: Padding(
@@ -1417,7 +1516,6 @@ class _MobileDocPanel extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // ✅ Only show logo/date row if at least one is present
                 if (logoUrl.isNotEmpty || hasLastUpdate) ...[
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1432,8 +1530,6 @@ class _MobileDocPanel extends StatelessWidget {
                         )
                       else
                         const SizedBox.shrink(),
-
-                      // ✅ Only render date text when it has real content
                       if (hasLastUpdate)
                         Flexible(
                           child: Text(
@@ -1451,7 +1547,6 @@ class _MobileDocPanel extends StatelessWidget {
                   ),
                   SizedBox(height: 12.h),
                 ],
-
                 Text(
                   description,
                   style: TextStyle(

@@ -29,25 +29,38 @@ exports.sendContactEmail = onCall(
         subject,
         message,
         isArabic,
+        preferredLanguage,
       } = request.data;
 
       console.log("📧 [sendContactEmail] Called with:", {
-        toEmail, submitterName, submitterEmail,
-        submitterPhone, subject, isArabic,
+        toEmail,
+        submitterName,
+        submitterEmail,
+        submitterPhone,
+        subject,
+        isArabic,
+        preferredLanguage,
       });
 
-      if (!toEmail || !submitterName ||
-        !submitterEmail || !subject || !message) {
+      if (!toEmail || !submitterName || !submitterEmail || !subject || !message) {
         console.error("❌ [sendContactEmail] Missing required fields");
         throw new Error("Missing required fields");
       }
 
       sgMail.setApiKey(SENDGRID_API_KEY.value());
 
-      // Split full name into first/last for the company template
       const nameParts = submitterName.trim().split(" ");
       const firstName = nameParts[0] || "";
       const lastName = nameParts.slice(1).join(" ") || "";
+
+      // ── Language gates ────────────────────────────────────────────────
+      // 'en'                        → show EN section only
+      // 'ar'                        → show AR section only
+      // null / undefined / anything → show BOTH sections
+      const showEn = preferredLanguage !== "ar";
+      const showAr = preferredLanguage !== "en";
+
+      console.log(`   preferredLanguage="${preferredLanguage}" → show_en=${showEn}  show_ar=${showAr}`);
 
       try {
         await sgMail.send({
@@ -67,9 +80,11 @@ exports.sendContactEmail = onCall(
             location: "",
             subject: subject,
             message: message,
+            show_en: showEn,
+            show_ar: showAr,
           },
         });
-        console.log("✅ [sendContactEmail] Company email sent to:", toEmail);
+        console.log("✅ [sendContactEmail] Company email sent to:", toEmail, "| lang:", preferredLanguage);
         return {success: true};
       } catch (error) {
         console.error("❌ [sendContactEmail] SendGrid error:", error);
@@ -93,10 +108,17 @@ exports.sendContactConfirmation = onCall(
         subject,
         message,
         isArabic,
+        preferredLanguage,
+        gender, // ← NEW: 'Male' | 'Female' | AR equivalents
       } = request.data;
 
       console.log("📧 [sendContactConfirmation] Called with:", {
-        toEmail, submitterName, subject, isArabic,
+        toEmail,
+        submitterName,
+        subject,
+        isArabic,
+        preferredLanguage,
+        gender,
       });
 
       if (!toEmail || !submitterName || !subject || !message) {
@@ -105,6 +127,22 @@ exports.sendContactConfirmation = onCall(
       }
 
       sgMail.setApiKey(SENDGRID_API_KEY.value());
+
+      // ── Language gates ────────────────────────────────────────────────
+      // 'en'                        → show EN section only
+      // 'ar'                        → show AR section only
+      // null / undefined / anything → show BOTH sections
+      const showEn = preferredLanguage !== "ar";
+      const showAr = preferredLanguage !== "en";
+
+      // ── Gender-aware Arabic salutation ────────────────────────────────
+      // Covers EN values: 'Female', 'Ladies', 'Women'
+      // Covers AR values: 'أنثى', 'سيدات', 'نساء'
+      const femaleValues = ["female", "ladies", "women", "أنثى", "سيدات", "نساء"];
+      const isFemale = femaleValues.includes((gender || "").toLowerCase().trim());
+      const arSalutation = isFemale ? "السيدة" : "السيد";
+
+      console.log(`   show_en=${showEn}  show_ar=${showAr}  gender="${gender}"  salutation="${arSalutation}"`);
 
       try {
         await sgMail.send({
@@ -116,9 +154,14 @@ exports.sendContactConfirmation = onCall(
           templateId: TEMPLATE_USER,
           dynamic_template_data: {
             client_name: submitterName,
+            subject: subject,
+            message: message,
+            show_en: showEn,
+            show_ar: showAr,
+            ar_salutation: arSalutation, // ← "السيد" or "السيدة"
           },
         });
-        console.log("✅ [sendContactConfirmation] Confirmation sent to:", toEmail);
+        console.log("✅ [sendContactConfirmation] Confirmation sent to:", toEmail, "| lang:", preferredLanguage, "| salutation:", arSalutation);
         return {success: true};
       } catch (error) {
         console.error("❌ [sendContactConfirmation] SendGrid error:", error);

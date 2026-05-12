@@ -1,10 +1,9 @@
 /// ******************* FILE INFO *******************
 /// File Name: home_page.dart
 /// Description: Public-facing Home Page for the Beauty App (Bayanatz).
-/// Last Update: 09/05/2026
-/// FIXED: SVG images now rendered via native browser <img> tag to avoid CORS
-///        issues with Firebase Storage + flutter_svg XHR loading.
-/// FIXED: Reduced loader timeout and optimized preload logic for faster rendering
+/// Last Update: 11/05/2026
+/// UPDATED: Primary color is now gender-aware — uses malePrimaryColor when
+///          GenderCubit reports male, primaryColor when female.
 
 // ignore_for_file: avoid_web_libraries_in_flutter
 import 'dart:html' as html;
@@ -38,6 +37,18 @@ int _htmlViewCounter = 0;
 
 // ── Registered view IDs to avoid duplicate registration ──────────────────────
 final Set<String> _registeredViewIds = {};
+
+// ── Gender-aware primary color helper ────────────────────────────────────────
+/// Returns malePrimaryColor when [isMale] is true, otherwise primaryColor.
+Color _resolvePrimaryColor({
+  required String primaryColorHex,
+  required String malePrimaryColorHex,
+  required bool isMale,
+}) {
+  final hex = isMale ? malePrimaryColorHex : primaryColorHex;
+  return _parseHex(hex,
+      fallback: isMale ? const Color(0xFF1565C0) : AppColors.primary);
+}
 
 Color _parseHex(String hex, {required Color fallback}) {
   try {
@@ -85,7 +96,6 @@ bool _isSvgUrl(String url) {
 }
 
 // ── Native SVG renderer via browser <img> tag ─────────────────────────────────
-// Bypasses CORS issues that affect XHR/flutter_svg on Firebase Storage URLs.
 Widget _nativeSvgImg({
   required String url,
   double? width,
@@ -94,7 +104,6 @@ Widget _nativeSvgImg({
 }) {
   if (url.isEmpty) return const SizedBox.shrink();
 
-  // Use url+size as key so same URL at different sizes gets its own view
   final viewId = 'native-svg-${url.hashCode}-${_htmlViewCounter++}';
 
   if (!_registeredViewIds.contains(viewId)) {
@@ -119,7 +128,7 @@ Widget _nativeSvgImg({
   return view;
 }
 
-// ── General image loader (non-SVG uses XHR, SVG uses native renderer) ─────────
+// ── General image loader ───────────────────────────────────────────────────────
 Widget _netImg({
   required String url,
   double? width,
@@ -132,16 +141,15 @@ Widget _netImg({
 }) {
   if (url.isEmpty) return errorWidget ?? const SizedBox.shrink();
 
-  // ✅ SVG: use native browser <img> tag — avoids CORS + flutter_svg parse issues
   if (_isSvgUrl(url)) {
-    Widget svgWidget = _nativeSvgImg(url: url, width: width, height: height, fit: fit);
+    Widget svgWidget =
+    _nativeSvgImg(url: url, width: width, height: height, fit: fit);
     if (borderRadius != null) {
       svgWidget = ClipRRect(borderRadius: borderRadius, child: svgWidget);
     }
     return svgWidget;
   }
 
-  // Non-SVG: use XHR loader
   Widget inner = FutureBuilder<Uint8List>(
     future: _xhrLoad(url, isSvg: false),
     builder: (context, snapshot) {
@@ -151,7 +159,6 @@ Widget _netImg({
       if (snapshot.hasData) {
         final bytes = snapshot.data!;
         if (_isSvgBytes(bytes)) {
-          // Fallback: bytes turned out to be SVG anyway
           return _nativeSvgImg(url: url, width: width, height: height, fit: fit);
         }
         return Image.memory(
@@ -185,7 +192,6 @@ Future<void> _preloadImages(List<String> urls) async {
       (u.startsWith('http://') || u.startsWith('https://')))
       .toSet();
 
-  // Only XHR-preload non-SVG images; SVGs will be loaded natively by the browser
   final nonSvgUrls = valid.where((u) => !_isSvgUrl(u)).toSet();
 
   await Future.wait(
@@ -421,7 +427,6 @@ class _HomePageViewState extends State<_HomePageView> with RouteAware {
   void initState() {
     super.initState();
     print('🏠🏠🏠 [HomePage] initState called');
-    // ✅ FIXED: Reduced timeout from 12s to 3s for faster fallback
     Future.delayed(const Duration(seconds: 3), () {
       if (mounted && _showLoader) {
         print('🏠 [HomePage] 3s timeout — forcing loader off');
@@ -494,24 +499,22 @@ class _HomePageViewState extends State<_HomePageView> with RouteAware {
     _lastAboutImageUrl = aboutImageUrl;
     _lastDownloadImageUrl = downloadImageUrl;
 
-    // SVGs are loaded natively by the browser — only preload non-SVG images
     final urls = [
       if (logoUrl.isNotEmpty && !_isSvgUrl(logoUrl)) logoUrl,
       if (headerImageUrl.isNotEmpty && !_isSvgUrl(headerImageUrl)) headerImageUrl,
       if (aboutImageUrl.isNotEmpty && !_isSvgUrl(aboutImageUrl)) aboutImageUrl,
-      if (downloadImageUrl.isNotEmpty && !_isSvgUrl(downloadImageUrl)) downloadImageUrl,
+      if (downloadImageUrl.isNotEmpty && !_isSvgUrl(downloadImageUrl))
+        downloadImageUrl,
     ];
 
     print('🏠 [HomePage] preloading ${urls.length} non-SVG URLs');
 
-    // ✅ FIXED: Only preload if there are actual URLs to load
     if (urls.isNotEmpty) {
       await _preloadImages(urls);
     } else {
-      print('🏠 [HomePage] No non-SVG images to preload — all images are SVG or local');
+      print('🏠 [HomePage] No non-SVG images to preload');
     }
 
-    // ✅ FIXED: Reduced delay from 100ms to 50ms
     await Future.delayed(const Duration(milliseconds: 50));
 
     if (mounted) {
@@ -522,7 +525,8 @@ class _HomePageViewState extends State<_HomePageView> with RouteAware {
 
   @override
   Widget build(BuildContext context) {
-    print('🏠 [HomePage] BUILD — _showLoader=$_showLoader _preloadStarted=$_preloadStarted');
+    print(
+        '🏠 [HomePage] BUILD — _showLoader=$_showLoader _preloadStarted=$_preloadStarted');
 
     return BlocListener<GenderCubit, GenderState>(
       listener: (context, genderState) {
@@ -533,17 +537,12 @@ class _HomePageViewState extends State<_HomePageView> with RouteAware {
           print('🏠 [HomePage] HomeCmsState = ${homeState.runtimeType}');
 
           final homeData = switch (homeState) {
-            HomeCmsLoaded(:final data)   => data,
-            HomeCmsSaved(:final data)    => data,
-            HomeCmsSaving(:final data)   => data,
+            HomeCmsLoaded(:final data)    => data,
+            HomeCmsSaved(:final data)     => data,
+            HomeCmsSaving(:final data)    => data,
             HomeCmsError(:final lastData) => lastData,
             _ => null,
           };
-
-          final Color primaryColor = homeData != null
-              ? _parseHex(homeData.branding.primaryColor,
-              fallback: AppColors.primary)
-              : AppColors.primary;
 
           final Color backgroundColor = homeData != null
               ? _parseHex(homeData.branding.backgroundColor,
@@ -563,11 +562,6 @@ class _HomePageViewState extends State<_HomePageView> with RouteAware {
           final String appStoreLink   = homeData.appDownloadLinks.iosUrl;
           final String googlePlayLink = homeData.appDownloadLinks.androidUrl;
           final bool showDownload     = homeData.appDownloadLinks.visibility;
-
-          print('🏠 [HomePage] homeData loaded:');
-          print('   appStoreLink   = "$appStoreLink"');
-          print('   googlePlayLink = "$googlePlayLink"');
-          print('   showDownload   = $showDownload');
 
           return BlocBuilder<MasterCmsCubit, MasterCmsState>(
             builder: (context, masterState) {
@@ -611,17 +605,6 @@ class _HomePageViewState extends State<_HomePageView> with RouteAware {
                       appStoreLink.isNotEmpty ||
                       googlePlayLink.isNotEmpty);
 
-              print('🏠🔍 [HomePage] DOWNLOAD SECTION DEBUG:');
-              print('   masterData null?        = ${masterData == null}');
-              print('   masterState type        = ${masterState.runtimeType}');
-              print('   headerImageUrl          = "$headerImageUrl"');
-              print('   aboutImageUrl           = "$aboutImageUrl"');
-              print('   downloadImageUrl        = "$downloadImageUrl"');
-              print('   appStoreLink            = "$appStoreLink"');
-              print('   googlePlayLink          = "$googlePlayLink"');
-              print('   showDownload            = $showDownload');
-              print('   >>> hasDownloadContent  = $hasDownloadContent');
-
               if (!_preloadStarted) {
                 print('🏠 [HomePage] starting preload...');
                 _preloadAndReveal(
@@ -640,120 +623,148 @@ class _HomePageViewState extends State<_HomePageView> with RouteAware {
                 );
               }
 
-              print('🏠✅ [HomePage] RENDERING FULL PAGE — hasDownloadContent=$hasDownloadContent');
+              print(
+                  '🏠✅ [HomePage] RENDERING FULL PAGE — hasDownloadContent=$hasDownloadContent');
 
-              return BlocBuilder<LanguageCubit, LanguageState>(
-                builder: (context, langState) {
-                  final bool isAr = langState.isArabic;
+              // ── Gender-aware color rebuild ──────────────────────────────────
+              return BlocBuilder<GenderCubit, GenderState>(
+                builder: (context, genderState) {
+                  final bool isMale = genderState.isMale;
 
-                  final heroTitle = isAr
-                      ? (headerSection?.title.ar.isNotEmpty == true
-                      ? headerSection!.title.ar
-                      : homeData.title.ar)
-                      : (headerSection?.title.en.isNotEmpty == true
-                      ? headerSection!.title.en
-                      : homeData.title.en);
+                  // ✅ Pick primary color based on current gender
+                  final Color primaryColor = _resolvePrimaryColor(
+                    primaryColorHex: homeData.branding.primaryColor,
+                    malePrimaryColorHex: homeData.branding.malePrimaryColor,
+                    isMale: isMale,
+                  );
 
-                  final heroSubtitle = isAr
-                      ? (headerSection?.shortDescription.ar.isNotEmpty == true
-                      ? headerSection!.shortDescription.ar
-                      : homeData.shortDescription.ar)
-                      : (headerSection?.shortDescription.en.isNotEmpty == true
-                      ? headerSection!.shortDescription.en
-                      : homeData.shortDescription.en);
+                  return BlocBuilder<LanguageCubit, LanguageState>(
+                    builder: (context, langState) {
+                      final bool isAr = langState.isArabic;
 
-                  final aboutHeading = isAr
-                      ? (aboutSection?.title.ar.isNotEmpty == true
-                      ? aboutSection!.title.ar
-                      : 'من نحن')
-                      : (aboutSection?.title.en.isNotEmpty == true
-                      ? aboutSection!.title.en
-                      : 'About Us');
+                      final heroTitle = isAr
+                          ? (headerSection?.title.ar.isNotEmpty == true
+                          ? headerSection!.title.ar
+                          : homeData.title.ar)
+                          : (headerSection?.title.en.isNotEmpty == true
+                          ? headerSection!.title.en
+                          : homeData.title.en);
 
-                  final aboutBody = isAr
-                      ? (aboutSection?.description.ar ?? '')
-                      : (aboutSection?.description.en ?? '');
+                      final heroSubtitle = isAr
+                          ? (headerSection?.shortDescription.ar.isNotEmpty == true
+                          ? headerSection!.shortDescription.ar
+                          : homeData.shortDescription.ar)
+                          : (headerSection?.shortDescription.en.isNotEmpty == true
+                          ? headerSection!.shortDescription.en
+                          : homeData.shortDescription.en);
 
-                  final downloadHeading = isAr
-                      ? (downloadSection?.title.ar.isNotEmpty == true
-                      ? downloadSection!.title.ar
-                      : 'حمّل التطبيق')
-                      : (downloadSection?.title.en.isNotEmpty == true
-                      ? downloadSection!.title.en
-                      : 'Download App');
+                      final aboutHeading = isAr
+                          ? (aboutSection?.title.ar.isNotEmpty == true
+                          ? aboutSection!.title.ar
+                          : 'من نحن')
+                          : (aboutSection?.title.en.isNotEmpty == true
+                          ? aboutSection!.title.en
+                          : 'About Us');
 
-                  final downloadBody = isAr
-                      ? (downloadSection?.description.ar.isNotEmpty == true
-                      ? downloadSection!.description.ar
-                      : 'حمّل تطبيقنا الآن واستمتع بتجربة فريدة')
-                      : (downloadSection?.description.en.isNotEmpty == true
-                      ? downloadSection!.description.en
-                      : 'Download our app now and enjoy a unique experience');
+                      final aboutBody = isAr
+                          ? (aboutSection?.description.ar ?? '')
+                          : (aboutSection?.description.en ?? '');
 
-                  return Directionality(
-                    textDirection: isAr ? TextDirection.rtl : TextDirection.ltr,
-                    child: AppPageShell(
-                      currentRoute: '/',
-                      body: _RevealCoordinatorWidget(
-                        child: SingleChildScrollView(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              // ═══ SECTION 1 — HERO ═══
-                              if (headerSection?.visibility ?? true) ...[
-                                _Reveal(
-                                  delay: const Duration(milliseconds: 60),
-                                  direction: _SlideDirection.fromBottom,
-                                  duration: const Duration(milliseconds: 650),
-                                  child: _HeroSection(
-                                    primaryColor: primaryColor,
-                                    title: heroTitle,
-                                    subtitle: heroSubtitle,
-                                    imageUrl: headerImageUrl,
-                                  ),
-                                ),
-                                SizedBox(height: 40.h),
-                              ],
+                      final downloadHeading = isAr
+                          ? (downloadSection?.title.ar.isNotEmpty == true
+                          ? downloadSection!.title.ar
+                          : 'حمّل التطبيق')
+                          : (downloadSection?.title.en.isNotEmpty == true
+                          ? downloadSection!.title.en
+                          : 'Download App');
 
-                              // ═══ SECTION 2 — ABOUT US ═══
-                              if (aboutSection?.visibility ?? true) ...[
-                                _Reveal(
-                                  delay: const Duration(milliseconds: 120),
-                                  direction: _SlideDirection.fromLeft,
-                                  duration: const Duration(milliseconds: 650),
-                                  child: _AboutUsSection(
-                                    primaryColor: primaryColor,
-                                    heading: aboutHeading,
-                                    body: aboutBody,
-                                    readMoreLabel:
-                                    isAr ? 'اقرأ المزيد' : 'Read More',
-                                    imageUrl: aboutImageUrl,
-                                    onReadMore: () {
-                                      navigateTo(context, AboutPage());
-                                    },
-                                  ),
-                                ),
-                                SizedBox(height: 40.h),
-                              ],
+                      final downloadBody = isAr
+                          ? (downloadSection?.description.ar.isNotEmpty == true
+                          ? downloadSection!.description.ar
+                          : 'حمّل تطبيقنا الآن واستمتع بتجربة فريدة')
+                          : (downloadSection?.description.en.isNotEmpty == true
+                          ? downloadSection!.description.en
+                          : 'Download our app now and enjoy a unique experience');
 
-                              // ═══ SECTION 3 — DOWNLOAD APP ═══
-                              if (hasDownloadContent) ...[
-                                _DownloadAppSection(
-                                  primaryColor: primaryColor,
-                                  heading: downloadHeading,
-                                  body: downloadBody,
-                                  imageUrl: downloadImageUrl,
-                                  appStoreLink: appStoreLink,
-                                  googlePlayLink: googlePlayLink,
-                                ),
-                              ],
+                      return Directionality(
+                        textDirection:
+                        isAr ? TextDirection.rtl : TextDirection.ltr,
+                        child: AppPageShell(
+                          currentRoute: '/',
+                          body: _RevealCoordinatorWidget(
+                            child: SingleChildScrollView(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  // ═══ SECTION 1 — HERO ═══
+                                  if (headerSection?.visibility ?? true) ...[
+                                    _Reveal(
+                                      delay:
+                                      const Duration(milliseconds: 60),
+                                      direction: _SlideDirection.fromBottom,
+                                      duration:
+                                      const Duration(milliseconds: 650),
+                                      child: _HeroSection(
+                                        primaryColor: primaryColor,
+                                        title: heroTitle,
+                                        subtitle: heroSubtitle,
+                                        imageUrl: headerImageUrl,
+                                      ),
+                                    ),
+                                    SizedBox(height: 40.h),
+                                  ],
 
-                              SizedBox(height: 80.h),
-                            ],
+                                  // Inside the _HomePageViewState build method, where _AboutUsSection is used:
+
+// ═══ SECTION 2 — ABOUT US ═══
+                                  if (aboutSection?.visibility ?? true) ...[
+                                    _Reveal(
+                                      delay: const Duration(milliseconds: 120),
+                                      direction: _SlideDirection.fromLeft,
+                                      duration: const Duration(milliseconds: 650),
+                                      child: _AboutUsSection(
+                                        primaryColor: primaryColor,
+                                        heading: aboutHeading,
+                                        body: aboutBody,
+                                        readMoreLabel: isAr ? 'اقرأ المزيد' : 'Read More',
+                                        imageUrl: aboutImageUrl,
+                                        onReadMore: () {
+                                          navigateTo(context, AboutPage());
+                                        },
+                                        backgroundColor: _parseHex(           // ← NEW: Pass mainWidgetColor
+                                          homeData.branding.mainWidgetColor,
+                                          fallback: Colors.transparent,
+                                        ),
+                                      ),
+                                    ),
+                                    SizedBox(height: 40.h),
+                                  ],
+
+                                  // ═══ SECTION 3 — DOWNLOAD APP ═══
+                                  // ═══ SECTION 3 — DOWNLOAD APP ═══
+                                  if (hasDownloadContent) ...[
+                                    _DownloadAppSection(
+                                      primaryColor: primaryColor,
+                                      heading: downloadHeading,
+                                      body: downloadBody,
+                                      imageUrl: downloadImageUrl,
+                                      appStoreLink: appStoreLink,
+                                      googlePlayLink: googlePlayLink,
+                                      backgroundColor: _parseHex(           // ← NEW: Pass mainWidgetColor
+                                        homeData.branding.mainWidgetColor,
+                                        fallback: Colors.transparent,
+                                      ),
+                                    ),
+                                  ],
+
+                                  SizedBox(height: 80.h),
+                                ],
+                              ),
+                            ),
                           ),
                         ),
-                      ),
-                    ),
+                      );
+                    },
                   );
                 },
               );
@@ -842,7 +853,6 @@ class _HeroSection extends StatelessWidget {
 
   Widget _buildImage(double height) {
     if (imageUrl.isEmpty) return const SizedBox.shrink();
-    // ✅ SVGs rendered natively — no CORS issues
     if (_isSvgUrl(imageUrl)) {
       return _nativeSvgImg(url: imageUrl, height: height, fit: BoxFit.contain);
     }
@@ -892,6 +902,7 @@ class _HeroText extends StatelessWidget {
 // SECTION 2 — ABOUT US
 // ══════════════════════════════════════════════════════════════════════════════
 
+
 class _AboutUsSection extends StatelessWidget {
   final Color primaryColor;
   final String heading;
@@ -899,6 +910,7 @@ class _AboutUsSection extends StatelessWidget {
   final String readMoreLabel;
   final String imageUrl;
   final VoidCallback? onReadMore;
+  final Color? backgroundColor;  // ← NEW: mainWidgetColor will be passed here
 
   const _AboutUsSection({
     required this.primaryColor,
@@ -907,85 +919,96 @@ class _AboutUsSection extends StatelessWidget {
     required this.readMoreLabel,
     this.imageUrl = '',
     this.onReadMore,
+    this.backgroundColor,  // ← NEW
   });
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 20.w),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            FormatHelper.capitalize(heading),
-            style: AppTextStyles.font20BlackCairoSemiBold.copyWith(
-              color: primaryColor,
-            ),
-          ),
-          SizedBox(height: 16.h),
-          if (imageUrl.isNotEmpty)
-            Padding(
-              padding: EdgeInsets.only(bottom: 16.h),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(12.r),
-                child: _isSvgUrl(imageUrl)
-                    ? _nativeSvgImg(
-                  url: imageUrl,
-                  width: double.infinity,
-                  height: 200.h,
-                  fit: BoxFit.cover,
-                )
-                    : _netImg(
-                  url: imageUrl,
-                  width: double.infinity,
-                  height: 200.h,
-                  fit: BoxFit.cover,
-                  borderRadius: BorderRadius.circular(12.r),
-                ),
-              ),
-            ),
-          if (body.isNotEmpty)
+    return Container(
+      width: double.infinity,
+
+        decoration: BoxDecoration(
+          color: backgroundColor,  // ← Apply background color to entire section
+
+          borderRadius: BorderRadius.circular(16.r),
+        ),
+
+        child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 32.h),  // Added vertical padding
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
             Text(
-              FormatHelper.capitalize(body),
-              style: AppTextStyles.font14BlackCairoRegular.copyWith(
-                height: 1.7,
-                color: AppColors.secondaryBlack,
+              FormatHelper.capitalize(heading),
+              style: AppTextStyles.font20BlackCairoSemiBold.copyWith(
+                color: primaryColor,
               ),
             ),
-          SizedBox(height: 16.h),
-          Align(
-            alignment: AlignmentDirectional.centerEnd,
-            child: InkWell(
-              onTap: onReadMore ?? () => navigateTo(context, AboutPage()),
-              borderRadius: BorderRadius.circular(8.r),
-              child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      FormatHelper.capitalize(readMoreLabel),
-                      style: AppTextStyles.font14BlackCairoMedium.copyWith(
-                        color: primaryColor,
+            SizedBox(height: 16.h),
+            if (imageUrl.isNotEmpty)
+              Padding(
+                padding: EdgeInsets.only(bottom: 16.h),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12.r),
+                  child: _isSvgUrl(imageUrl)
+                      ? _nativeSvgImg(
+                    url: imageUrl,
+                    width: double.infinity,
+                    height: 200.h,
+                    fit: BoxFit.cover,
+                  )
+                      : _netImg(
+                    url: imageUrl,
+                    width: double.infinity,
+                    height: 200.h,
+                    fit: BoxFit.cover,
+                    borderRadius: BorderRadius.circular(12.r),
+                  ),
+                ),
+              ),
+            if (body.isNotEmpty)
+              Text(
+                FormatHelper.capitalize(body),
+                style: AppTextStyles.font14BlackCairoRegular.copyWith(
+                  height: 1.7,
+                  color: AppColors.secondaryBlack,
+                ),
+              ),
+            SizedBox(height: 16.h),
+            Align(
+              alignment: AlignmentDirectional.centerEnd,
+              child: InkWell(
+                onTap: onReadMore ?? () => navigateTo(context, AboutPage()),
+                borderRadius: BorderRadius.circular(8.r),
+                child: Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        FormatHelper.capitalize(readMoreLabel),
+                        style: AppTextStyles.font14BlackCairoMedium.copyWith(
+                          color: primaryColor,
+                        ),
                       ),
-                    ),
-                    SizedBox(width: 6.w),
-                    Container(
-                      width: 24.w,
-                      height: 24.w,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: primaryColor.withOpacity(0.15),
+                      SizedBox(width: 6.w),
+                      Container(
+                        width: 24.w,
+                        height: 24.w,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: primaryColor.withOpacity(0.15),
+                        ),
+                        child: Icon(Icons.arrow_forward,
+                            size: 14.sp, color: primaryColor),
                       ),
-                      child: Icon(Icons.arrow_forward,
-                          size: 14.sp, color: primaryColor),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -995,6 +1018,10 @@ class _AboutUsSection extends StatelessWidget {
 // SECTION 3 — DOWNLOAD APP
 // ══════════════════════════════════════════════════════════════════════════════
 
+// ══════════════════════════════════════════════════════════════════════════════
+// SECTION 3 — DOWNLOAD APP (WITH BACKGROUND COLOR)
+// ══════════════════════════════════════════════════════════════════════════════
+
 class _DownloadAppSection extends StatelessWidget {
   final Color primaryColor;
   final String heading;
@@ -1002,6 +1029,7 @@ class _DownloadAppSection extends StatelessWidget {
   final String imageUrl;
   final String appStoreLink;
   final String googlePlayLink;
+  final Color? backgroundColor;  // ← NEW: mainWidgetColor
 
   const _DownloadAppSection({
     required this.primaryColor,
@@ -1010,72 +1038,79 @@ class _DownloadAppSection extends StatelessWidget {
     this.imageUrl = '',
     this.appStoreLink = '',
     this.googlePlayLink = '',
+    this.backgroundColor,  // ← NEW
   });
 
   @override
   Widget build(BuildContext context) {
     final bool hasImage = imageUrl.isNotEmpty;
 
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 20.w),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final isWide = constraints.maxWidth > 600;
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+          color: backgroundColor,  // ← Apply background color
+          borderRadius: BorderRadius.circular(16.r)
+      ),
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 32.h),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final isWide = constraints.maxWidth > 600;
 
-          if (isWide && hasImage) {
-            return Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Expanded(flex: 4, child: _buildImage(320.h)),
-                SizedBox(width: 30.w),
-                Expanded(
-                  flex: 6,
-                  child: _DownloadTextContent(
-                    primaryColor: primaryColor,
-                    heading: heading,
-                    body: body,
-                    appStoreLink: appStoreLink,
-                    googlePlayLink: googlePlayLink,
+            if (isWide && hasImage) {
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Expanded(flex: 4, child: _buildImage(320.h)),
+                  SizedBox(width: 30.w),
+                  Expanded(
+                    flex: 6,
+                    child: _DownloadTextContent(
+                      primaryColor: primaryColor,
+                      heading: heading,
+                      body: body,
+                      appStoreLink: appStoreLink,
+                      googlePlayLink: googlePlayLink,
+                    ),
                   ),
-                ),
-              ],
-            );
-          }
+                ],
+              );
+            }
 
-          if (isWide && !hasImage) {
-            return _DownloadTextContent(
-              primaryColor: primaryColor,
-              heading: heading,
-              body: body,
-              appStoreLink: appStoreLink,
-              googlePlayLink: googlePlayLink,
-            );
-          }
-
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (hasImage) ...[
-                Center(child: _buildImage(200.h)),
-                SizedBox(height: 24.h),
-              ],
-              _DownloadTextContent(
+            if (isWide && !hasImage) {
+              return _DownloadTextContent(
                 primaryColor: primaryColor,
                 heading: heading,
                 body: body,
                 appStoreLink: appStoreLink,
                 googlePlayLink: googlePlayLink,
-              ),
-            ],
-          );
-        },
+              );
+            }
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (hasImage) ...[
+                  Center(child: _buildImage(200.h)),
+                  SizedBox(height: 24.h),
+                ],
+                _DownloadTextContent(
+                  primaryColor: primaryColor,
+                  heading: heading,
+                  body: body,
+                  appStoreLink: appStoreLink,
+                  googlePlayLink: googlePlayLink,
+                ),
+              ],
+            );
+          },
+        ),
       ),
     );
   }
 
   Widget _buildImage(double height) {
     if (imageUrl.isEmpty) return const SizedBox.shrink();
-    // ✅ SVGs rendered natively — no CORS issues
     if (_isSvgUrl(imageUrl)) {
       return _nativeSvgImg(url: imageUrl, height: height, fit: BoxFit.contain);
     }
@@ -1135,26 +1170,22 @@ class _DownloadTextContent extends StatelessWidget {
         if (googlePlayLink.isNotEmpty || appStoreLink.isNotEmpty)
           LayoutBuilder(
             builder: (context, constraints) {
-              // ✅ Responsive button sizing
               double buttonWidth;
               double buttonHeight;
               double spacing;
 
               if (constraints.maxWidth >= 1024) {
-                // Desktop
-                buttonWidth = 160;
+                buttonWidth  = 160;
                 buttonHeight = 48;
-                spacing = 16;
+                spacing      = 16;
               } else if (constraints.maxWidth >= 600) {
-                // Tablet
-                buttonWidth = 140;
+                buttonWidth  = 140;
                 buttonHeight = 44;
-                spacing = 12;
+                spacing      = 12;
               } else {
-                // Mobile
-                buttonWidth = 135;
+                buttonWidth  = 135;
                 buttonHeight = 42;
-                spacing = 10;
+                spacing      = 10;
               }
 
               return Wrap(

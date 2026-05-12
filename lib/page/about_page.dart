@@ -10,11 +10,15 @@
 //          GoRouter widget tree).
 // FIXED:   Hero Row now explicitly builds LTR vs RTL child order so SVG and
 //          title always align correctly regardless of language direction.
+// UPDATED: Primary color is now gender-aware — uses malePrimaryColor when
+//          GenderCubit reports male, primaryColor when female.
 
 // ignore_for_file: avoid_web_libraries_in_flutter
 import 'dart:html' as html;
 import 'dart:typed_data';
 import 'dart:ui_web' as ui_web;
+import 'package:beauty_user/controller/gender/gender_cubit.dart';
+import 'package:beauty_user/controller/gender/gender_state.dart';
 import 'package:beauty_user/controller/home/home_cubit.dart';
 import 'package:beauty_user/controller/home/home_state.dart';
 import 'package:beauty_user/controller/home/lang_state.dart';
@@ -60,12 +64,24 @@ String _ab(AboutBilingualText b, bool isRtl) {
   return v.isNotEmpty ? v : b.en;
 }
 
-Color _parseColor(String hex, {required Color fallback}) {
+Color _parseHex(String hex, {required Color fallback}) {
   try {
     final h = hex.replaceAll('#', '');
     if (h.length == 6) return Color(int.parse('FF$h', radix: 16));
   } catch (_) {}
   return fallback;
+}
+
+// ── Gender-aware primary color helper ────────────────────────────────────────
+/// Returns malePrimaryColor when [isMale] is true, otherwise primaryColor.
+Color _resolvePrimaryColor({
+  required String primaryColorHex,
+  required String malePrimaryColorHex,
+  required bool isMale,
+}) {
+  final hex = isMale ? malePrimaryColorHex : primaryColorHex;
+  return _parseHex(hex,
+      fallback: isMale ? const Color(0xFF1565C0) : _kDefaultGreen);
 }
 
 ({int topTab, int subTab}) _resolveTabParam(String? raw) {
@@ -523,34 +539,33 @@ class _AboutPageViewState extends State<_AboutPageView> {
           HomeCmsSaved(:final data) => data.branding.logoUrl,
           _ => context.read<HomeCmsCubit>().current.branding.logoUrl,
         };
-        final Color primaryColor = switch (homeState) {
-          HomeCmsLoaded(:final data) => _parseColor(
-            data.branding.primaryColor,
-            fallback: _kDefaultGreen,
-          ),
-          HomeCmsSaved(:final data) => _parseColor(
-            data.branding.primaryColor,
-            fallback: _kDefaultGreen,
-          ),
-          _ => _kDefaultGreen,
+        final String primaryColorHex = switch (homeState) {
+          HomeCmsLoaded(:final data) => data.branding.primaryColor,
+          HomeCmsSaved(:final data) => data.branding.primaryColor,
+          _ => '',
+        };
+        final String malePrimaryColorHex = switch (homeState) {
+          HomeCmsLoaded(:final data) => data.branding.malePrimaryColor,
+          HomeCmsSaved(:final data) => data.branding.malePrimaryColor,
+          _ => '',
         };
         final Color secondaryColor = switch (homeState) {
-          HomeCmsLoaded(:final data) => _parseColor(
+          HomeCmsLoaded(:final data) => _parseHex(
             data.branding.secondaryColor,
             fallback: _kGreenLight,
           ),
-          HomeCmsSaved(:final data) => _parseColor(
+          HomeCmsSaved(:final data) => _parseHex(
             data.branding.secondaryColor,
             fallback: _kGreenLight,
           ),
           _ => _kGreenLight,
         };
         final Color backgroundColor = switch (homeState) {
-          HomeCmsLoaded(:final data) => _parseColor(
+          HomeCmsLoaded(:final data) => _parseHex(
             data.branding.backgroundColor,
             fallback: AppColors.background,
           ),
-          HomeCmsSaved(:final data) => _parseColor(
+          HomeCmsSaved(:final data) => _parseHex(
             data.branding.backgroundColor,
             fallback: AppColors.background,
           ),
@@ -592,11 +607,11 @@ class _AboutPageViewState extends State<_AboutPageView> {
                 ),
               );
             final Color loaderBg = switch (homeState) {
-              HomeCmsLoaded(:final data) => _parseColor(
+              HomeCmsLoaded(:final data) => _parseHex(
                 data.branding.backgroundColor,
                 fallback: AppColors.background,
               ),
-              HomeCmsSaved(:final data) => _parseColor(
+              HomeCmsSaved(:final data) => _parseHex(
                 data.branding.backgroundColor,
                 fallback: AppColors.background,
               ),
@@ -608,132 +623,146 @@ class _AboutPageViewState extends State<_AboutPageView> {
                 backgroundColor: loaderBg,
               );
 
-            return BlocBuilder<LanguageCubit, LanguageState>(
-              builder: (context, langState) {
-                final bool isRtl = langState.isArabic;
-                final double w = MediaQuery.of(context).size.width;
+            // ── Gender-aware color rebuild ──────────────────────────────────
+            return BlocBuilder<GenderCubit, GenderState>(
+              builder: (context, genderState) {
+                final bool isMale = genderState.isMale;
 
-                // ── Hero section children — explicit LTR vs RTL order ──
-                // We do NOT rely on Directionality to flip the Row because
-                // the SVG and title have different sizes; explicit ordering
-                // gives predictable alignment in both languages.
-                final Widget svgHero = model!.svgUrl.isNotEmpty && w >= _BP.mobile
-                    ? _Reveal(
-                  delay: const Duration(milliseconds: 60),
-                  direction: isRtl
-                      ? _SlideDirection.fromLeft
-                      : _SlideDirection.fromRight,
-                  duration: const Duration(milliseconds: 600),
-                  child: _HeadingsSvgDesktop(svgUrl: model.svgUrl),
-                )
-                    : const SizedBox.shrink();
-
-                final Widget titleHero = Expanded(
-                  child: _Reveal(
-                    delay: const Duration(milliseconds: 80),
-                    direction: isRtl
-                        ? _SlideDirection.fromRight
-                        : _SlideDirection.fromLeft,
-                    duration: const Duration(milliseconds: 650),
-                    child: w < _BP.mobile
-                        ? _AboutHeaderMobile(
-                      model: model,
-                      isRtl: isRtl,
-                      primaryColor: primaryColor,
-                    )
-                        : _AboutHeaderDesktop(
-                      model: model,
-                      isRtl: isRtl,
-                      primaryColor: primaryColor,
-                    ),
-                  ),
+                // ✅ Pick primary color based on current gender
+                final Color primaryColor = _resolvePrimaryColor(
+                  primaryColorHex: primaryColorHex,
+                  malePrimaryColorHex: malePrimaryColorHex,
+                  isMale: isMale,
                 );
 
-                return Directionality(
-                  textDirection:
-                  isRtl ? TextDirection.rtl : TextDirection.ltr,
-                  child: Scaffold(
-                    backgroundColor: backgroundColor,
-                    body: _RevealCoordinatorWidget(
-                      child: Column(
-                        children: [
-                          // ✅ Navbar
-                          Material(
-                            color: backgroundColor,
-                            elevation: 0,
-                            child: AppNavbar(currentRoute: '/contact'),
-                          ),
+                return BlocBuilder<LanguageCubit, LanguageState>(
+                  builder: (context, langState) {
+                    final bool isRtl = langState.isArabic;
+                    final double w = MediaQuery.of(context).size.width;
 
-                          // ✅ Scrollable content
-                          Expanded(
-                            child: SingleChildScrollView(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  // ── Hero Row: SVG + Title ──
-                                  // LTR (EN): [SVG]  [Title →→→→→→]
-                                  // RTL (AR): [←←←← Title]  [SVG]
-                                  Padding(
-                                    padding: EdgeInsets.symmetric(
-                                      horizontal: MediaQuery.of(context).size.width*.17,
-                                    ),
-                                    child: Row(
-                                      mainAxisAlignment:
-                                      MainAxisAlignment.start,
-                                      crossAxisAlignment:
-                                      CrossAxisAlignment.center,
-                                      children: isRtl
-                                          ? [titleHero, svgHero]
-                                          : [svgHero, titleHero],
-                                    ),
-                                  ),
+                    // ── Hero section children — explicit LTR vs RTL order ──
+                    // We do NOT rely on Directionality to flip the Row because
+                    // the SVG and title have different sizes; explicit ordering
+                    // gives predictable alignment in both languages.
+                    final Widget svgHero = model!.svgUrl.isNotEmpty && w >= _BP.mobile
+                        ? _Reveal(
+                      delay: const Duration(milliseconds: 60),
+                      direction: isRtl
+                          ? _SlideDirection.fromLeft
+                          : _SlideDirection.fromRight,
+                      duration: const Duration(milliseconds: 600),
+                      child: _HeadingsSvgDesktop(svgUrl: model.svgUrl),
+                    )
+                        : const SizedBox.shrink();
 
-                                  // ── Body ──
-                                  w < _BP.mobile
-                                      ? _AboutBodyMobile(
-                                    model: model,
-                                    isRtl: isRtl,
-                                    primaryColor: primaryColor,
-                                    secondaryColor: secondaryColor,
-                                    initialTopTab: _tabParamApplied
-                                        ? null
-                                        : _initialTopTab,
-                                    initialSubTab: _tabParamApplied
-                                        ? null
-                                        : _initialSubTab,
-                                    onTabApplied: () =>
-                                    _tabParamApplied = true,
-                                  )
-                                      : _AboutBodyDesktop(
-                                    model: model,
-                                    isRtl: isRtl,
-                                    primaryColor: primaryColor,
-                                    secondaryColor: secondaryColor,
-                                    initialTopTab: _tabParamApplied
-                                        ? null
-                                        : _initialTopTab,
-                                    initialSubTab: _tabParamApplied
-                                        ? null
-                                        : _initialSubTab,
-                                    onTabApplied: () =>
-                                    _tabParamApplied = true,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-
-                          // ✅ Footer
-                          _Reveal(
-                            delay: const Duration(milliseconds: 100),
-                            direction: _SlideDirection.fromBottom,
-                            duration: const Duration(milliseconds: 600),
-                            child: const AppFooter(),
-                          ),
-                        ],
+                    final Widget titleHero = Expanded(
+                      child: _Reveal(
+                        delay: const Duration(milliseconds: 80),
+                        direction: isRtl
+                            ? _SlideDirection.fromRight
+                            : _SlideDirection.fromLeft,
+                        duration: const Duration(milliseconds: 650),
+                        child: w < _BP.mobile
+                            ? _AboutHeaderMobile(
+                          model: model,
+                          isRtl: isRtl,
+                          primaryColor: primaryColor,
+                        )
+                            : _AboutHeaderDesktop(
+                          model: model,
+                          isRtl: isRtl,
+                          primaryColor: primaryColor,
+                        ),
                       ),
-                    ),
-                  ),
+                    );
+
+                    return Directionality(
+                      textDirection:
+                      isRtl ? TextDirection.rtl : TextDirection.ltr,
+                      child: Scaffold(
+                        backgroundColor: backgroundColor,
+                        body: _RevealCoordinatorWidget(
+                          child: Column(
+                            children: [
+                              // ✅ Navbar
+                              Material(
+                                color: backgroundColor,
+                                elevation: 0,
+                                child: AppNavbar(currentRoute: '/contact'),
+                              ),
+
+                              // ✅ Scrollable content
+                              Expanded(
+                                child: SingleChildScrollView(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                                    children: [
+                                      // ── Hero Row: SVG + Title ──
+                                      // LTR (EN): [SVG]  [Title →→→→→→]
+                                      // RTL (AR): [←←←← Title]  [SVG]
+                                      Padding(
+                                        padding: EdgeInsets.symmetric(
+                                          horizontal: MediaQuery.of(context).size.width*.17,
+                                        ),
+                                        child: Row(
+                                          mainAxisAlignment:
+                                          MainAxisAlignment.start,
+                                          crossAxisAlignment:
+                                          CrossAxisAlignment.center,
+                                          children: isRtl
+                                              ? [titleHero, svgHero]
+                                              : [svgHero, titleHero],
+                                        ),
+                                      ),
+
+                                      // ── Body ──
+                                      w < _BP.mobile
+                                          ? _AboutBodyMobile(
+                                        model: model,
+                                        isRtl: isRtl,
+                                        primaryColor: primaryColor,
+                                        secondaryColor: secondaryColor,
+                                        initialTopTab: _tabParamApplied
+                                            ? null
+                                            : _initialTopTab,
+                                        initialSubTab: _tabParamApplied
+                                            ? null
+                                            : _initialSubTab,
+                                        onTabApplied: () =>
+                                        _tabParamApplied = true,
+                                      )
+                                          : _AboutBodyDesktop(
+                                        model: model,
+                                        isRtl: isRtl,
+                                        primaryColor: primaryColor,
+                                        secondaryColor: secondaryColor,
+                                        initialTopTab: _tabParamApplied
+                                            ? null
+                                            : _initialTopTab,
+                                        initialSubTab: _tabParamApplied
+                                            ? null
+                                            : _initialSubTab,
+                                        onTabApplied: () =>
+                                        _tabParamApplied = true,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+
+                              // ✅ Footer
+                              _Reveal(
+                                delay: const Duration(milliseconds: 100),
+                                direction: _SlideDirection.fromBottom,
+                                duration: const Duration(milliseconds: 600),
+                                child: const AppFooter(),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  },
                 );
               },
             );
@@ -934,7 +963,7 @@ class _AboutBodyDesktopState extends State<_AboutBodyDesktop> {
         children: [
           // ── Top Tab Bar ──
           Container(
-            padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 8.h),
+            padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 0.h),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: List.generate(_topTabs.length, (i) {
@@ -967,7 +996,7 @@ class _AboutBodyDesktopState extends State<_AboutBodyDesktop> {
               }),
             ),
           ),
-          SizedBox(height: 16.h),
+          SizedBox(height: 10.h),
 
           // ── Tab 0: About Us ──
           if (_selectedTopTab == 0)
@@ -1248,6 +1277,10 @@ class _DesktopTopTabItemState extends State<_DesktopTopTabItem> {
 // Desktop Tab Item
 // ══════════════════════════════════════════════════════════════════════════════
 
+// ══════════════════════════════════════════════════════════════════════════════
+// Desktop Tab Item (WITH BACKGROUND COLOR - FIXED)
+// ══════════════════════════════════════════════════════════════════════════════
+
 class _DesktopTabItem extends StatefulWidget {
   final String label, iconUrl, selectedDesc;
   final bool isSelected;
@@ -1268,11 +1301,28 @@ class _DesktopTabItem extends StatefulWidget {
 
 class _DesktopTabItemState extends State<_DesktopTabItem> {
   bool _hovered = false;
+
+  // Get mainWidgetColor from HomeCmsCubit
+  Color? get _mainWidgetColor {
+    final homeState = context.watch<HomeCmsCubit>().state;
+    return switch (homeState) {
+      HomeCmsLoaded(:final data) => _parseHex(
+        data.branding.mainWidgetColor,
+        fallback: Colors.transparent,
+      ),
+      HomeCmsSaved(:final data) => _parseHex(
+        data.branding.mainWidgetColor,
+        fallback: Colors.transparent,
+      ),
+      _ => Colors.transparent,
+    };
+  }
+
   @override
   Widget build(BuildContext context) {
-    final Color iconColor =
-    widget.isSelected ? Colors.white : widget.primaryColor;
+    final Color iconColor = widget.isSelected ? Colors.white : widget.primaryColor;
     final Color hoverBg = _hoverTint(widget.primaryColor);
+    final Color? bgColor = _mainWidgetColor;
 
     return MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),
@@ -1286,8 +1336,8 @@ class _DesktopTabItemState extends State<_DesktopTabItem> {
           padding: EdgeInsets.all(14.r),
           decoration: BoxDecoration(
             color: widget.isSelected
-                ? _kSurface
-                : (_hovered ? hoverBg : _kSurface),
+                ? bgColor  // ← Changed from _kSurface to bgColor
+                : (_hovered ? hoverBg : bgColor),  // ← Changed from _kSurface to bgColor
             borderRadius: BorderRadius.circular(12.r),
             border: widget.isSelected
                 ? Border.all(
@@ -1369,11 +1419,16 @@ class _DesktopTabItemState extends State<_DesktopTabItem> {
 // Desktop Right Panel
 // ══════════════════════════════════════════════════════════════════════════════
 
+// ══════════════════════════════════════════════════════════════════════════════
+// Desktop Right Panel (WITH MAIN WIDGET COLOR BACKGROUND)
+// ══════════════════════════════════════════════════════════════════════════════
+
 class _DesktopRightPanel extends StatelessWidget {
   final AboutPageModel model;
   final int tabIndex;
   final bool isRtl;
   final Color primaryColor, secondaryColor;
+
   const _DesktopRightPanel({
     required this.model,
     required this.tabIndex,
@@ -1384,6 +1439,20 @@ class _DesktopRightPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Get mainWidgetColor from HomeCmsCubit
+    final homeState = context.watch<HomeCmsCubit>().state;
+    final Color? mainWidgetColor = switch (homeState) {
+      HomeCmsLoaded(:final data) => _parseHex(
+        data.branding.mainWidgetColor,
+        fallback: Colors.transparent,
+      ),
+      HomeCmsSaved(:final data) => _parseHex(
+        data.branding.mainWidgetColor,
+        fallback: Colors.transparent,
+      ),
+      _ => Colors.transparent,
+    };
+
     if (tabIndex == 2) {
       final otherValues = model.values.length > 1
           ? model.values.sublist(1)
@@ -1393,15 +1462,18 @@ class _DesktopRightPanel extends StatelessWidget {
         isRtl: isRtl,
         primaryColor: primaryColor,
         secondaryColor: secondaryColor,
+        backgroundColor: mainWidgetColor,  // ← Pass background color
       );
     }
+
     final AboutSection section = tabIndex == 0 ? model.vision : model.mission;
+
     return Container(
       width: double.infinity,
       height: double.infinity,
       padding: EdgeInsets.all(16.r),
       decoration: BoxDecoration(
-        color: _kSurface,
+        color: mainWidgetColor,  // ← Apply mainWidgetColor as background
         borderRadius: BorderRadius.circular(12.r),
       ),
       child: Row(
@@ -1535,16 +1607,24 @@ class _ValueDetailPanel extends StatelessWidget {
 // Values Grid — Desktop
 // ══════════════════════════════════════════════════════════════════════════════
 
+// ══════════════════════════════════════════════════════════════════════════════
+// Values Grid — Desktop (WITH BACKGROUND COLOR)
+// ══════════════════════════════════════════════════════════════════════════════
+
 class _ValuesGridDesktop extends StatefulWidget {
   final List<AboutValueItem> values;
   final bool isRtl;
   final Color primaryColor, secondaryColor;
+  final Color? backgroundColor;  // ← NEW
+
   const _ValuesGridDesktop({
     required this.values,
     required this.primaryColor,
     required this.secondaryColor,
     this.isRtl = false,
+    this.backgroundColor,  // ← NEW
   });
+
   @override
   State<_ValuesGridDesktop> createState() => _ValuesGridDesktopState();
 }
@@ -1558,8 +1638,8 @@ class _ValuesGridDesktopState extends State<_ValuesGridDesktop> {
       return Container(
         padding: EdgeInsets.all(24.r),
         decoration: BoxDecoration(
-          color: _kSurface,
-          borderRadius: BorderRadius.circular(10.r),
+          color: widget.backgroundColor,  // ← Apply background color
+          borderRadius: BorderRadius.circular(12.r),
         ),
         child: Center(
           child: Text(
@@ -1572,22 +1652,15 @@ class _ValuesGridDesktopState extends State<_ValuesGridDesktop> {
           ),
         ),
       );
+
     final int idx = _selectedIndex.clamp(0, widget.values.length - 1);
     final selected = widget.values[idx];
+
     return Container(
       padding: EdgeInsets.all(14.r),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
-          colors: [
-            widget.primaryColor.withOpacity(.06),
-            widget.primaryColor.withOpacity(.25),
-            widget.primaryColor.withOpacity(.06),
-          ],
-          stops: const [0.0, 0.5, 1.0],
-        ),
-        borderRadius: BorderRadius.circular(10.r),
+        color: widget.backgroundColor,  // ← Apply background color
+        borderRadius: BorderRadius.circular(12.r),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -2167,6 +2240,14 @@ class _MobileTabData {
 // Mobile Accordion Item
 // ══════════════════════════════════════════════════════════════════════════════
 
+// ══════════════════════════════════════════════════════════════════════════════
+// Mobile Accordion Item (WITH BACKGROUND COLOR)
+// ══════════════════════════════════════════════════════════════════════════════
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Mobile Accordion Item (WITH BACKGROUND COLOR - FIXED)
+// ══════════════════════════════════════════════════════════════════════════════
+
 class _MobileAccordionItem extends StatefulWidget {
   final _MobileTabData tab;
   final List<AboutValueItem> values;
@@ -2190,6 +2271,22 @@ class _MobileAccordionItem extends StatefulWidget {
 class _MobileAccordionItemState extends State<_MobileAccordionItem> {
   bool _hovered = false;
 
+  // Get mainWidgetColor from HomeCmsCubit
+  Color? get _mainWidgetColor {
+    final homeState = context.watch<HomeCmsCubit>().state;
+    return switch (homeState) {
+      HomeCmsLoaded(:final data) => _parseHex(
+        data.branding.mainWidgetColor,
+        fallback: Colors.transparent,
+      ),
+      HomeCmsSaved(:final data) => _parseHex(
+        data.branding.mainWidgetColor,
+        fallback: Colors.transparent,
+      ),
+      _ => Colors.transparent,
+    };
+  }
+
   @override
   Widget build(BuildContext context) {
     final List<AboutValueItem> gridValues =
@@ -2200,6 +2297,7 @@ class _MobileAccordionItemState extends State<_MobileAccordionItem> {
         : widget.values);
 
     final Color hoverBg = _hoverTint(widget.primaryColor);
+    final Color? backgroundColor = _mainWidgetColor;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 250),
@@ -2218,6 +2316,7 @@ class _MobileAccordionItemState extends State<_MobileAccordionItem> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Header section (always visible)
           MouseRegion(
             cursor: SystemMouseCursors.click,
             onEnter: (_) => setState(() => _hovered = true),
@@ -2226,8 +2325,7 @@ class _MobileAccordionItemState extends State<_MobileAccordionItem> {
               onTap: widget.onTap,
               behavior: HitTestBehavior.opaque,
               child: Padding(
-                padding:
-                EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+                padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
                 child: Row(
                   children: [
                     AnimatedContainer(
@@ -2273,61 +2371,79 @@ class _MobileAccordionItemState extends State<_MobileAccordionItem> {
                         ),
                       ),
                     ),
-                    if (widget.isExpanded)
-                      Container(
-                        width: 26.w,
-                        height: 26.w,
-                        decoration: BoxDecoration(
-                          color: widget.primaryColor,
-                          borderRadius: BorderRadius.circular(6.r),
-                        ),
-                        child: Icon(
-                          Icons.keyboard_arrow_up_rounded,
-                          color: Colors.white,
-                          size: 16.sp,
-                        ),
+                    // Arrow icon
+                    Container(
+                      width: 26.w,
+                      height: 26.w,
+                      decoration: BoxDecoration(
+                        color: widget.isExpanded
+                            ? widget.primaryColor
+                            : widget.primaryColor.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(6.r),
                       ),
+                      child: Icon(
+                        widget.isExpanded
+                            ? Icons.keyboard_arrow_up_rounded
+                            : Icons.keyboard_arrow_down_rounded,
+                        color: widget.isExpanded ? Colors.white : widget.primaryColor,
+                        size: 16.sp,
+                      ),
+                    ),
                   ],
                 ),
               ),
             ),
           ),
+          // Expanded content section (only visible when expanded)
           if (widget.isExpanded)
-            Padding(
-              padding: EdgeInsets.fromLTRB(12.w, 0, 12.w, 10.h),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (widget.tab.tabIndex != 2 &&
-                      widget.tab.svgUrl.isNotEmpty) ...[
-                    Center(
-                      child: _netImg(
-                        url: widget.tab.svgUrl,
-                        width: MediaQuery.of(context).size.width -
-                            16.w * 2 -
-                            12.w * 2,
-                        height: 150.h,
-                        fit: BoxFit.contain,
+            Container(
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: backgroundColor,  // ← This applies the mainWidgetColor
+                borderRadius: const BorderRadius.only(
+                  bottomLeft: Radius.circular(12),
+                  bottomRight: Radius.circular(12),
+                ),
+              ),
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(12.w, 0, 12.w, 10.h),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // SVG image for Vision/Mission (not for Values)
+                    if (widget.tab.tabIndex != 2 && widget.tab.svgUrl.isNotEmpty) ...[
+                      Center(
+                        child: _netImg(
+                          url: widget.tab.svgUrl,
+                          width: MediaQuery.of(context).size.width -
+                              16.w * 2 -
+                              12.w * 2,
+                          height: 150.h,
+                          fit: BoxFit.contain,
+                        ),
                       ),
-                    ),
-                    SizedBox(height: 10.h),
+                      SizedBox(height: 10.h),
+                    ],
+                    // Text description for Vision/Mission
+                    if (widget.tab.tabIndex != 2)
+                      Text(
+                        widget.tab.fullText,
+                        style: StyleText.fontSize13Weight400.copyWith(
+                          fontSize: 10.sp,
+                          height: 1.7,
+                        ),
+                      ),
+                    // Values grid for Values tab
+                    if (widget.tab.tabIndex == 2)
+                      _ValuesGridMobile(
+                        values: gridValues,
+                        isRtl: widget.isRtl,
+                        primaryColor: widget.primaryColor,
+                        secondaryColor: widget.secondaryColor,
+                        backgroundColor: backgroundColor,  // ← Pass to values grid
+                      ),
                   ],
-                  if (widget.tab.tabIndex != 2)
-                    Text(
-                      widget.tab.fullText,
-                      style: StyleText.fontSize13Weight400.copyWith(
-                        fontSize: 10.sp,
-                        height: 1.7,
-                      ),
-                    ),
-                  if (widget.tab.tabIndex == 2)
-                    _ValuesGridMobile(
-                      values: gridValues,
-                      isRtl: widget.isRtl,
-                      primaryColor: widget.primaryColor,
-                      secondaryColor: widget.secondaryColor,
-                    ),
-                ],
+                ),
               ),
             ),
         ],
@@ -2340,22 +2456,35 @@ class _MobileAccordionItemState extends State<_MobileAccordionItem> {
 // Values Grid — Mobile
 // ══════════════════════════════════════════════════════════════════════════════
 
+// ══════════════════════════════════════════════════════════════════════════════
+// Values Grid — Mobile (WITH BACKGROUND COLOR)
+// ══════════════════════════════════════════════════════════════════════════════
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Values Grid — Mobile (WITH BACKGROUND COLOR)
+// ══════════════════════════════════════════════════════════════════════════════
+
 class _ValuesGridMobile extends StatefulWidget {
   final List<AboutValueItem> values;
   final bool isRtl;
   final Color primaryColor, secondaryColor;
+  final Color? backgroundColor;  // ← NEW
+
   const _ValuesGridMobile({
     required this.values,
     this.isRtl = false,
     required this.primaryColor,
     required this.secondaryColor,
+    this.backgroundColor,  // ← NEW
   });
+
   @override
   State<_ValuesGridMobile> createState() => _ValuesGridMobileState();
 }
 
 class _ValuesGridMobileState extends State<_ValuesGridMobile> {
   int _selectedIndex = 0;
+
   @override
   Widget build(BuildContext context) {
     if (widget.values.isEmpty)
@@ -2372,43 +2501,51 @@ class _ValuesGridMobileState extends State<_ValuesGridMobile> {
           ),
         ),
       );
-    final double innerW =
-        MediaQuery.of(context).size.width - 16.w * 2 - 12.w * 2,
-        gap = 7.w,
-        cardW = (innerW - gap) / 2;
+
+    final double innerW = MediaQuery.of(context).size.width - 16.w * 2 - 12.w * 2;
+    final double gap = 7.w;
+    final double cardW = (innerW - gap) / 2;
     final int idx = _selectedIndex.clamp(0, widget.values.length - 1);
     final selected = widget.values[idx];
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Wrap(
-          spacing: gap,
-          runSpacing: gap,
-          children: List.generate(widget.values.length, (i) {
-            final v = widget.values[i];
-            final sel = i == idx;
-            return _ValueGridCard(
-              title: _ab(v.title, widget.isRtl),
-              iconUrl: v.iconUrl,
-              isSelected: sel,
-              primaryColor: widget.primaryColor,
-              width: cardW,
-              iconSize: 16.sp,
-              fontSize: 10.sp,
-              padding: 9.r,
-              rowLayout: true,
-              onTap: () => setState(() => _selectedIndex = i),
-            );
-          }),
-        ),
-        SizedBox(height: 10.h),
-        _ValueDetailPanel(
-          value: selected,
-          isRtl: widget.isRtl,
-          primaryColor: widget.primaryColor,
-          secondaryColor: widget.secondaryColor,
-        ),
-      ],
+
+    return Container(
+      padding: EdgeInsets.all(12.r),
+      decoration: BoxDecoration(
+        color: widget.backgroundColor,  // ← Apply background color
+        borderRadius: BorderRadius.circular(12.r),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Wrap(
+            spacing: gap,
+            runSpacing: gap,
+            children: List.generate(widget.values.length, (i) {
+              final v = widget.values[i];
+              final sel = i == idx;
+              return _ValueGridCard(
+                title: _ab(v.title, widget.isRtl),
+                iconUrl: v.iconUrl,
+                isSelected: sel,
+                primaryColor: widget.primaryColor,
+                width: cardW,
+                iconSize: 16.sp,
+                fontSize: 10.sp,
+                padding: 9.r,
+                rowLayout: true,
+                onTap: () => setState(() => _selectedIndex = i),
+              );
+            }),
+          ),
+          SizedBox(height: 10.h),
+          _ValueDetailPanel(
+            value: selected,
+            isRtl: widget.isRtl,
+            primaryColor: widget.primaryColor,
+            secondaryColor: widget.secondaryColor,
+          ),
+        ],
+      ),
     );
   }
 }

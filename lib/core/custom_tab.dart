@@ -118,6 +118,7 @@ class CustomSegmentedTabs extends StatelessWidget {
           return equalWidth
               ? Expanded(
             child: _buildTab(
+              context: context,
               title: tabs[tabIndex],
               isSelected: isSelected,
               onTap: () => onTabSelected(tabIndex),
@@ -127,6 +128,7 @@ class CustomSegmentedTabs extends StatelessWidget {
             ),
           )
               : _buildTab(
+            context: context,
             title: tabs[tabIndex],
             isSelected: isSelected,
             onTap: () => onTabSelected(tabIndex),
@@ -140,11 +142,14 @@ class CustomSegmentedTabs extends StatelessWidget {
   }
 
   Widget _buildTab({
+    required BuildContext context,
     required String title,
     required bool isSelected,
     required VoidCallback onTap,
     String? iconPath,
   }) {
+    final isMobile = MediaQuery.of(context).size.width < 600;
+
     return GestureDetector(
       onTap: onTap,
       child: MouseRegion(
@@ -158,7 +163,9 @@ class CustomSegmentedTabs extends StatelessWidget {
           ),
           padding: EdgeInsets.symmetric(
             vertical: tabVerticalPadding ?? 6.sp,
-            horizontal: tabHorizontalPadding ?? 6.sp,
+            horizontal: isMobile
+                ? (tabHorizontalPadding ?? 6.sp)
+                : 30.w,
           ),
           child: Center(
             child: Row(

@@ -6,7 +6,6 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:beauty_user/theme/appcolors.dart';
 import 'package:beauty_user/theme/new_theme.dart';
 
-
 class CustomDropdownFormFieldInvMaster extends StatefulWidget {
   final String? selectedValue;
   final double? widthIcon;
@@ -22,21 +21,23 @@ class CustomDropdownFormFieldInvMaster extends StatefulWidget {
   final double? dropdownWidth;
   final Widget? hint;
   final String? label;
-  final String? iconPath;           // ← prefix SVG icon path (field)
+  final String? iconPath;
   final Map<String, Color>? itemColors;
   final bool showColorDots;
   final double borderRadius;
 
-  // ── NEW: optional label-row prefix / trailing SVG icons ──────────────────
-  final String? labelPrefixSvg;     // asset path for icon before the label text
-  final double? labelPrefixSvgSize; // size (w & h), defaults to 14
-  final Color?  labelPrefixColor;   // colorFilter color
+  // ── text direction ────────────────────────────────────────────────────────
+  final TextDirection textDirection;
 
-  final String? labelTrailingSvg;   // asset path for icon after the label text
+  // ── label-row prefix / trailing SVG icons ────────────────────────────────
+  final String? labelPrefixSvg;
+  final double? labelPrefixSvgSize;
+  final Color?  labelPrefixColor;
+
+  final String? labelTrailingSvg;
   final double? labelTrailingSvgSize;
   final Color?  labelTrailingColor;
-  final VoidCallback? onLabelTrailingTap; // optional tap on trailing icon
-  // ─────────────────────────────────────────────────────────────────────────
+  final VoidCallback? onLabelTrailingTap;
 
   const CustomDropdownFormFieldInvMaster({
     Key? key,
@@ -57,8 +58,8 @@ class CustomDropdownFormFieldInvMaster extends StatefulWidget {
     this.iconPath,
     this.itemColors,
     this.showColorDots = false,
-    this.borderRadius = 8.0,
-    // ── label icons ──
+    this.borderRadius  = 8.0,
+    this.textDirection = TextDirection.ltr,
     this.labelPrefixSvg,
     this.labelPrefixSvgSize,
     this.labelPrefixColor,
@@ -79,11 +80,12 @@ class _CustomDropdownFormFieldInvMasterState
   final GlobalKey _dropdownKey = GlobalKey();
   double? _popupWidth;
 
+  bool get _isRtl => widget.textDirection == TextDirection.rtl;
+
   @override
   void initState() {
     super.initState();
     internalSelectedValue = widget.selectedValue;
-
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final ctx = _dropdownKey.currentContext;
       if (ctx != null && mounted) {
@@ -101,7 +103,6 @@ class _CustomDropdownFormFieldInvMasterState
     }
   }
 
-  // ── Color helper ──────────────────────────────────────────────────────────
   Color? _getItemColor(Map<String, String> item) {
     if (widget.itemColors == null) return null;
     final key   = item['key']   ?? '';
@@ -109,149 +110,168 @@ class _CustomDropdownFormFieldInvMasterState
     return widget.itemColors![key] ?? widget.itemColors![value];
   }
 
-  // ── Dropdown item builder ─────────────────────────────────────────────────
+  // ── Dropdown item ─────────────────────────────────────────────────────────
   Widget _buildDropdownItem(Map<String, String> item) {
     final Color? itemColor = _getItemColor(item);
+    final String text      = item['value'] ?? '';
 
     if (widget.showColorDots && itemColor != null) {
-      return Row(
-        children: [
+      return Directionality(
+        textDirection: widget.textDirection,
+        child: Row(children: [
           Container(
-            width: 8.sp,
-            height: 8.sp,
-            decoration: BoxDecoration(color: itemColor, shape: BoxShape.circle),
+            width: 8.sp, height: 8.sp,
+            decoration:
+            BoxDecoration(color: itemColor, shape: BoxShape.circle),
           ),
           SizedBox(width: 8.w),
           Expanded(
-            child: Text(
-              item['value'] ?? '',
-              style: StyleText.fontSize12Weight400.copyWith(
-                color: AppColors.text,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
+            child: Text(text,
+                textDirection: widget.textDirection,
+                style: StyleText.fontSize12Weight400.copyWith(
+                    color: AppColors.text,
+                    overflow: TextOverflow.ellipsis)),
           ),
-        ],
+        ]),
       );
     }
 
-    return Text(
-      item['value'] ?? '',
-      style: StyleText.fontSize12Weight400.copyWith(
-        color: itemColor ?? AppColors.text,
-        overflow: TextOverflow.ellipsis,
+    return Directionality(
+      textDirection: widget.textDirection,
+      child: Align(
+        alignment: _isRtl ? Alignment.centerRight : Alignment.centerLeft,
+        child: Text(text,
+            textDirection: widget.textDirection,
+            textAlign:     _isRtl ? TextAlign.right : TextAlign.left,
+            style: StyleText.fontSize12Weight400.copyWith(
+                color: itemColor ?? AppColors.text,
+                overflow: TextOverflow.ellipsis)),
       ),
     );
   }
 
-  // ── Arrow icon ────────────────────────────────────────────────────────────
   Widget _arrowIcon() => CustomSvg(
     assetPath: "assets/arrowdown.svg",
-    width: 15.w,
-    height: 10.h,
+    width: 20.w, height: 20.h,
   );
 
-  // ── Custom button with prefix SVG icon ───────────────────────────────────
   Widget? _buildCustomButton(double fieldHeight) {
     if (widget.iconPath == null) return null;
-
     final bool hasValue = internalSelectedValue != null &&
         widget.items.any((e) => e['key'] == internalSelectedValue);
-
     final String displayText = hasValue
-        ? (widget.items.firstWhere(
-          (e) => e['key'] == internalSelectedValue,
-    )['value'] ??
+        ? (widget.items
+        .firstWhere((e) => e['key'] == internalSelectedValue)['value'] ??
         '')
         : '';
 
-    return Container(
-      height: fieldHeight.h,
-      padding: EdgeInsets.symmetric(horizontal: 8.w),
-      decoration: BoxDecoration(
-        color: widget.dropdownColor ?? const Color(0xFFF1F2ED),
-        borderRadius: BorderRadius.circular(widget.borderRadius.r),
-        border: Border.all(color: Colors.transparent),
-      ),
-      child: Row(
-        children: [
-          // ── Prefix SVG icon ──
-          SvgPicture.asset(
-            widget.iconPath!,
-            width:  (widget.widthIcon ?? 16).w,
-            height: (widget.heightIcon ?? 16).w,
-            color: widget.primaryColor,
-          ),
+    return Directionality(
+      textDirection: widget.textDirection,
+      child: Container(
+        height:  fieldHeight.h,
+        padding: EdgeInsets.symmetric(horizontal: 8.w),
+        decoration: BoxDecoration(
+          color:        widget.dropdownColor ?? const Color(0xFFF1F2ED),
+          borderRadius: BorderRadius.circular(widget.borderRadius.r),
+          border:       Border.all(color: Colors.transparent),
+        ),
+        child: Row(children: [
+          SvgPicture.asset(widget.iconPath!,
+              width:  (widget.widthIcon  ?? 16).w,
+              height: (widget.heightIcon ?? 16).w,
+              colorFilter: widget.primaryColor != null
+                  ? ColorFilter.mode(widget.primaryColor!, BlendMode.srcIn)
+                  : null),
           SizedBox(width: 6.w),
-          // ── Selected value or hint ──
           Expanded(
             child: hasValue
-                ? Text(
-              displayText,
-              style: StyleText.fontSize12Weight400
-                  .copyWith(color: AppColors.text),
-              overflow: TextOverflow.ellipsis,
-            )
+                ? Text(displayText,
+                textDirection: widget.textDirection,
+                textAlign: _isRtl ? TextAlign.right : TextAlign.left,
+                style: StyleText.fontSize12Weight400
+                    .copyWith(color: AppColors.text),
+                overflow: TextOverflow.ellipsis)
                 : DefaultTextStyle.merge(
-              child: widget.hint ?? const SizedBox.shrink(),
-            ),
+                child: widget.hint ?? const SizedBox.shrink()),
           ),
-          // ── Arrow ──
           _arrowIcon(),
-        ],
+        ]),
       ),
     );
   }
 
-  // ── Label row with optional prefix + trailing SVG ────────────────────────
+  // ── Label row ─────────────────────────────────────────────────────────────
+  // Uses full-width Row + mainAxisAlignment to pin content to the correct side.
   Widget _buildLabelRow() {
-    final double prefixSize  = widget.labelPrefixSvgSize  ?? 14;
+    final double prefixSize   = widget.labelPrefixSvgSize  ?? 14;
     final double trailingSize = widget.labelTrailingSvgSize ?? 14;
 
+    final Widget? prefixIcon = widget.labelPrefixSvg != null
+        ? SvgPicture.asset(
+      widget.labelPrefixSvg!,
+      width:  prefixSize.w,
+      height: prefixSize.h,
+      colorFilter: widget.labelPrefixColor != null
+          ? ColorFilter.mode(widget.labelPrefixColor!, BlendMode.srcIn)
+          : null,
+    )
+        : null;
+
+    final Widget labelText = Text(
+      widget.label!,
+      textDirection: widget.textDirection,
+      style: StyleText.fontSize14Weight400.copyWith(color: AppColors.text),
+    );
+
+    final Widget? trailingIcon = widget.labelTrailingSvg != null
+        ? GestureDetector(
+      onTap: widget.onLabelTrailingTap,
+      child: SvgPicture.asset(
+        widget.labelTrailingSvg!,
+        width:  trailingSize.w,
+        height: trailingSize.h,
+        colorFilter: widget.labelTrailingColor != null
+            ? ColorFilter.mode(
+            widget.labelTrailingColor!, BlendMode.srcIn)
+            : null,
+      ),
+    )
+        : null;
+
+    // Build the inner content (icon + gap + text) as a minimal row
+    // then wrap it in a full-width row aligned to the correct side
+    final List<Widget> innerChildren = [];
+
+    if (_isRtl) {
+      // RTL: text first (rightmost), then gap, then icon
+      innerChildren.add(labelText);
+      if (prefixIcon != null) {
+        innerChildren.add(SizedBox(width: 5.w));
+        innerChildren.add(prefixIcon);
+      }
+      if (trailingIcon != null) {
+        innerChildren.add(SizedBox(width: 5.w));
+        innerChildren.add(trailingIcon);
+      }
+    } else {
+      // LTR: icon first (leftmost), then gap, then text
+      if (prefixIcon != null) {
+        innerChildren.add(prefixIcon);
+        innerChildren.add(SizedBox(width: 5.w));
+      }
+      innerChildren.add(labelText);
+      if (trailingIcon != null) {
+        innerChildren.add(SizedBox(width: 5.w));
+        innerChildren.add(trailingIcon);
+      }
+    }
+
+    // Full-width row that aligns content to start (right for RTL, left for LTR)
     return Row(
-      mainAxisSize: MainAxisSize.min,
+      mainAxisSize:      MainAxisSize.max,
+      mainAxisAlignment: _isRtl ? MainAxisAlignment.start : MainAxisAlignment.start,
       crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        // ── Prefix icon ──────────────────────────────────────────────────
-        if (widget.labelPrefixSvg != null) ...[
-          SvgPicture.asset(
-            widget.labelPrefixSvg!,
-            width:  prefixSize.w,
-            height: prefixSize.h,
-            colorFilter: widget.labelPrefixColor != null
-                ? ColorFilter.mode(widget.labelPrefixColor!, BlendMode.srcIn)
-                : null,
-          ),
-          SizedBox(width: 5.w),
-        ],
-
-        // ── Label text ───────────────────────────────────────────────────
-        Flexible(
-          child: Text(
-            widget.label!,
-            style: StyleText.fontSize14Weight400.copyWith(
-              color: AppColors.text,
-            ),
-          ),
-        ),
-
-        // ── Trailing icon ────────────────────────────────────────────────
-        if (widget.labelTrailingSvg != null) ...[
-          SizedBox(width: 5.w),
-          GestureDetector(
-            onTap: widget.onLabelTrailingTap,
-            child: SvgPicture.asset(
-              widget.labelTrailingSvg!,
-              width:  trailingSize.w,
-              height: trailingSize.h,
-              colorFilter: widget.labelTrailingColor != null
-                  ? ColorFilter.mode(
-                  widget.labelTrailingColor!, BlendMode.srcIn)
-                  : null,
-            ),
-          ),
-        ],
-      ],
+      children: innerChildren,
     );
   }
 
@@ -259,116 +279,123 @@ class _CustomDropdownFormFieldInvMasterState
   Widget build(BuildContext context) {
     final double fieldHeight = widget.height ?? 36;
 
+    final Widget? localizedHint = widget.hint == null
+        ? null
+        : Directionality(
+      textDirection: widget.textDirection,
+      child: widget.hint!,
+    );
+
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch, // full width always
       children: [
-        // ── Label row ────────────────────────────────────────────────────────
         if (widget.label != null) ...[
           _buildLabelRow(),
           SizedBox(height: widget.spaceHeight ?? 6.h),
         ],
 
-        // ── Dropdown container ───────────────────────────────────────────────
-        Container(
-          key: _dropdownKey,
-          width: widget.width,
-          height: fieldHeight.h,
-          decoration: BoxDecoration(
-            color: AppColors.background,
-            borderRadius: BorderRadius.circular(widget.borderRadius.r),
-          ),
-          child: FormField<String>(
-            initialValue: internalSelectedValue,
-            validator: widget.validator,
-            builder: (FormFieldState<String> field) {
-              return DropdownButtonHideUnderline(
-                child: DropdownButton2<String>(
-                  isExpanded: true,
-                  hint: widget.hint,
-                  value: widget.items.any(
-                          (e) => e['key'] == internalSelectedValue)
-                      ? internalSelectedValue
-                      : null,
-                  onChanged: (value) {
-                    setState(() {
-                      internalSelectedValue = value;
-                      field.didChange(value);
-                    });
-                    widget.onChanged(value);
-                  },
-                  // ── Custom button renders prefix icon ──
-                  customButton: _buildCustomButton(fieldHeight),
-                  buttonStyleData: ButtonStyleData(
-                    height: fieldHeight.h,
-                    width: widget.width?.w,
-                    padding: EdgeInsets.symmetric(horizontal: 8.w),
-                    decoration: BoxDecoration(
-                      color: widget.dropdownColor ?? const Color(0xFFF1F2ED),
-                      borderRadius:
-                      BorderRadius.circular(widget.borderRadius.r),
-                      border: Border.all(color: Colors.transparent),
+        Directionality(
+          textDirection: widget.textDirection,
+          child: Container(
+            key:    _dropdownKey,
+            width:  widget.width,
+            height: fieldHeight.h,
+            decoration: BoxDecoration(
+              color:        widget.dropdownColor ?? AppColors.background,
+              borderRadius: BorderRadius.circular(widget.borderRadius.r),
+            ),
+            child: FormField<String>(
+              initialValue: internalSelectedValue,
+              validator:    widget.validator,
+              builder: (FormFieldState<String> field) {
+                return DropdownButtonHideUnderline(
+                  child: DropdownButton2<String>(
+                    isExpanded: true,
+                    hint:       localizedHint,
+                    value: widget.items.any(
+                            (e) => e['key'] == internalSelectedValue)
+                        ? internalSelectedValue
+                        : null,
+                    onChanged: (value) {
+                      setState(() {
+                        internalSelectedValue = value;
+                        field.didChange(value);
+                      });
+                      widget.onChanged(value);
+                    },
+                    customButton: _buildCustomButton(fieldHeight),
+                    buttonStyleData: ButtonStyleData(
+                      height:  fieldHeight.h,
+                      width:   widget.width?.w,
+                      padding: EdgeInsets.symmetric(horizontal: 8.w),
+                      decoration: BoxDecoration(
+                        color: widget.dropdownColor ??
+                            const Color(0xFFF1F2ED),
+                        borderRadius:
+                        BorderRadius.circular(widget.borderRadius.r),
+                        border: Border.all(color: Colors.transparent),
+                      ),
                     ),
-                  ),
-                  dropdownStyleData: DropdownStyleData(
-                    width: widget.dropdownWidth ??
-                        _popupWidth ??
-                        widget.width ??
-                        100.w,
-                    maxHeight: 225.h,
-                    offset: const Offset(0, 0),
-                    decoration: BoxDecoration(
-                      color: AppColors.background,
-                      borderRadius:
-                      BorderRadius.circular(widget.borderRadius.r),
-                      border:
-                      Border.all(color: Colors.grey.withOpacity(0.3)),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
+                    dropdownStyleData: DropdownStyleData(
+                      width: widget.dropdownWidth ??
+                          _popupWidth ??
+                          widget.width ??
+                          100.w,
+                      maxHeight: 225.h,
+                      offset:    const Offset(0, 0),
+                      decoration: BoxDecoration(
+                        color: AppColors.background,
+                        borderRadius:
+                        BorderRadius.circular(widget.borderRadius.r),
+                        border: Border.all(
+                            color: Colors.grey.withOpacity(0.3)),
+                        boxShadow: [
+                          BoxShadow(
+                            color:      Colors.black.withOpacity(0.1),
+                            blurRadius: 8,
+                            offset:     const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      scrollbarTheme: ScrollbarThemeData(
+                        thumbVisibility:
+                        MaterialStateProperty.all(false),
+                        trackVisibility:
+                        MaterialStateProperty.all(false),
+                        thickness: MaterialStateProperty.all(0),
+                        radius:    Radius.zero,
+                      ),
                     ),
-                    scrollbarTheme: ScrollbarThemeData(
-                      thumbVisibility:
-                      MaterialStateProperty.all(false),
-                      trackVisibility:
-                      MaterialStateProperty.all(false),
-                      thickness: MaterialStateProperty.all(0),
-                      radius: Radius.zero,
+                    menuItemStyleData: MenuItemStyleData(
+                      height:  fieldHeight.h,
+                      padding: EdgeInsets.symmetric(horizontal: 8.w),
+                      overlayColor:
+                      MaterialStateProperty.resolveWith<Color?>(
+                              (states) {
+                            if (states.contains(MaterialState.hovered)) {
+                              return (widget.primaryColor ?? AppColors.primary)
+                                  .withOpacity(0.1);
+                            }
+                            return null;
+                          }),
                     ),
+                    iconStyleData: IconStyleData(
+                      icon: widget.iconPath != null
+                          ? const SizedBox.shrink()
+                          : _arrowIcon(),
+                    ),
+                    style: StyleText.fontSize12Weight400
+                        .copyWith(color: AppColors.text),
+                    items: widget.items.map((unit) {
+                      return DropdownMenuItem<String>(
+                        value: unit['key'],
+                        child: _buildDropdownItem(unit),
+                      );
+                    }).toList(),
                   ),
-                  menuItemStyleData: MenuItemStyleData(
-                    height: fieldHeight.h,
-                    padding: EdgeInsets.symmetric(horizontal: 8.w),
-                    overlayColor:
-                    MaterialStateProperty.resolveWith<Color?>(
-                            (states) {
-                          if (states.contains(MaterialState.hovered)) {
-                            return (widget.primaryColor ?? AppColors.primary)
-                                .withOpacity(0.1);
-                          }
-                          return null;
-                        }),
-                  ),
-                  iconStyleData: IconStyleData(
-                    // Hide default icon when customButton is active
-                    icon: widget.iconPath != null
-                        ? const SizedBox.shrink()
-                        : _arrowIcon(),
-                  ),
-                  style: StyleText.fontSize12Weight400
-                      .copyWith(color: AppColors.text),
-                  items: widget.items.map((unit) {
-                    return DropdownMenuItem<String>(
-                      value: unit['key'],
-                      child: _buildDropdownItem(unit),
-                    );
-                  }).toList(),
-                ),
-              );
-            },
+                );
+              },
+            ),
           ),
         ),
       ],

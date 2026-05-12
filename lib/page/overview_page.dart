@@ -10,6 +10,8 @@
 // FIXED:   1) Removed Expanded from _TestimonialCard feedback text (mobile crash)
 //          2) Services section: always horizontal scroll row, no Wrap
 //          3) Gallery: half-size images on mobile (< 600px)
+// ✅ UPDATED: Primary color is now gender-aware — uses malePrimaryColor when
+//             GenderCubit reports male, primaryColor when female.
 
 // ignore_for_file: avoid_web_libraries_in_flutter
 import 'dart:html' as html;
@@ -32,6 +34,7 @@ import '../controller/home/home_state.dart';
 import '../controller/home/lang_state.dart';
 import '../controller/overview/overview_cubit.dart';
 import '../controller/overview/overview_state.dart';
+import '../model/home/home_model.dart';
 import '../model/overview/overview_model.dart';
 import '../theme/appcolors.dart';
 import '../widgets/app_page_shell.dart';
@@ -46,6 +49,14 @@ Color _parseHex(String hex, {required Color fallback}) {
     if (h.length == 6) return Color(int.parse('FF$h', radix: 16));
   } catch (_) {}
   return fallback;
+}
+
+// ✅ Gender-aware primary color resolver
+Color _resolvePrimary(HomePageModel homeData, bool isMale) {
+  final hex = isMale
+      ? homeData.branding.malePrimaryColor
+      : homeData.branding.primaryColor;
+  return _parseHex(hex, fallback: AppColors.primary);
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -73,13 +84,6 @@ Future<Uint8List> _xhrLoad(String url, {bool isSvg = false}) {
   });
 }
 
-bool _isSvgBytes(Uint8List b) {
-  if (b.length < 5) return false;
-  final header =
-  String.fromCharCodes(b.sublist(0, b.length.clamp(0, 100))).trimLeft();
-  return header.startsWith('<svg') || header.startsWith('<?xml');
-}
-
 bool _isSvgUrl(String url) {
   final decoded = Uri.decodeFull(url).toLowerCase();
   return decoded.contains('.svg') ||
@@ -100,7 +104,8 @@ Widget _netImg({
 }) {
   if (url.isEmpty) return errorWidget ?? const SizedBox.shrink();
 
-  final viewId = 'svg-overview-user-${url.hashCode}-${width?.toInt()}-${height?.toInt()}';
+  final viewId =
+      'svg-overview-user-${url.hashCode}-${width?.toInt()}-${height?.toInt()}';
 
   ui_web.platformViewRegistry.registerViewFactory(viewId, (int id) {
     final img = html.ImageElement()
@@ -441,11 +446,6 @@ class _OverviewPageViewState extends State<_OverviewPageView> {
             _ => null,
           };
 
-          final Color primaryColor = homeData != null
-              ? _parseHex(homeData.branding.primaryColor,
-              fallback: AppColors.primary)
-              : AppColors.primary;
-
           final Color backgroundColor = homeData != null
               ? _parseHex(homeData.branding.backgroundColor,
               fallback: AppColors.background)
@@ -460,158 +460,188 @@ class _OverviewPageViewState extends State<_OverviewPageView> {
             );
           }
 
-          return BlocBuilder<OverviewCmsCubit, OverviewCmsState>(
-            builder: (context, overviewState) {
-              if (overviewState is OverviewCmsInitial) {
-                final gender = context.read<GenderCubit>().current;
-                _lastGender = gender;
-                context.read<OverviewCmsCubit>().load(gender: gender);
-              }
+          // ✅ GenderCubit wraps BEFORE primaryColor is resolved
+          return BlocBuilder<GenderCubit, GenderState>(
+            builder: (context, genderState) {
+              // ✅ Gender-aware primary color
+              final Color primaryColor = _resolvePrimary(homeData, genderState.isMale);
 
-              if (overviewState is OverviewCmsError) {
-                return Scaffold(
-                  backgroundColor: backgroundColor,
-                  body: Center(
-                    child: Text(
-                      overviewState.message,
-                      style: AppTextStyles.font14BlackCairoRegular
-                          .copyWith(color: Colors.red),
-                    ),
-                  ),
-                );
-              }
+              return BlocBuilder<OverviewCmsCubit, OverviewCmsState>(
+                builder: (context, overviewState) {
+                  if (overviewState is OverviewCmsInitial) {
+                    final gender = context.read<GenderCubit>().current;
+                    _lastGender = gender;
+                    context.read<OverviewCmsCubit>().load(gender: gender);
+                  }
 
-              final OverviewPageModel? model = switch (overviewState) {
-                OverviewCmsLoaded(:final data) => data,
-                OverviewCmsSaved(:final data) => data,
-                _ => null,
-              };
+                  if (overviewState is OverviewCmsError) {
+                    return Scaffold(
+                      backgroundColor: backgroundColor,
+                      body: Center(
+                        child: Text(
+                          overviewState.message,
+                          style: AppTextStyles.font14BlackCairoRegular
+                              .copyWith(color: Colors.red),
+                        ),
+                      ),
+                    );
+                  }
 
-              if (model == null) {
-                return _SvgPulseLoader(
-                  logoUrl: logoUrl.isEmpty ? null : logoUrl,
-                  backgroundColor: backgroundColor,
-                );
-              }
+                  final OverviewPageModel? model = switch (overviewState) {
+                    OverviewCmsLoaded(:final data) => data,
+                    OverviewCmsSaved(:final data) => data,
+                    _ => null,
+                  };
 
-              if (!_preloadStarted) {
-                _preloadAndReveal(logoUrl: logoUrl, model: model);
-              }
+                  if (model == null) {
+                    return _SvgPulseLoader(
+                      logoUrl: logoUrl.isEmpty ? null : logoUrl,
+                      backgroundColor: backgroundColor,
+                    );
+                  }
 
-              if (_showLoader) {
-                return _SvgPulseLoader(
-                  logoUrl: logoUrl.isEmpty ? null : logoUrl,
-                  backgroundColor: backgroundColor,
-                );
-              }
+                  if (!_preloadStarted) {
+                    _preloadAndReveal(logoUrl: logoUrl, model: model);
+                  }
 
-              return BlocBuilder<LanguageCubit, LanguageState>(
-                builder: (context, langState) {
-                  final bool isAr = langState.isArabic;
+                  if (_showLoader) {
+                    return _SvgPulseLoader(
+                      logoUrl: logoUrl.isEmpty ? null : logoUrl,
+                      backgroundColor: backgroundColor,
+                    );
+                  }
 
-                  return Directionality(
-                    textDirection: isAr ? TextDirection.rtl : TextDirection.ltr,
-                    child: AppPageShell(
-                      currentRoute: '/services',
-                      body: Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 24.w),
-                        child: _RevealCoordinatorWidget(
-                          child: SingleChildScrollView(
-                            controller: _scrollController,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                SizedBox(height: 40.h),
+                  return BlocBuilder<LanguageCubit, LanguageState>(
+                    builder: (context, langState) {
+                      final bool isAr = langState.isArabic;
 
-                                // ═══ SECTION 1 — OVERVIEW ═══
-                                _Reveal(
-                                  delay: const Duration(milliseconds: 60),
-                                  direction: _SlideDirection.fromBottom,
-                                  duration: const Duration(milliseconds: 650),
-                                  child: _OverviewSection(
-                                    primaryColor: primaryColor,
-                                    title: isAr
-                                        ? model.headings.title.ar
-                                        : model.headings.title.en,
-                                    body: isAr
-                                        ? model.headings.description.ar
-                                        : model.headings.description.en,
-                                    onReadMore: () {},
-                                  ),
+                      return Directionality(
+                        textDirection:
+                        isAr ? TextDirection.rtl : TextDirection.ltr,
+                        child: AppPageShell(
+                          currentRoute: '/services',
+                          body: Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 24.w),
+                            child: _RevealCoordinatorWidget(
+                              child: SingleChildScrollView(
+                                controller: _scrollController,
+                                child: Column(
+                                  crossAxisAlignment:
+                                  CrossAxisAlignment.stretch,
+                                  children: [
+                                    SizedBox(height: 40.h),
+
+                                    // ═══ SECTION 1 — OVERVIEW ═══
+                                    // ═══ SECTION 1 — OVERVIEW ═══
+                                    _Reveal(
+                                      delay: const Duration(milliseconds: 60),
+                                      direction: _SlideDirection.fromBottom,
+                                      duration: const Duration(milliseconds: 650),
+                                      child: _OverviewSection(
+                                        primaryColor: primaryColor,
+                                        title: isAr
+                                            ? model.headings.title.ar
+                                            : model.headings.title.en,
+                                        body: isAr
+                                            ? model.headings.description.ar
+                                            : model.headings.description.en,
+                                        onReadMore: () {},
+                                        backgroundColor: _parseHex(           // ← NEW: Pass mainWidgetColor
+                                          homeData.branding.mainWidgetColor,
+                                          fallback: Colors.transparent,
+                                        ),
+                                      ),
+                                    ),
+
+                                    SizedBox(height: 50.h),
+
+                                    // ═══ SECTION 2 — TOP SERVICES ═══
+                                    _Reveal(
+                                      delay: const Duration(
+                                          milliseconds: 120),
+                                      direction: _SlideDirection.fromLeft,
+                                      duration: const Duration(
+                                          milliseconds: 650),
+                                      child: _TopServicesSection(
+                                        primaryColor: primaryColor,
+                                        title: isAr
+                                            ? model.services.title.ar
+                                            : model.services.title.en,
+                                        items: model.services.items,
+                                        isAr: isAr,
+                                      ),
+                                    ),
+
+                                    SizedBox(height: 50.h),
+
+                                    // ═══ SECTION 3 — GALLERY ═══
+                                    _Reveal(
+                                      delay: const Duration(
+                                          milliseconds: 180),
+                                      direction: _SlideDirection.fromRight,
+                                      duration: const Duration(
+                                          milliseconds: 650),
+                                      child: _GallerySection(
+                                        primaryColor: primaryColor,
+                                        title:
+                                        isAr ? 'المعرض' : 'Gallery',
+                                        images: model.gallery.images,
+                                      ),
+                                    ),
+
+                                    SizedBox(height: 50.h),
+
+                                    // ═══ SECTION 4 — CLIENT TESTIMONIALS ═══
+                                    _Reveal(
+                                      delay: const Duration(
+                                          milliseconds: 240),
+                                      direction:
+                                      _SlideDirection.fromBottom,
+                                      duration: const Duration(
+                                          milliseconds: 650),
+                                      child: _TestimonialsSection(
+                                        primaryColor: primaryColor,
+                                        sectionTitle: isAr
+                                            ? model
+                                            .clientComments.title.ar
+                                            : model
+                                            .clientComments.title.en,
+                                        comments:
+                                        model.clientComments.comments,
+                                        isAr: isAr,
+                                      ),
+                                    ),
+
+                                    SizedBox(height: 50.h),
+
+                                    // ═══ SECTION 5 — DOWNLOAD NOW ═══
+                                    _Reveal(
+                                      delay: const Duration(milliseconds: 100),
+                                      direction: _SlideDirection.fromBottom,
+                                      duration: const Duration(milliseconds: 650),
+                                      child: _DownloadNowSection(
+                                        primaryColor: primaryColor,
+                                        title: isAr
+                                            ? model.download.title.ar
+                                            : model.download.title.en,
+                                        appStoreLink: model.download.appStoreLink,
+                                        googlePlayLink: model.download.googlePlayLink,
+                                        backgroundColor: _parseHex(           // ← NEW: Pass mainWidgetColor
+                                          homeData.branding.mainWidgetColor,
+                                          fallback: Colors.transparent,
+                                        ),
+                                      ),
+                                    ),
+
+                                    SizedBox(height: 40.h),
+                                  ],
                                 ),
-
-                                SizedBox(height: 50.h),
-
-                                // ═══ SECTION 2 — TOP SERVICES ═══
-                                _Reveal(
-                                  delay: const Duration(milliseconds: 120),
-                                  direction: _SlideDirection.fromLeft,
-                                  duration: const Duration(milliseconds: 650),
-                                  child: _TopServicesSection(
-                                    primaryColor: primaryColor,
-                                    title: isAr
-                                        ? model.services.title.ar
-                                        : model.services.title.en,
-                                    items: model.services.items,
-                                    isAr: isAr,
-                                  ),
-                                ),
-
-                                SizedBox(height: 50.h),
-
-                                // ═══ SECTION 3 — GALLERY ═══
-                                _Reveal(
-                                  delay: const Duration(milliseconds: 180),
-                                  direction: _SlideDirection.fromRight,
-                                  duration: const Duration(milliseconds: 650),
-                                  child: _GallerySection(
-                                    primaryColor: primaryColor,
-                                    title: isAr ? 'المعرض' : 'Gallery',
-                                    images: model.gallery.images,
-                                  ),
-                                ),
-
-                                SizedBox(height: 50.h),
-
-                                // ═══ SECTION 4 — CLIENT TESTIMONIALS ═══
-                                _Reveal(
-                                  delay: const Duration(milliseconds: 240),
-                                  direction: _SlideDirection.fromBottom,
-                                  duration: const Duration(milliseconds: 650),
-                                  child: _TestimonialsSection(
-                                    primaryColor: primaryColor,
-                                    sectionTitle: isAr
-                                        ? model.clientComments.title.ar
-                                        : model.clientComments.title.en,
-                                    comments: model.clientComments.comments,
-                                    isAr: isAr,
-                                  ),
-                                ),
-
-                                SizedBox(height: 50.h),
-
-                                // ═══ SECTION 5 — DOWNLOAD NOW ═══
-                                _Reveal(
-                                  delay: const Duration(milliseconds: 100),
-                                  direction: _SlideDirection.fromBottom,
-                                  duration: const Duration(milliseconds: 650),
-                                  child: _DownloadNowSection(
-                                    primaryColor: primaryColor,
-                                    title: isAr
-                                        ? model.download.title.ar
-                                        : model.download.title.en,
-                                    appStoreLink: model.download.appStoreLink,
-                                    googlePlayLink: model.download.googlePlayLink,
-                                  ),
-                                ),
-
-                                SizedBox(height: 40.h),
-                              ],
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    ),
+                      );
+                    },
                   );
                 },
               );
@@ -627,17 +657,23 @@ class _OverviewPageViewState extends State<_OverviewPageView> {
 // SECTION 1 — OVERVIEW
 // ══════════════════════════════════════════════════════════════════════════════
 
+// ══════════════════════════════════════════════════════════════════════════════
+// SECTION 1 — OVERVIEW (WITH BACKGROUND COLOR)
+// ══════════════════════════════════════════════════════════════════════════════
+
 class _OverviewSection extends StatelessWidget {
   final Color primaryColor;
   final String title;
   final String body;
   final VoidCallback? onReadMore;
+  final Color? backgroundColor;  // ← NEW: mainWidgetColor
 
   const _OverviewSection({
     required this.primaryColor,
     required this.title,
     required this.body,
     this.onReadMore,
+    this.backgroundColor,  // ← NEW
   });
 
   @override
@@ -645,60 +681,71 @@ class _OverviewSection extends StatelessWidget {
     final bool isAr = context.watch<LanguageCubit>().state.isArabic;
     final readMoreLabel = isAr ? 'اقرأ المزيد' : 'Read More';
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          FormatHelper.capitalize(title),
-          style: AppTextStyles.font20BlackCairoSemiBold.copyWith(
-            color: primaryColor,
-            fontSize: 22.sp,
-          ),
-        ),
-        SizedBox(height: 16.h),
-        Text(
-          FormatHelper.capitalize(body),
-          style: AppTextStyles.font14BlackCairoRegular.copyWith(
-            height: 1.7,
-            color: AppColors.secondaryBlack,
-            fontSize: 14.sp,
-          ),
-        ),
-        SizedBox(height: 16.h),
-        Align(
-          alignment: AlignmentDirectional.centerEnd,
-          child: InkWell(
-            onTap: () {
-              navigateTo(context, OurProductsPage());
-            },
-            borderRadius: BorderRadius.circular(8.r),
-            child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    FormatHelper.capitalize(readMoreLabel),
-                    style: AppTextStyles.font14BlackCairoMedium
-                        .copyWith(color: primaryColor),
-                  ),
-                  SizedBox(width: 6.w),
-                  Container(
-                    width: 24.w,
-                    height: 24.w,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: primaryColor.withOpacity(0.15),
-                    ),
-                    child: Icon(Icons.arrow_forward,
-                        size: 14.sp, color: primaryColor),
-                  ),
-                ],
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: backgroundColor,  // ← Apply background color
+
+        borderRadius: BorderRadius.circular(16.r)
+      ),
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 32.h),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              FormatHelper.capitalize(title),
+              style: AppTextStyles.font20BlackCairoSemiBold.copyWith(
+                color: primaryColor,
+                fontSize: 22.sp,
               ),
             ),
-          ),
+            SizedBox(height: 16.h),
+            Text(
+              FormatHelper.capitalize(body),
+              style: AppTextStyles.font14BlackCairoRegular.copyWith(
+                height: 1.7,
+                color: AppColors.secondaryBlack,
+                fontSize: 14.sp,
+              ),
+            ),
+            SizedBox(height: 16.h),
+            Align(
+              alignment: AlignmentDirectional.centerEnd,
+              child: InkWell(
+                onTap: () {
+                  navigateTo(context, OurProductsPage());
+                },
+                borderRadius: BorderRadius.circular(8.r),
+                child: Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        FormatHelper.capitalize(readMoreLabel),
+                        style: AppTextStyles.font14BlackCairoMedium
+                            .copyWith(color: primaryColor),
+                      ),
+                      SizedBox(width: 6.w),
+                      Container(
+                        width: 24.w,
+                        height: 24.w,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: primaryColor.withOpacity(0.15),
+                        ),
+                        child: Icon(Icons.arrow_forward,
+                            size: 14.sp, color: primaryColor),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
 }
@@ -735,7 +782,7 @@ class _TopServicesSection extends StatelessWidget {
           ),
         ),
         SizedBox(height: 24.h),
-        // ✅ FIX: always a single horizontal scrollable row — no Wrap, no line breaks
+        // ✅ always a single horizontal scrollable row — no Wrap, no line breaks
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: Row(
@@ -846,7 +893,7 @@ class _GallerySectionState extends State<_GallerySection> {
   Widget build(BuildContext context) {
     if (widget.images.isEmpty) return const SizedBox.shrink();
 
-    // ✅ FIX: half-size on mobile
+    // ✅ half-size on mobile
     final screenWidth = MediaQuery.of(context).size.width;
     final isMobile = screenWidth < 600;
 
@@ -910,7 +957,8 @@ class _GallerySectionState extends State<_GallerySection> {
                             errorWidget: Container(
                               color: widget.primaryColor.withOpacity(0.08),
                               child: Icon(Icons.broken_image_outlined,
-                                  color: widget.primaryColor.withOpacity(0.3)),
+                                  color:
+                                  widget.primaryColor.withOpacity(0.3)),
                             ),
                           ),
                         ),
@@ -1046,7 +1094,8 @@ class _TestimonialsSectionState extends State<_TestimonialsSection> {
         final totalPages = _totalPages(isWide);
 
         final startIdx = _currentPage * perPage;
-        final endIdx = (startIdx + perPage).clamp(0, widget.comments.length);
+        final endIdx =
+        (startIdx + perPage).clamp(0, widget.comments.length);
         final visibleComments = widget.comments.sublist(startIdx, endIdx);
 
         if (isWide) {
@@ -1068,8 +1117,9 @@ class _TestimonialsSectionState extends State<_TestimonialsSection> {
                       child: Row(
                         children: [
                           _ArrowBtn(
-                            onTap:
-                            _currentPage > 0 ? () => _prev(true) : null,
+                            onTap: _currentPage > 0
+                                ? () => _prev(true)
+                                : null,
                             icon: Icons.arrow_back,
                             filled: false,
                             primaryColor: widget.primaryColor,
@@ -1276,7 +1326,7 @@ class _TestimonialCard extends StatelessWidget {
             ],
           ),
           SizedBox(height: 14.h),
-          // ✅ FIX: plain Text, no Expanded — prevents mobile layout crash
+          // ✅ plain Text, no Expanded — prevents mobile layout crash
           Text(
             feedbackText,
             style: AppTextStyles.font12BlackCairoRegular.copyWith(
@@ -1296,96 +1346,117 @@ class _TestimonialCard extends StatelessWidget {
 // SECTION 5 — DOWNLOAD NOW
 // ══════════════════════════════════════════════════════════════════════════════
 
+// ══════════════════════════════════════════════════════════════════════════════
+// SECTION 5 — DOWNLOAD NOW (WITH BACKGROUND COLOR)
+// ══════════════════════════════════════════════════════════════════════════════
+
 class _DownloadNowSection extends StatelessWidget {
   final Color primaryColor;
   final String title;
   final String appStoreLink;
   final String googlePlayLink;
+  final Color? backgroundColor;  // ← NEW: mainWidgetColor
 
   const _DownloadNowSection({
     required this.primaryColor,
     required this.title,
     required this.appStoreLink,
     required this.googlePlayLink,
+    this.backgroundColor,  // ← NEW
   });
+
+  void _launchUrl(String url) {
+    if (url.isEmpty) return;
+    html.window.open(url, '_blank');
+  }
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.symmetric(horizontal: 40.w, vertical: 30.h),
       decoration: BoxDecoration(
-        color: Colors.white,
         borderRadius: BorderRadius.circular(16.r),
+        color: backgroundColor,  // ← Apply background color to entire section
       ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final isWide = constraints.maxWidth > 500;
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 32.h),
+        child: Container(
+          width: double.infinity,
+          padding: EdgeInsets.symmetric(horizontal: 40.w, vertical: 30.h),
+          decoration: BoxDecoration(
+            color: backgroundColor,
+            borderRadius: BorderRadius.circular(16.r),
+          ),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final isWide = constraints.maxWidth > 500;
 
-          if (isWide) {
-            return Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Text(
-                  FormatHelper.capitalize(title),
-                  style: AppTextStyles.font20BlackCairoSemiBold.copyWith(
-                    color: primaryColor,
-                    fontSize: 22.sp,
-                  ),
-                ),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
+              if (isWide) {
+                return Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    if (googlePlayLink.isNotEmpty)
-                      _StoreBadge(
-                        onTap: () {},
-                        svgAsset: 'assets/beauty/home/google_play.svg',
+                    Text(
+                      FormatHelper.capitalize(title),
+                      style: AppTextStyles.font20BlackCairoSemiBold.copyWith(
+                        color: primaryColor,
+                        fontSize: 22.sp,
                       ),
-                    if (googlePlayLink.isNotEmpty && appStoreLink.isNotEmpty)
-                      SizedBox(width: 12.w),
-                    if (appStoreLink.isNotEmpty)
-                      _StoreBadge(
-                        onTap: () {},
-                        svgAsset: 'assets/beauty/home/app_store.svg',
-                      ),
+                    ),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (googlePlayLink.isNotEmpty)
+                          _StoreBadge(
+                            onTap: () => _launchUrl(googlePlayLink),
+                            svgAsset: 'assets/beauty/home/google_play.svg',
+                          ),
+                        if (googlePlayLink.isNotEmpty && appStoreLink.isNotEmpty)
+                          SizedBox(width: 12.w),
+                        if (appStoreLink.isNotEmpty)
+                          _StoreBadge(
+                            onTap: () => _launchUrl(appStoreLink),
+                            svgAsset: 'assets/beauty/home/app_store.svg',
+                          ),
+                      ],
+                    ),
                   ],
-                ),
-              ],
-            );
-          }
+                );
+              }
 
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Text(
-                title,
-                style: AppTextStyles.font20BlackCairoSemiBold.copyWith(
-                  color: primaryColor,
-                  fontSize: 22.sp,
-                ),
-              ),
-              SizedBox(height: 20.h),
-              Wrap(
-                spacing: 12.w,
-                runSpacing: 8.h,
-                alignment: WrapAlignment.center,
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  if (googlePlayLink.isNotEmpty)
-                    _StoreBadge(
-                      onTap: () {},
-                      svgAsset: 'assets/beauty/home/google_play.svg',
+                  Text(
+                    title,
+                    style: AppTextStyles.font20BlackCairoSemiBold.copyWith(
+                      color: primaryColor,
+                      fontSize: 22.sp,
                     ),
-                  if (appStoreLink.isNotEmpty)
-                    _StoreBadge(
-                      onTap: () {},
-                      svgAsset: 'assets/beauty/home/app_store.svg',
-                    ),
+                  ),
+                  SizedBox(height: 20.h),
+                  Wrap(
+                    spacing: 12.w,
+                    runSpacing: 8.h,
+                    alignment: WrapAlignment.center,
+                    children: [
+                      if (googlePlayLink.isNotEmpty)
+                        _StoreBadge(
+                          onTap: () => _launchUrl(googlePlayLink),
+                          svgAsset: 'assets/beauty/home/google_play.svg',
+                        ),
+                      if (appStoreLink.isNotEmpty)
+                        _StoreBadge(
+                          onTap: () => _launchUrl(appStoreLink),
+                          svgAsset: 'assets/beauty/home/app_store.svg',
+                        ),
+                    ],
+                  ),
                 ],
-              ),
-            ],
-          );
-        },
+              );
+            },
+          ),
+        ),
       ),
     );
   }

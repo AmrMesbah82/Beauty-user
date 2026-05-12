@@ -10,6 +10,9 @@
 // UPDATED: _getVisibleNavItems now returns iconUrl from NavButtonModel
 // UPDATED: _NavIcon — shimmer placeholder while Firebase iconUrl loads (no flash)
 // UPDATED: _FullScreenDrawer — divider between nav items removed
+// UPDATED: Tablet breakpoint sizing — font sizes and padding scale down on tablet
+// UPDATED: Primary color is now gender-aware — uses malePrimaryColor when
+//          GenderCubit reports male, primaryColor when female. ✅
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -36,8 +39,27 @@ class _WebColors {
 }
 
 class _BP {
-  static const double mobile = 600;
-  static const double tablet = 1024;
+  static const double mobile  = 600;
+  static const double tablet  = 1024;
+
+  static bool isTablet(double w)  => w >= mobile && w < tablet;
+  static bool isDesktop(double w) => w >= tablet;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// _Scale — returns a multiplier so tablet gets smaller sizes than desktop
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _Scale {
+  /// 0.82 on tablet, 1.0 on desktop
+  static double of(double screenWidth) =>
+      _BP.isTablet(screenWidth) ? 0.82 : 1.0;
+
+  static double fontSize(double screenWidth, double base) =>
+      base * of(screenWidth);
+
+  static double padding(double screenWidth, double base) =>
+      base * of(screenWidth);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -68,11 +90,17 @@ const Map<String, String> _kSvgMap = {
 
 const String _kMaleIcon = 'assets/male.svg';
 
-Color _primaryFromState(HomeCmsState state) {
-  final String hex = switch (state) {
-    HomeCmsLoaded(:final data) => data.branding.primaryColor,
-    HomeCmsSaved(:final data)  => data.branding.primaryColor,
-    _                          => '',
+// ─────────────────────────────────────────────────────────────────────────────
+// ✅ Gender-aware primary color resolver
+// ─────────────────────────────────────────────────────────────────────────────
+
+Color _resolvePrimary(HomeCmsState cmsState, bool isMale) {
+  final String hex = switch (cmsState) {
+    HomeCmsLoaded(:final data) =>
+    isMale ? data.branding.malePrimaryColor : data.branding.primaryColor,
+    HomeCmsSaved(:final data) =>
+    isMale ? data.branding.malePrimaryColor : data.branding.primaryColor,
+    _ => '',
   };
   return _hexColor(hex, _WebColors.primary);
 }
@@ -210,7 +238,6 @@ class _NavIcon extends StatelessWidget {
         width:       size.w,
         height:      size.w,
         colorFilter: colorFilter,
-        // ✅ Shimmer instead of a blank box while the SVG downloads
         placeholderBuilder: (_) => _IconShimmer(size: size),
       );
     }
@@ -242,27 +269,33 @@ class AppNavbar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // ✅ Listen to BOTH HomeCmsCubit and GenderCubit so navbar rebuilds on toggle
     return BlocBuilder<HomeCmsCubit, HomeCmsState>(
       builder: (context, cmsState) {
-        final Color  primary  = _primaryFromState(cmsState);
-        final Color  navbarBg = _navbarBgFromState(cmsState);
-        final double w        = MediaQuery.of(context).size.width;
+        return BlocBuilder<GenderCubit, GenderState>(
+          builder: (context, genderState) {
+            final bool   isMale   = genderState.isMale;
+            final Color  primary  = _resolvePrimary(cmsState, isMale);
+            final Color  navbarBg = _navbarBgFromState(cmsState);
+            final double w        = MediaQuery.of(context).size.width;
 
-        if (w >= _BP.mobile) {
-          return _NavbarDesktop(
-            currentRoute: currentRoute,
-            primary:      primary,
-            navbarBg:     navbarBg,
-            cmsState:     cmsState,
-            onItemTap:    onItemTap,
-          );
-        }
-        return _NavbarMobile(
-          currentRoute: currentRoute,
-          primary:      primary,
-          navbarBg:     navbarBg,
-          cmsState:     cmsState,
-          onItemTap:    onItemTap,
+            if (w >= _BP.mobile) {
+              return _NavbarDesktop(
+                currentRoute: currentRoute,
+                primary:      primary,
+                navbarBg:     navbarBg,
+                cmsState:     cmsState,
+                onItemTap:    onItemTap,
+              );
+            }
+            return _NavbarMobile(
+              currentRoute: currentRoute,
+              primary:      primary,
+              navbarBg:     navbarBg,
+              cmsState:     cmsState,
+              onItemTap:    onItemTap,
+            );
+          },
         );
       },
     );
@@ -270,7 +303,8 @@ class AppNavbar extends StatelessWidget {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// DESKTOP (≥ 600px) — gender toggle in top navbar
+// DESKTOP / TABLET (≥ 600px) — gender toggle in top navbar
+// Tablet (600–1023px) uses a scaled-down version via _Scale.of()
 // ═══════════════════════════════════════════════════════════════════════════════
 
 class _NavbarDesktop extends StatelessWidget {
@@ -292,9 +326,14 @@ class _NavbarDesktop extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocBuilder<LanguageCubit, LanguageState>(
       builder: (context, langState) {
-        final navItems = _getVisibleNavItems(
+        final navItems   = _getVisibleNavItems(
             langState.locale.languageCode, cmsState);
-        final isRtl = langState.isArabic;
+        final isRtl      = langState.isArabic;
+        final double sw  = MediaQuery.of(context).size.width;
+        final double sc  = _Scale.of(sw);
+
+        final double hPad = _Scale.padding(sw, 24);
+        final double vPad = _Scale.padding(sw, 12);
 
         return Directionality(
           textDirection: isRtl ? TextDirection.rtl : TextDirection.ltr,
@@ -302,11 +341,12 @@ class _NavbarDesktop extends StatelessWidget {
             width: double.infinity,
             color: navbarBg,
             child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 12.h),
+              padding: EdgeInsets.symmetric(
+                  horizontal: hPad.w, vertical: vPad.h),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const _BayanatzLogo(),
+                  _BayanatzLogo(scale: sc),
                   Expanded(
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -320,6 +360,7 @@ class _NavbarDesktop extends StatelessWidget {
                         iconUrl:      e.iconUrl,
                         currentRoute: currentRoute,
                         primary:      primary,
+                        scale:        sc,
                         onItemTap:    onItemTap,
                       ))
                           .toList(),
@@ -327,9 +368,9 @@ class _NavbarDesktop extends StatelessWidget {
                   ),
                   Row(
                     children: [
-                      _GenderToggle(primary: primary),
-                      SizedBox(width: 12.w),
-                      _LanguageToggle(primary: primary),
+                      _GenderToggle(primary: primary, scale: sc),
+                      SizedBox(width: (12 * sc).w),
+                      _LanguageToggle(primary: primary, scale: sc),
                     ],
                   ),
                 ],
@@ -344,8 +385,6 @@ class _NavbarDesktop extends StatelessWidget {
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // MOBILE (< 600px)
-// Top bar: [Logo] ─────────────────────── [≡]
-// All controls (gender + language) are inside the drawer
 // ═══════════════════════════════════════════════════════════════════════════════
 
 class _NavbarMobile extends StatelessWidget {
@@ -423,17 +462,7 @@ class _NavbarMobile extends StatelessWidget {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// Full-Screen Drawer
-//
-//  ┌──────────────────────────────────────────────────┐
-//  │  [Logo]                              [✕ close]   │  navbarBg
-//  ├──────────────────────────────────────────────────┤
-//  │  [♀/♂]                          [AR]  [ENG]      │  navbarBg
-//  ├──────────────────────────────────────────────────┤
-//  │  🏠  Home                                        │
-//  │  👤  Overview                                    │
-//  │  ...  (no dividers between items)                │
-//  └──────────────────────────────────────────────────┘
+// Full-Screen Drawer (mobile only — no scale needed)
 // ═══════════════════════════════════════════════════════════════════════════════
 
 class _FullScreenDrawer extends StatelessWidget {
@@ -534,7 +563,6 @@ class _FullScreenDrawer extends StatelessWidget {
                             key: ValueKey(
                                 '${e.route}_${langState.locale.languageCode}'),
                             width: double.infinity,
-                            // ✅ small vertical gap between items instead of a Divider
                             margin: EdgeInsets.only(bottom: 4.h),
                             padding: EdgeInsets.symmetric(
                                 vertical: 16.h, horizontal: 16.w),
@@ -592,12 +620,17 @@ class _FullScreenDrawer extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _BayanatzLogo extends StatelessWidget {
-  final bool rawSize;
-  const _BayanatzLogo({this.rawSize = false});
+  final bool   rawSize;
+  final double scale;
+
+  const _BayanatzLogo({
+    this.rawSize = false,
+    this.scale   = 1.0,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final double sz = rawSize ? 40.w : 36.w;
+    final double sz = (rawSize ? 40.0 : 36.0) * scale;
 
     return BlocBuilder<HomeCmsCubit, HomeCmsState>(
       builder: (context, state) {
@@ -612,7 +645,7 @@ class _BayanatzLogo extends StatelessWidget {
             onTap: () => _navigate(context, '/'),
             child: MouseRegion(
               cursor: SystemMouseCursors.click,
-              child: SizedBox(width: sz, height: sz),
+              child: SizedBox(width: sz.w, height: sz.w),
             ),
           );
         }
@@ -626,8 +659,8 @@ class _BayanatzLogo extends StatelessWidget {
                 borderRadius: BorderRadius.circular(8.r),
                 child: Image(
                   image: const AssetImage("assets/images/logo.jpg"),
-                  width: sz,
-                  height: sz,
+                  width: sz.w,
+                  height: sz.w,
                   fit: BoxFit.fill,
                 ),
               ),
@@ -646,10 +679,10 @@ class _BayanatzLogo extends StatelessWidget {
               borderRadius: BorderRadius.circular(8.r),
               child: SvgPicture.network(
                 logoUrl,
-                width:              sz,
-                height:             sz,
+                width:              sz.w,
+                height:             sz.w,
                 fit:                BoxFit.fill,
-                placeholderBuilder: (_) => SizedBox(width: sz, height: sz),
+                placeholderBuilder: (_) => SizedBox(width: sz.w, height: sz.w),
               ),
             ),
           ),
@@ -671,6 +704,7 @@ class _NavItem extends StatefulWidget {
   final String currentRoute;
   final Color  primary;
   final bool   compact;
+  final double scale;
   final void Function(String route)? onItemTap;
 
   const _NavItem({
@@ -682,6 +716,7 @@ class _NavItem extends StatefulWidget {
     required this.currentRoute,
     required this.primary,
     this.compact  = false,
+    this.scale    = 1.0,
     this.onItemTap,
   });
 
@@ -695,8 +730,16 @@ class _NavItemState extends State<_NavItem> {
 
   @override
   Widget build(BuildContext context) {
-    final Color hoverBg = _lightTint(widget.primary);
-    final isMobile      = context.isPhone;
+    final Color  hoverBg   = _lightTint(widget.primary);
+    final isMobile         = context.isPhone;
+    final double sc        = widget.scale;
+
+    final double hPad      = (16 * sc);
+    final double vPad      = (8  * sc);
+    final double hMargin   = (4  * sc);
+    final double fontSize  = (14 * sc);
+    final double iconSize  = (18 * sc);
+    final double iconGap   = (6  * sc);
 
     return BlocBuilder<LanguageCubit, LanguageState>(
       builder: (context, langState) {
@@ -715,8 +758,9 @@ class _NavItemState extends State<_NavItem> {
             },
             child: AnimatedContainer(
               duration:  const Duration(milliseconds: 200),
-              margin:    EdgeInsets.symmetric(horizontal: 4.w),
-              padding:   EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+              margin:    EdgeInsets.symmetric(horizontal: hMargin.w),
+              padding:   EdgeInsets.symmetric(
+                  horizontal: hPad.w, vertical: vPad.h),
               decoration: BoxDecoration(
                 color: _isActive
                     ? widget.primary
@@ -733,16 +777,16 @@ class _NavItemState extends State<_NavItem> {
                     color: _isActive
                         ? Colors.white
                         : (_hovered ? widget.primary : AppColors.textButton),
-                    size: 18,
+                    size: iconSize,
                   ),
-                  SizedBox(width: 6.w),
+                  SizedBox(width: iconGap.w),
                   Text(
                     widget.label,
                     textDirection: langState.isArabic
                         ? TextDirection.rtl
                         : TextDirection.ltr,
                     style: GoogleFonts.cairo(
-                      fontSize:   14.sp,
+                      fontSize:   fontSize.sp,
                       fontWeight: _isActive
                           ? AppFontWeights.semiBold
                           : AppFontWeights.regular,
@@ -759,7 +803,7 @@ class _NavItemState extends State<_NavItem> {
                     ? TextDirection.rtl
                     : TextDirection.ltr,
                 style: GoogleFonts.cairo(
-                  fontSize:   14.sp,
+                  fontSize:   fontSize.sp,
                   fontWeight: _isActive
                       ? AppFontWeights.semiBold
                       : AppFontWeights.regular,
@@ -781,22 +825,23 @@ class _NavItemState extends State<_NavItem> {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _GenderToggle extends StatelessWidget {
-  final Color primary;
-  final bool  isCompact;
+  final Color  primary;
+  final bool   isCompact;
+  final double scale;
 
   const _GenderToggle({
     required this.primary,
     this.isCompact = false,
+    this.scale     = 1.0,
   });
 
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<GenderCubit, GenderState>(
       builder: (context, genderState) {
-        final bool  isMale      = genderState.isMale;
-        final Color genderColor = isMale
-            ? const Color(0xFF1565C0)
-            : const Color(0xFFBE6A7A);
+        // ✅ REMOVE the hardcoded blue/pink — use the CMS primary instead
+        final double iconSz = (isCompact ? 18.0 : 20.0) * scale;
+        final double padSz  = (isCompact ?  8.0 : 10.0) * scale;
 
         return MouseRegion(
           cursor: SystemMouseCursors.click,
@@ -804,15 +849,15 @@ class _GenderToggle extends StatelessWidget {
             onTap: () => context.read<GenderCubit>().toggle(),
             child: Container(
               decoration: BoxDecoration(
-                color: genderColor.withOpacity(0.1),
+                color: primary.withOpacity(0.1),   // ✅ CMS color
                 shape: BoxShape.circle,
               ),
-              padding: EdgeInsets.all(isCompact ? 8.w : 10.w),
+              padding: EdgeInsets.all(padSz.w),
               child: SvgPicture.asset(
                 _kMaleIcon,
-                width:       isCompact ? 18.w : 20.w,
-                height:      isCompact ? 18.w : 20.w,
-                colorFilter: ColorFilter.mode(genderColor, BlendMode.srcIn),
+                width:       iconSz.w,
+                height:      iconSz.w,
+                colorFilter: ColorFilter.mode(primary, BlendMode.srcIn), // ✅ CMS color
               ),
             ),
           ),
@@ -827,12 +872,14 @@ class _GenderToggle extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _LanguageToggle extends StatelessWidget {
-  final Color primary;
-  final bool  isCompact;
+  final Color  primary;
+  final bool   isCompact;
+  final double scale;
 
   const _LanguageToggle({
     required this.primary,
     this.isCompact = false,
+    this.scale     = 1.0,
   });
 
   @override
@@ -845,7 +892,8 @@ class _LanguageToggle extends StatelessWidget {
             color: AppColors.secondaryText.withOpacity(.1),
           ),
           child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 4.h),
+            padding: EdgeInsets.symmetric(
+                horizontal: (4 * scale).w, vertical: (4 * scale).h),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -853,14 +901,16 @@ class _LanguageToggle extends StatelessWidget {
                   label:   'AR',
                   active:  state.isArabic,
                   primary: primary,
+                  scale:   scale,
                   onTap:   () =>
                       context.read<LanguageCubit>().setLanguage('ar'),
                 ),
-                SizedBox(width: 4.w),
+                SizedBox(width: (4 * scale).w),
                 _LangBtn(
                   label:   'EN',
                   active:  state.isEnglish,
                   primary: primary,
+                  scale:   scale,
                   onTap:   () =>
                       context.read<LanguageCubit>().setLanguage('en'),
                 ),
@@ -878,12 +928,14 @@ class _LangBtn extends StatelessWidget {
   final bool         active;
   final Color        primary;
   final VoidCallback onTap;
+  final double       scale;
 
   const _LangBtn({
     required this.label,
     required this.active,
     required this.primary,
     required this.onTap,
+    this.scale = 1.0,
   });
 
   @override
@@ -893,7 +945,8 @@ class _LangBtn extends StatelessWidget {
       child: MouseRegion(
         cursor: SystemMouseCursors.click,
         child: Container(
-          padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
+          padding: EdgeInsets.symmetric(
+              horizontal: (12 * scale).w, vertical: (6 * scale).h),
           decoration: BoxDecoration(
             color: active ? primary : Colors.transparent,
             borderRadius: BorderRadius.circular(5.r),
@@ -901,7 +954,7 @@ class _LangBtn extends StatelessWidget {
           child: Text(
             label,
             style: GoogleFonts.cairo(
-              fontSize:   12.sp,
+              fontSize:   (12 * scale).sp,
               fontWeight: AppFontWeights.semiBold,
               color: active ? Colors.white : AppColors.secondaryBlack,
             ),

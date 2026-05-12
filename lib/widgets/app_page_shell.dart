@@ -36,6 +36,7 @@ class AppPageShell extends StatelessWidget {
   final void Function(String route)? onNavItemTap;
   final Color? backgroundColor;
   final double? maxBodyWidth;
+  final Widget? floatingActionButton;        // ← add this
 
   const AppPageShell({
     super.key,
@@ -45,6 +46,7 @@ class AppPageShell extends StatelessWidget {
     this.onNavItemTap,
     this.backgroundColor,
     this.maxBodyWidth,
+    this.floatingActionButton,               // ← add this
   });
 
   @override

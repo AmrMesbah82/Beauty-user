@@ -15,6 +15,8 @@
 // Description: AppFooter driven by HomePageModel via HomeCmsCubit.
 // Created by: Amr Mesbah
 
+import 'package:beauty_user/controller/gender/gender_cubit.dart';
+import 'package:beauty_user/controller/gender/gender_state.dart';
 import 'package:beauty_user/page/about_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -190,6 +192,17 @@ String _staticCopyright(bool isRtl) {
 // AppFooter
 // ─────────────────────────────────────────────────────────────────────────────
 
+// ─── Helper (top-level, outside any class) ────────────────────────────────────
+Color _resolvePrimary(HomePageModel model, bool isMale) {
+  final hex = isMale
+      ? model.branding.malePrimaryColor
+      : model.branding.primaryColor;
+  return _hexColor(hex, _kFallbackPrimary);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AppFooter  ← REPLACE the entire class
+// ─────────────────────────────────────────────────────────────────────────────
 class AppFooter extends StatelessWidget {
   const AppFooter({super.key});
 
@@ -203,36 +216,41 @@ class AppFooter extends StatelessWidget {
           _ => HomePageModel.defaultModel,
         };
 
-        final Color primary = _hexColor(model.branding.primaryColor, _kFallbackPrimary);
-        final Color footerBg = _hexColor(model.branding.headerFooterColor, _kFallbackFooterBg);
+        final Color footerBg =
+        _hexColor(model.branding.headerFooterColor, _kFallbackFooterBg);
         final List<FooterColumnModel> columns = _syncedFooterColumns(model);
 
-        return BlocBuilder<LanguageCubit, LanguageState>(
-          builder: (context, langState) {
-            final bool isRtl = langState.isArabic;
-            final double screenWidth = MediaQuery.of(context).size.width;
+        // ✅ GenderCubit MUST wrap BEFORE primary is computed
+        return BlocBuilder<GenderCubit, GenderState>(
+          builder: (context, genderState) {
+            final Color primary = _resolvePrimary(model, genderState.isMale);
 
-            Widget footer;
-            if (screenWidth >= _BP.tablet) {
-              footer = _FooterDesktop(
-                model: model, columns: columns,
-                primary: primary, footerBg: footerBg, isRtl: isRtl,
-              );
-            } else if (screenWidth >= _BP.mobile) {
-              footer = _FooterTablet(
-                model: model, columns: columns,
-                primary: primary, footerBg: footerBg, isRtl: isRtl,
-              );
-            } else {
-              footer = _FooterMobile(
-                model: model, columns: columns,
-                primary: primary, footerBg: footerBg, isRtl: isRtl,
-              );
-            }
+            return BlocBuilder<LanguageCubit, LanguageState>(
+              builder: (context, langState) {
+                final bool isRtl = langState.isArabic;
+                final double screenWidth = MediaQuery.of(context).size.width;
 
-            return Directionality(
-              textDirection: isRtl ? TextDirection.rtl : TextDirection.ltr,
-              child: footer,
+                final Widget footer = screenWidth >= _BP.mobile
+                    ? _FooterDesktop(
+                  model: model,
+                  columns: columns,
+                  primary: primary,
+                  footerBg: footerBg,
+                  isRtl: isRtl,
+                )
+                    : _FooterMobile(
+                  model: model,
+                  columns: columns,
+                  primary: primary,
+                  footerBg: footerBg,
+                  isRtl: isRtl,
+                );
+
+                return Directionality(
+                  textDirection: isRtl ? TextDirection.rtl : TextDirection.ltr,
+                  child: footer,
+                );
+              },
             );
           },
         );
@@ -334,101 +352,6 @@ class _FooterDesktop extends StatelessWidget {
 
 // ─── TABLET ───────────────────────────────────────────────────────────────────
 
-class _FooterTablet extends StatelessWidget {
-  final HomePageModel model;
-  final List<FooterColumnModel> columns;
-  final Color primary;
-  final Color footerBg;
-  final bool isRtl;
-
-  const _FooterTablet({
-    required this.model,
-    required this.columns,
-    required this.primary,
-    required this.footerBg,
-    required this.isRtl,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final int mid = (columns.length / 2).ceil();
-    final row1 = columns.sublist(0, mid);
-    final row2 = columns.sublist(mid);
-
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 16.w),
-      child: Container(
-        padding: EdgeInsets.all(20.sp),
-        decoration: BoxDecoration(
-          color: footerBg,
-          borderRadius: BorderRadiusDirectional.only(
-            topStart: Radius.circular(18.r),
-            topEnd: Radius.circular(18.r),
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _LogoBox(logoUrl: model.branding.logoUrl, primary: primary, size: 32),
-            SizedBox(height: 18.h),
-            Wrap(
-              spacing: 16.w, runSpacing: 16.h,
-              children: row1
-                  .map((col) => _FooterColumnWidget(
-                column: col, titleColor: AppColors.text,
-                primary: primary, isRtl: isRtl,
-              ))
-                  .toList(),
-            ),
-            if (row2.isNotEmpty) ...[
-              SizedBox(height: 16.h),
-              Wrap(
-                spacing: 16.w, runSpacing: 16.h,
-                children: row2
-                    .map((col) => _FooterColumnWidget(
-                  column: col, titleColor: AppColors.text,
-                  primary: primary, isRtl: isRtl,
-                ))
-                    .toList(),
-              ),
-            ],
-            SizedBox(height: 20.h),
-            Divider(color: primary, thickness: 1),
-            SizedBox(height: 12.h),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                if (model.appDownloadLinks.visibility)
-                  _DownloadAppRow(
-                    appDownloadLinks: model.appDownloadLinks,
-                    primary: primary,
-                    isRtl: isRtl,
-                  ),
-                const Spacer(),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: _socialIcons(model.socialLinks, primary, gap: 8),
-                ),
-                const Spacer(),
-                Flexible(
-                  child: Text(
-                    _staticCopyright(isRtl),
-                    textAlign: TextAlign.end,
-                    style: GoogleFonts.cairo(
-                      fontSize: 10.sp,
-                      fontWeight: FontWeight.w400,
-                      color: AppColors.secondaryText,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
 
 // ─── MOBILE ───────────────────────────────────────────────────────────────────
 
@@ -449,15 +372,6 @@ class _FooterMobile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final String? firstLabel = (columns.isNotEmpty && columns.first.labels.isNotEmpty)
-        ? _bi(columns.first.labels.first.label, isRtl)
-        : null;
-    final String? firstRoute = (columns.isNotEmpty &&
-        columns.first.labels.isNotEmpty &&
-        columns.first.labels.first.route.isNotEmpty)
-        ? columns.first.labels.first.route
-        : null;
-
     return Container(
       color: footerBg,
       padding: EdgeInsets.symmetric(vertical: 20.h, horizontal: 20.w),
@@ -487,12 +401,8 @@ class _FooterMobile extends StatelessWidget {
             SizedBox(height: 10.h),
           ],
 
-          // sd
-
           Text(
             _staticCopyright(isRtl),
-
-
             textAlign: TextAlign.center,
             style: GoogleFonts.cairo(
               fontSize: 10.sp,
