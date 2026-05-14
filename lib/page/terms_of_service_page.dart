@@ -1489,26 +1489,13 @@ class _MobileDocPanel extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // ── SVG image on top ──
-        if (svgUrl.isNotEmpty) ...[
-          SizedBox(
-            width: double.infinity,
-            height: 200.h,
-            child: _netImg(
-              url: svgUrl,
-              width: double.infinity,
-              height: 200.h,
-              fit: BoxFit.contain,
-            ),
-          ),
-          SizedBox(height: 14.h),
-        ],
+        // ── REMOVED SVG IMAGE SECTION AT TOP ──
 
         // ── Card with background color ──
         Container(
           width: double.infinity,
           decoration: BoxDecoration(
-            color: backgroundColor,  // ← Changed from _kSurface to backgroundColor
+            color: backgroundColor,
             borderRadius: BorderRadius.circular(12.r),
           ),
           child: Padding(

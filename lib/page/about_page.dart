@@ -1117,16 +1117,14 @@ class _AboutBodyDesktopState extends State<_AboutBodyDesktop> {
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
+                                //color: widget.primaryColor,
                                 Text(
                                   isRtl
                                       ? 'البيت الاستراتيجي'
                                       : 'Strategic House',
-                                  style: TextStyle(
-                                    fontFamily: 'Cairo',
-                                    fontSize: 18.sp,
-                                    fontWeight: FontWeight.w700,
+                                  style: StyleText.fontSize18Weight500.copyWith(
                                     color: widget.primaryColor,
-                                  ),
+                                  )
                                 ),
                                 Container(
                                   width: double.infinity,
@@ -1257,13 +1255,12 @@ class _DesktopTopTabItemState extends State<_DesktopTopTabItem> {
                 ),
               ),
               SizedBox(width: 10.w),
+              //color: sel ? widget.primaryColor : AppColors.secondaryBlack,
               Text(
                 widget.label,
-                style: TextStyle(
-                  fontSize: 13.sp,
-                  fontWeight: sel ? FontWeight.w700 : FontWeight.w500,
+                style:StyleText.fontSize14Weight400.copyWith(
                   color: sel ? widget.primaryColor : AppColors.secondaryBlack,
-                ),
+                )
               ),
             ],
           ),
@@ -1512,11 +1509,14 @@ class _ValueDetailPanel extends StatelessWidget {
   final AboutValueItem value;
   final bool isRtl;
   final Color primaryColor, secondaryColor;
+  final Color? backgroundColor; // ← ADD
+
   const _ValueDetailPanel({
     required this.value,
     required this.isRtl,
     required this.primaryColor,
     required this.secondaryColor,
+    this.backgroundColor, // ← ADD
   });
 
   @override
@@ -1528,7 +1528,7 @@ class _ValueDetailPanel extends StatelessWidget {
       width: double.infinity,
       padding: EdgeInsets.all(16.r),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: backgroundColor?.withOpacity(.4),
         borderRadius: BorderRadius.circular(10.r),
       ),
       child: Column(
@@ -2271,7 +2271,6 @@ class _MobileAccordionItem extends StatefulWidget {
 class _MobileAccordionItemState extends State<_MobileAccordionItem> {
   bool _hovered = false;
 
-  // Get mainWidgetColor from HomeCmsCubit
   Color? get _mainWidgetColor {
     final homeState = context.watch<HomeCmsCubit>().state;
     return switch (homeState) {
@@ -2303,8 +2302,8 @@ class _MobileAccordionItemState extends State<_MobileAccordionItem> {
       duration: const Duration(milliseconds: 250),
       decoration: BoxDecoration(
         color: widget.isExpanded
-            ? _kSurface
-            : (_hovered ? hoverBg : _kSurface),
+            ? backgroundColor
+            : (_hovered ? hoverBg : backgroundColor), // ← was _kSurface
         borderRadius: BorderRadius.circular(12.r),
         border: Border.all(
           color: _hovered && !widget.isExpanded
@@ -2316,7 +2315,7 @@ class _MobileAccordionItemState extends State<_MobileAccordionItem> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header section (always visible)
+          // ── Header (always visible) ──
           MouseRegion(
             cursor: SystemMouseCursors.click,
             onEnter: (_) => setState(() => _hovered = true),
@@ -2371,7 +2370,6 @@ class _MobileAccordionItemState extends State<_MobileAccordionItem> {
                         ),
                       ),
                     ),
-                    // Arrow icon
                     Container(
                       width: 26.w,
                       height: 26.w,
@@ -2385,7 +2383,9 @@ class _MobileAccordionItemState extends State<_MobileAccordionItem> {
                         widget.isExpanded
                             ? Icons.keyboard_arrow_up_rounded
                             : Icons.keyboard_arrow_down_rounded,
-                        color: widget.isExpanded ? Colors.white : widget.primaryColor,
+                        color: widget.isExpanded
+                            ? Colors.white
+                            : widget.primaryColor,
                         size: 16.sp,
                       ),
                     ),
@@ -2394,12 +2394,13 @@ class _MobileAccordionItemState extends State<_MobileAccordionItem> {
               ),
             ),
           ),
-          // Expanded content section (only visible when expanded)
+
+          // ── Expanded content ──
           if (widget.isExpanded)
             Container(
               width: double.infinity,
               decoration: BoxDecoration(
-                color: backgroundColor,  // ← This applies the mainWidgetColor
+                color: backgroundColor,
                 borderRadius: const BorderRadius.only(
                   bottomLeft: Radius.circular(12),
                   bottomRight: Radius.circular(12),
@@ -2410,8 +2411,8 @@ class _MobileAccordionItemState extends State<_MobileAccordionItem> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // SVG image for Vision/Mission (not for Values)
-                    if (widget.tab.tabIndex != 2 && widget.tab.svgUrl.isNotEmpty) ...[
+                    if (widget.tab.tabIndex != 2 &&
+                        widget.tab.svgUrl.isNotEmpty) ...[
                       Center(
                         child: _netImg(
                           url: widget.tab.svgUrl,
@@ -2424,7 +2425,6 @@ class _MobileAccordionItemState extends State<_MobileAccordionItem> {
                       ),
                       SizedBox(height: 10.h),
                     ],
-                    // Text description for Vision/Mission
                     if (widget.tab.tabIndex != 2)
                       Text(
                         widget.tab.fullText,
@@ -2433,14 +2433,13 @@ class _MobileAccordionItemState extends State<_MobileAccordionItem> {
                           height: 1.7,
                         ),
                       ),
-                    // Values grid for Values tab
                     if (widget.tab.tabIndex == 2)
                       _ValuesGridMobile(
                         values: gridValues,
                         isRtl: widget.isRtl,
                         primaryColor: widget.primaryColor,
                         secondaryColor: widget.secondaryColor,
-                        backgroundColor: backgroundColor,  // ← Pass to values grid
+                        backgroundColor: backgroundColor,
                       ),
                   ],
                 ),

@@ -774,38 +774,51 @@ class _OurProductsPageState extends State<OurProductsPage> {
                             child: Scaffold(
                               backgroundColor: Colors.transparent,
 
-                              // ── Fixed Request Demo button — Owner tab only ──────────────
                               floatingActionButton: _selectedTabIndex == 1
-                                  ? Padding(
-                                padding: EdgeInsets.only(
-                                  bottom:
-                                  MediaQuery.sizeOf(context).height * .3,
-                                  left: MediaQuery.sizeOf(context).width * .7,
-                                ),
-                                child: _Reveal(
-                                  delay: const Duration(milliseconds: 200),
-                                  direction: _SlideDirection.fromBottom,
-                                  duration: const Duration(milliseconds: 650),
-                                  child: customButton(
-                                    title: isAr
-                                        ? 'اطلب للتجربة'
-                                        : 'Request Demo',
-                                    function: () => navigateTo(
-                                      context,
-                                      RequestDemoPage(),
+                                  ? LayoutBuilder(
+                                builder: (context, constraints) {
+                                  final screenW = MediaQuery.of(context).size.width;
+                                  final screenH = MediaQuery.of(context).size.height;
+                                  final isMobile = screenW < 600;
+                                  final isTablet = screenW >= 600 && screenW < 1024;
+
+                                  final double btnWidth = isMobile
+                                      ? screenW * 0.5
+                                      : isTablet
+                                      ? 180.w
+                                      : 150.w;
+
+                                  final double leftPad = isMobile
+                                      ? screenW * 0.34
+                                      : isTablet
+                                      ? screenW * 0.7
+                                      : screenW * 0.86;
+
+                                  return Padding(
+                                    padding: EdgeInsets.only(
+                                      bottom: screenH * 0.28,
+                                      left: leftPad,
                                     ),
-                                    textStyle: StyleText.fontSize16Weight500
-                                        .copyWith(color: Colors.white),
-                                    width: 200.w,
-                                    height: 48.h,
-                                    radius: 8.r,
-                                    color: primaryColor,
-                                  ),
-                                ),
+                                    child: _Reveal(
+                                      delay: const Duration(milliseconds: 200),
+                                      direction: _SlideDirection.fromBottom,
+                                      duration: const Duration(milliseconds: 650),
+                                      child: customButton(
+                                        title: isAr ? 'اطلب للتجربة' : 'Request Demo',
+                                        function: () => navigateTo(context, RequestDemoPage()),
+                                        textStyle: StyleText.fontSize16Weight500
+                                            .copyWith(color: Colors.white),
+                                        width: btnWidth,
+                                        height: 48.h,
+                                        radius: 8.r,
+                                        color: primaryColor,
+                                      ),
+                                    ),
+                                  );
+                                },
                               )
                                   : null,
-                              floatingActionButtonLocation:
-                              FloatingActionButtonLocation.centerFloat,
+                              floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
                               body: AppPageShell(
                                 currentRoute: '/about',
                                 body: _RevealCoordinatorWidget(
@@ -1640,7 +1653,7 @@ class _DownloadNowBar extends StatelessWidget {
       padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 14.h),
       decoration: BoxDecoration(
         color: backgroundColor,  // ← Changed from AppColors.field
-        borderRadius: BorderRadius.circular(16.r),  // ← Changed from 8.r to 16.r
+        borderRadius: BorderRadius.circular(14.r),  // ← Changed from 8.r to 16.r
       ),
       child: isMobile
           ? Wrap(

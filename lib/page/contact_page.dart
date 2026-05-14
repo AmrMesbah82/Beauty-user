@@ -28,7 +28,8 @@
 
 import 'dart:async';
 import 'dart:html' as html;
-
+import 'package:beauty_user/controller/overview/overview_cubit.dart';
+import 'package:beauty_user/controller/overview/overview_state.dart';
 import 'package:beauty_user/controller/gender/gender_cubit.dart';
 import 'package:beauty_user/controller/gender/gender_state.dart';
 import 'package:beauty_user/controller/home/lang_state.dart';
@@ -37,6 +38,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'dart:ui_web' as ui_web;
 import 'package:beauty_user/controller/contact_us/contacu_us_location_cubit.dart';
@@ -464,6 +466,12 @@ class ContactPage extends StatelessWidget {
         ),
         BlocProvider(create: (_) => ContactCubit()),
         BlocProvider(create: (_) => ContactOtpCubit()),
+
+        // ── ADD THIS ──────────────────────────────────────────────────────
+        BlocProvider.value(
+          value: context.read<OverviewCmsCubit>(),
+        ),
+        // ─────────────────────────────────────────────────────────────────
       ],
       child: const _ContactPageView(),
     );
@@ -519,6 +527,15 @@ class _ContactPageViewState extends State<_ContactPageView> {
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<HomeCmsCubit>().load();
+      try {
+        final uri = GoRouterState.of(context).uri;
+        final type = uri.queryParameters['type'] ?? '';
+        if (type == 'owner') {
+          setState(() => _userType = ContactFormConstants.userTypeOwner);
+        } else if (type == 'client') {
+          setState(() => _userType = ContactFormConstants.userTypeClient);
+        }
+      } catch (_) {}
     });
   }
 
@@ -707,6 +724,7 @@ class _ContactPageViewState extends State<_ContactPageView> {
                           barrierDismissible: false,
                           builder: (_) => BlocProvider.value(
                             value: context.read<ContactOtpCubit>(),
+
                             child: BlocBuilder<GenderCubit, GenderState>(
                               builder: (context, genderState) {
                                 final bool isMale = genderState.isMale;
@@ -1946,12 +1964,33 @@ class _FormCard extends StatelessWidget {
         : ContactFormConstants.noBranchesEn)
         .map((b) => {'key': b, 'value': b})
         .toList();
-    final serviceItems =
-    (isRtl
-        ? ContactFormConstants.servicesAr
-        : ContactFormConstants.servicesEn)
-        .map((s) => {'key': s, 'value': s})
-        .toList();
+// ── Services from OverviewCmsCubit ──────────────────────────────────
+    List<Map<String, String>> serviceItems = [];
+    final overviewState = context.watch<OverviewCmsCubit>().state;
+    final overviewModel = switch (overviewState) {
+      OverviewCmsLoaded(:final data) => data,
+      OverviewCmsSaved(:final data) => data,
+      _ => null,
+    };
+
+    if (overviewModel != null && overviewModel.services.items.isNotEmpty) {
+      serviceItems = overviewModel.services.items
+          .map((item) => {
+        'key': isRtl ? item.name.ar : item.name.en,
+        'value': isRtl ? item.name.ar : item.name.en,
+      })
+          .where((m) => m['key']!.isNotEmpty)
+          .toList();
+    }
+
+// Fallback to static list if CMS has no services
+    if (serviceItems.isEmpty) {
+      serviceItems = (isRtl
+          ? ContactFormConstants.servicesAr
+          : ContactFormConstants.servicesEn)
+          .map((s) => {'key': s, 'value': s})
+          .toList();
+    }
     final reasonItems = _buildReasonItems(
       cmsData: cmsData,
       isOwner: _isOwner,
@@ -1972,8 +2011,8 @@ class _FormCard extends StatelessWidget {
                   child: CustomSegmentedTabs(
                     tabs: [clientLabel, ownerLabel],
                     tabIcons: const [
-                      'assets/beauty/contact_us/client.svg',
-                      'assets/beauty/contact_us/owner.svg',
+                      'assets/client_demo.svg',
+                      'assets/owner_demo.svg',
                     ],
                     selectedIndex:
                     userType == ContactFormConstants.userTypeClient ? 0 : 1,
@@ -2005,8 +2044,8 @@ class _FormCard extends StatelessWidget {
                 child: CustomSegmentedTabs(
                   tabs: [clientLabel, ownerLabel],
                   tabIcons: const [
-                    'assets/beauty/contact_us/client.svg',
-                    'assets/beauty/contact_us/owner.svg',
+                    'assets/client_demo.svg',
+                    'assets/owner_demo.svg',
                   ],
                   selectedIndex: userType == ContactFormConstants.userTypeClient
                       ? 0
@@ -2075,7 +2114,7 @@ class _FormCard extends StatelessWidget {
                                 border: Border.all(
                                   color: selected
                                       ? primaryColor
-                                      : Colors.grey.shade400,
+                                      : Colors.grey,
                                   width: 2,
                                 ),
                               ),
@@ -2219,7 +2258,7 @@ class _FormCard extends StatelessWidget {
               // ── OWNER-ONLY: Salon Info ──
               if (_isOwner) ...[
                 SizedBox(height: isMobile ? 12.h : 16.h),
-                _SectionHeader(title: salonInfo, primaryColor: primaryColor),
+                _SectionHeader(title: salonInfo, primaryColor: primaryColor, isRtl: isRtl),
                 SizedBox(height: 8.h),
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -2429,7 +2468,7 @@ class _DesktopIconField extends StatefulWidget {
     this.textDirection = TextDirection.ltr,
     this.textAlign = TextAlign.start,
     this.maxLines = 1,
-    this.fieldHeight = 32,
+    this.fieldHeight = 44,
     this.minLength = 0,
     this.onlyDigits = false,
     this.forceRtlLabelAndHint = false,
@@ -2468,18 +2507,14 @@ class _DesktopIconFieldState extends State<_DesktopIconField> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SizedBox(
-          width: double.infinity,
+        Align(
+          alignment: useRtlForLabelHint ? Alignment.centerRight : Alignment.centerLeft,
           child: Text(
             widget.label,
             style: StyleText.fontSize14Weight400.copyWith(
               color: AppColors.text,
               fontSize: 14.sp,
             ),
-            textAlign: useRtlForLabelHint ? TextAlign.right : TextAlign.left,
-            textDirection: useRtlForLabelHint
-                ? TextDirection.rtl
-                : TextDirection.ltr,
           ),
         ),
         SizedBox(height: 4.h),
@@ -2618,27 +2653,32 @@ class _DropdownField extends StatelessWidget {
     );
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _FormLabel(label: label),
+        _FormLabel(label: label, isRtl: isRtl), // ← pass isRtl
         SizedBox(height: 3.h),
         CustomDropdownFormFieldInvMaster(
           selectedValue: value,
           items: items,
           onChanged: onChanged,
           width: double.infinity,
-          height: 32,
-          dropdownColor: Color(0xFFF5F5F5),
+          height: 44,           // ← increased height
+          dropdownColor: const Color(0xFFF5F5F5),
           borderRadius: 4,
           widthIcon: 16,
           heightIcon: 16,
           iconPath: iconPath,
           primaryColor: primaryColor,
+          textDirection: isRtl   // ← ADD THIS
+              ? TextDirection.rtl
+              : TextDirection.ltr,
           hint: Text(
             hint,
             style: StyleText.fontSize12Weight400.copyWith(
               color: AppColors.secondaryBlack,
             ),
+            textDirection:        // ← ADD THIS
+            isRtl ? TextDirection.rtl : TextDirection.ltr,
           ),
         ),
         if (showError) ...[
@@ -2649,6 +2689,9 @@ class _DropdownField extends StatelessWidget {
               color: Colors.red,
               fontSize: 11.sp,
             ),
+            textAlign: isRtl ? TextAlign.right : TextAlign.left, // ← FIX
+            textDirection:                                         // ← FIX
+            isRtl ? TextDirection.rtl : TextDirection.ltr,
           ),
         ],
         SizedBox(height: 2.h),
@@ -2715,12 +2758,8 @@ class _DemoStylePhoneFieldState extends State<_DemoStylePhoneField> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            SvgPicture.asset(
-              'assets/contact/phone.svg',
-              width: 14.w,
-              height: 14.h,
-            ),
-            SizedBox(width: 5.w),
+
+
             Text(
               widget.label,
               style: StyleText.fontSize14Weight400.copyWith(
@@ -2738,7 +2777,7 @@ class _DemoStylePhoneFieldState extends State<_DemoStylePhoneField> {
             children: [
               // Code picker box
               Container(
-                height: 32.h,
+                height: 44.h,
                 padding: EdgeInsets.symmetric(horizontal: 6.w),
                 decoration: BoxDecoration(
                   color: const Color(0xFFF5F5F5),
@@ -2782,7 +2821,7 @@ class _DemoStylePhoneFieldState extends State<_DemoStylePhoneField> {
               // Number input
               Expanded(
                 child: SizedBox(
-                  height: 32.h,
+                  height: 44.h,
                   child: TextField(
                     controller: widget.controller,
                     keyboardType: TextInputType.phone,
@@ -2808,7 +2847,7 @@ class _DemoStylePhoneFieldState extends State<_DemoStylePhoneField> {
                       isDense: true,
                       contentPadding: EdgeInsets.symmetric(
                         horizontal: 8.w,
-                        vertical: 10.h,
+                        vertical: 15.h,
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(4.r),
@@ -2865,7 +2904,12 @@ class _DemoStylePhoneFieldState extends State<_DemoStylePhoneField> {
 class _SectionHeader extends StatelessWidget {
   final String title;
   final Color primaryColor;
-  const _SectionHeader({required this.title, required this.primaryColor});
+  final bool isRtl;
+  const _SectionHeader({
+    required this.title,
+    required this.primaryColor,
+    this.isRtl = false,
+  });
   @override
   Widget build(BuildContext context) => Text(
     title,
@@ -2873,6 +2917,8 @@ class _SectionHeader extends StatelessWidget {
       color: primaryColor,
       fontSize: 14.sp,
     ),
+    textAlign: isRtl ? TextAlign.right : TextAlign.left,
+    textDirection: isRtl ? TextDirection.rtl : TextDirection.ltr,
   );
 }
 
@@ -2882,14 +2928,15 @@ class _FormLabel extends StatelessWidget {
   const _FormLabel({required this.label, this.isRtl = false});
 
   @override
-  Widget build(BuildContext context) => Text(
-    label,
-    style: StyleText.fontSize14Weight400.copyWith(
-      color: AppColors.text,
-      fontSize: 14.sp,
+  Widget build(BuildContext context) => Align(
+    alignment: isRtl ? Alignment.centerRight : Alignment.centerLeft,
+    child: Text(
+      label,
+      style: StyleText.fontSize14Weight400.copyWith(
+        color: AppColors.text,
+        fontSize: 14.sp,
+      ),
     ),
-    textAlign: isRtl ? TextAlign.right : TextAlign.left,
-    textDirection: isRtl ? TextDirection.rtl : TextDirection.ltr,
   );
 }
 
@@ -3113,12 +3160,32 @@ class _MobileBody extends StatelessWidget {
         : ContactFormConstants.noBranchesEn)
         .map((b) => {'key': b, 'value': b})
         .toList();
-    final serviceItems =
-    (isRtl
-        ? ContactFormConstants.servicesAr
-        : ContactFormConstants.servicesEn)
-        .map((s) => {'key': s, 'value': s})
-        .toList();
+    // ── Services from OverviewCmsCubit (mobile) ─────────────────────────
+    List<Map<String, String>> serviceItems = [];
+    final overviewState = context.watch<OverviewCmsCubit>().state;
+    final overviewModel = switch (overviewState) {
+      OverviewCmsLoaded(:final data) => data,
+      OverviewCmsSaved(:final data) => data,
+      _ => null,
+    };
+
+    if (overviewModel != null && overviewModel.services.items.isNotEmpty) {
+      serviceItems = overviewModel.services.items
+          .map((item) => {
+        'key': isRtl ? item.name.ar : item.name.en,
+        'value': isRtl ? item.name.ar : item.name.en,
+      })
+          .where((m) => m['key']!.isNotEmpty)
+          .toList();
+    }
+
+    if (serviceItems.isEmpty) {
+      serviceItems = (isRtl
+          ? ContactFormConstants.servicesAr
+          : ContactFormConstants.servicesEn)
+          .map((s) => {'key': s, 'value': s})
+          .toList();
+    }
     final reasonItems = _buildReasonItems(
       cmsData: cmsData,
       isOwner: _isOwner,
@@ -3557,7 +3624,7 @@ class _MobileDescriptionText extends StatelessWidget {
       width: double.infinity,
       padding: EdgeInsets.all(14.w),
       decoration: BoxDecoration(
-        color: Colors.white,
+
         borderRadius: BorderRadius.circular(10.r),
       ),
       child: Text(
@@ -3831,7 +3898,7 @@ class _DemoStyleMobilePhoneField extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             SvgPicture.asset(
-              'assets/contact/phone.svg',
+              'assets/demos/phone.svg',
               width: 14.w,
               height: 14.h,
               colorFilter: ColorFilter.mode(primaryColor, BlendMode.srcIn),

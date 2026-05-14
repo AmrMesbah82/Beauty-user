@@ -4,6 +4,7 @@
 /// Created by: Amr Mesbah
 /// Last Update: 11/5/2026
 /// UPDATED: Added optional labelPrefixSvg / labelTrailingSvg icons on the label row
+/// UPDATED: Added customEmptyError and customMinLengthError parameters for localization
 
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -52,6 +53,11 @@ class CustomValidatedTextFieldMaster extends StatefulWidget {
   final VoidCallback? onLabelTrailingTap; // optional tap on trailing icon
   // ─────────────────────────────────────────────────────────────────────────
 
+  // ── NEW: Custom error messages for localization ──────────────────────────
+  final String? customEmptyError;       // Custom "field is required" message
+  final String? customMinLengthError;   // Custom "minimum length" message
+  // ─────────────────────────────────────────────────────────────────────────
+
   const CustomValidatedTextFieldMaster({
     super.key,
     this.label,
@@ -81,6 +87,9 @@ class CustomValidatedTextFieldMaster extends StatefulWidget {
     this.labelTrailingSvgSize,
     this.labelTrailingColor,
     this.onLabelTrailingTap,
+    // ── custom error messages ──
+    this.customEmptyError,
+    this.customMinLengthError,
   });
 
   @override
@@ -203,13 +212,17 @@ class _CustomValidatedTextFieldMasterState
 
     String errorText = '';
     if (isEmpty) {
-      errorText = widget.textDirection == TextDirection.rtl
-          ? "هذا الحقل مطلوب"
-          : "This field is required.";
+      // Use custom error message if provided, otherwise fall back to default
+      errorText = widget.customEmptyError ??
+          (widget.textDirection == TextDirection.rtl
+              ? "هذا الحقل مطلوب"
+              : "This field is required.");
     } else if (isTooShort) {
-      errorText = widget.textDirection == TextDirection.rtl
-          ? "الحد الأدنى ${widget.minLength} حرف"
-          : "Minimum ${widget.minLength} characters required.";
+      // Use custom error message if provided, otherwise fall back to default
+      errorText = widget.customMinLengthError ??
+          (widget.textDirection == TextDirection.rtl
+              ? "الحد الأدنى ${widget.minLength} حرف"
+              : "Minimum ${widget.minLength} characters required.");
     } else if (isEnglishField && hasArabic) {
       errorText = "Please use English characters only.";
     } else if (isArabicField && hasEnglish) {

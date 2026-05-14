@@ -528,7 +528,6 @@ class _FullScreenDrawer extends StatelessWidget {
 
                   // ── Row 2: GenderToggle (left)  +  LanguageToggle (right) ──
                   Container(
-                    color: navbarBg,
                     padding: EdgeInsets.symmetric(
                         horizontal: 16.w, vertical: 10.h),
                     child: Row(

@@ -3,11 +3,12 @@
 // Created by: Amr Mesbah
 
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:beauty_user/controller/contact_us/contatc_us_state.dart';
-import 'package:beauty_user/repo/contact_us/contact_us_repo.dart';
-import 'package:beauty_user/repo/contact_us/contact_us_repo_imp.dart';
+
 
 import '../../model/contact_us/contact_us_model.dart';
+import '../../repo/contact_us/contact_us_repo.dart';
+import '../../repo/contact_us/contact_us_repo_imp.dart';
+import 'contatc_us_state.dart';
 
 
 class ContactCubit extends Cubit<ContactState> {

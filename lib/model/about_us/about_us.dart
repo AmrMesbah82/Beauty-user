@@ -675,8 +675,9 @@ class TermsOfServiceModel {
     'Terms_And_Conditions_Description_Ar': termsAndConditions.description.ar,
     'Terms_And_Conditions_Attach_En_Url':  termsAndConditions.attachEnUrl,
     'Terms_And_Conditions_Attach_Ar_Url':  termsAndConditions.attachArUrl,
-    if (termsAndConditions.lastUpdate != null)
-      'Terms_And_Conditions_Last_Update':  termsAndConditions.lastUpdate,
+    // ✅ AFTER — always write, default to today if null
+    'Terms_And_Conditions_Last_Update': termsAndConditions.lastUpdate ?? DateTime.now().toIso8601String().substring(0, 10),
+    'Privacy_Policy_Last_Update': privacyPolicy.lastUpdate ?? DateTime.now().toIso8601String().substring(0, 10),
 
     // ── Privacy Policy (flattened) ───────────────────────────────────
     'Privacy_Policy_Svg_Url':        privacyPolicy.svgUrl,

@@ -716,7 +716,7 @@ List<Widget> _socialIconsRaw(List<SocialLinkModel> links, Color borderColor) {
   return links
       .where((l) => l.visibility && (l.iconUrl.isNotEmpty || l.url.isNotEmpty))
       .expand((l) => [
-    _SocialIconWidget(link: l, borderColor: borderColor, size: 32, raw: true),
+    _SocialIconWidget(link: l, borderColor: borderColor, size: 25, raw: true),
     SizedBox(width: 8.w),
   ])
       .toList();
@@ -751,8 +751,8 @@ class _SocialIconWidget extends StatelessWidget {
         : Icon(Icons.link, size: _ic, color: borderColor);
 
     final box = Container(
-      width: 40.w,
-      height: 40.w,
+      width: 30.w,
+      height: 30.w,
       decoration: BoxDecoration(
         border: Border.all(color: borderColor),
         borderRadius: BorderRadius.circular(raw ? 8 : 8.r),

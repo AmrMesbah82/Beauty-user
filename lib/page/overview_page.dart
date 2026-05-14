@@ -582,6 +582,10 @@ class _OverviewPageViewState extends State<_OverviewPageView> {
                                       duration: const Duration(
                                           milliseconds: 650),
                                       child: _GallerySection(
+                                        backgroundColor: _parseHex(           // ← ADD
+                                          homeData.branding.mainWidgetColor,
+                                          fallback: Colors.transparent,
+                                        ),
                                         primaryColor: primaryColor,
                                         title:
                                         isAr ? 'المعرض' : 'Gallery',
@@ -601,6 +605,10 @@ class _OverviewPageViewState extends State<_OverviewPageView> {
                                           milliseconds: 650),
                                       child: _TestimonialsSection(
                                         primaryColor: primaryColor,
+                                        backgroundColor: _parseHex(          // ← ADD
+                                          homeData.branding.mainWidgetColor,
+                                          fallback: Colors.transparent,
+                                        ),
                                         sectionTitle: isAr
                                             ? model
                                             .clientComments.title.ar
@@ -869,11 +877,15 @@ class _GallerySection extends StatefulWidget {
   final Color primaryColor;
   final String title;
   final List<OverviewGalleryImageModel> images;
+  final Color backgroundColor; // ← ADD
+
 
   const _GallerySection({
     required this.primaryColor,
     required this.title,
     required this.images,
+    required this.backgroundColor, // ← ADD
+
   });
 
   @override
@@ -932,7 +944,7 @@ class _GallerySectionState extends State<_GallerySection> {
                       onTap: () => setState(() => _activeIndex = i),
                       child: AnimatedContainer(
                         decoration: BoxDecoration(
-                          color: Colors.red[100],
+                          color: widget.backgroundColor, // ← was: backgroundColor
                           borderRadius: BorderRadius.circular(24.r),
                         ),
                         duration: const Duration(milliseconds: 350),
@@ -1008,12 +1020,17 @@ class _TestimonialsSection extends StatefulWidget {
   final String sectionTitle;
   final List<OverviewClientCommentModel> comments;
   final bool isAr;
+  final Color backgroundColor; // ← ADD
+
 
   const _TestimonialsSection({
     required this.primaryColor,
     required this.sectionTitle,
     required this.comments,
     required this.isAr,
+    required this.backgroundColor, // ← ADD
+
+
   });
 
   @override
@@ -1152,6 +1169,7 @@ class _TestimonialsSectionState extends State<_TestimonialsSection> {
                         EdgeInsets.symmetric(horizontal: 8.w),
                         child: _TestimonialCard(
                           comment: comment,
+                          backgroundColor: widget.backgroundColor,
                           primaryColor: widget.primaryColor,
                           isAr: widget.isAr,
                         ),
@@ -1175,6 +1193,7 @@ class _TestimonialsSectionState extends State<_TestimonialsSection> {
               padding: EdgeInsets.only(bottom: 12.h),
               child: _TestimonialCard(
                 comment: comment,
+                backgroundColor: widget.backgroundColor, // ← ADD
                 primaryColor: widget.primaryColor,
                 isAr: widget.isAr,
               ),
@@ -1256,11 +1275,15 @@ class _TestimonialCard extends StatelessWidget {
   final OverviewClientCommentModel comment;
   final Color primaryColor;
   final bool isAr;
+  final Color backgroundColor; // ← ADD
+
 
   const _TestimonialCard({
     required this.comment,
     required this.primaryColor,
     required this.isAr,
+    required this.backgroundColor, // ← ADD
+
   });
 
   @override
@@ -1276,7 +1299,7 @@ class _TestimonialCard extends StatelessWidget {
       width: double.infinity,
       padding: EdgeInsets.all(20.w),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: backgroundColor,
         borderRadius: BorderRadius.circular(12.r),
         border: Border.all(color: Colors.grey.shade200, width: 1),
         boxShadow: [
@@ -1316,7 +1339,7 @@ class _TestimonialCard extends StatelessWidget {
               SizedBox(width: 12.w),
               Expanded(
                 child: Text(
-                  fullName,
+                  FormatHelper.capitalize(fullName),
                   style: AppTextStyles.font14BlackCairoMedium.copyWith(
                     color: AppColors.secondaryBlack,
                     fontWeight: FontWeight.w600,
@@ -1328,7 +1351,7 @@ class _TestimonialCard extends StatelessWidget {
           SizedBox(height: 14.h),
           // ✅ plain Text, no Expanded — prevents mobile layout crash
           Text(
-            feedbackText,
+            FormatHelper.capitalize(feedbackText),
             style: AppTextStyles.font12BlackCairoRegular.copyWith(
               height: 1.6,
               color: AppColors.secondaryBlack.withOpacity(0.75),
@@ -1382,7 +1405,7 @@ class _DownloadNowSection extends StatelessWidget {
         padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 32.h),
         child: Container(
           width: double.infinity,
-          padding: EdgeInsets.symmetric(horizontal: 40.w, vertical: 30.h),
+          // padding: EdgeInsets.symmetric(horizontal: 40.w, vertical: 0.h),
           decoration: BoxDecoration(
             color: backgroundColor,
             borderRadius: BorderRadius.circular(16.r),
@@ -1435,10 +1458,9 @@ class _DownloadNowSection extends StatelessWidget {
                     ),
                   ),
                   SizedBox(height: 20.h),
-                  Wrap(
+                  Row(
                     spacing: 12.w,
-                    runSpacing: 8.h,
-                    alignment: WrapAlignment.center,
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       if (googlePlayLink.isNotEmpty)
                         _StoreBadge(
