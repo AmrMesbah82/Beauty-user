@@ -4,12 +4,14 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
 
 import 'package:beauty_user/core/widget/default_form.dart';
-import 'package:beauty_user/theme/app_theme.dart';
-import 'package:beauty_user/theme/appcolors.dart';
-import 'package:beauty_user/theme/text.dart';
 
-import '../../controller/home/home_cubit.dart';
-import '../../controller/home/home_state.dart';
+
+
+import '../../features/home/presentation/controller/home_cubit.dart';
+import '../../features/home/presentation/controller/home_state.dart';
+import '../theme/app_theme.dart';
+import '../theme/appcolors.dart';
+import '../theme/text.dart';
 
 class AppSearchTextField extends StatelessWidget {
   AppSearchTextField({

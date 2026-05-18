@@ -1,7 +1,7 @@
 // Date: 29/9/2024
 // By: Youssef Ashraf, Nada Mohammed, Mohammed Ashraf
 // Last update: 29/9/2024
-// Objectives: This file is responsible for providing helper widgets for spacing.
+// Objectives: This file is responsible for providing helper main_widgets for spacing.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
