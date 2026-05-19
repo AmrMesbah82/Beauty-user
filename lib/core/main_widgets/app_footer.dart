@@ -24,8 +24,8 @@ import 'package:url_launcher/url_launcher.dart';
 
 
 
-import '../../features/about_us/presentation/ui/pages/about_page.dart';
-import '../../features/contact_us/presentation/ui/pages/contact_page.dart';
+import '../../features/about_us/presentation/ui/pages/about_us_page.dart';
+import '../../features/contact_us/presentation/ui/pages/contact_us_page.dart';
 import '../../features/home/data/model/home_model.dart';
 import '../../features/home/presentation/controller/gender_cubit.dart';
 import '../../features/home/presentation/controller/gender_state.dart';
@@ -43,8 +43,8 @@ import '../theme/new_theme.dart';
 // Import your existing pages here
 // Make sure to add the correct import paths for your pages
 // Example imports (update paths as needed):
-// import '../page/about_page.dart';
-// import '../page/contact_page.dart';
+// import '../page/about_us_page.dart';
+// import '../page/contact_us_page.dart';
 // import '../page/terms_of_service_page.dart';
 // import '../page/overview_page.dart';
 

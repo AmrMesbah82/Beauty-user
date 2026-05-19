@@ -1,5 +1,4 @@
 
-import 'package:beauty_user/router/app_router.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
@@ -10,21 +9,22 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_web_plugins/url_strategy.dart';
 
 
+import 'core/router/app_router.dart';
 import 'features/contact_us/presentation/controller/contacu_us_location_cubit.dart';
-import 'features/home/data/repo_imp/home_repository_impl.dart';
+import 'features/home/data/repo_imp/home_repo_impl.dart';
 import 'features/home/presentation/controller/gender_cubit.dart';
 import 'features/home/presentation/controller/home_cubit.dart';
 import 'features/home/presentation/controller/lang_state.dart';
-import 'features/main/data/repo_imp/master_repo_imp.dart';
-import 'features/main/presentation/controller/master_cubit.dart';
+import 'features/main/data/repo_imp/main_repo_imp.dart';
+import 'features/main/presentation/controller/main_cubit.dart';
 import 'features/our_product/data/repo_imp/client_services_repo_imp.dart';
 import 'features/our_product/data/repo_imp/owner_services_repo_imp.dart';
 import 'features/our_product/presentation/controller/client_services_cubit.dart';
 import 'features/our_product/presentation/controller/owner_services_cubit.dart';
 import 'features/overview/data/repo_imp/overview_repo_imp.dart';
 import 'features/overview/presentation/controller/overview_cubit.dart';
-import 'features/request/data/repo_imp/request_demo_repo_imp.dart';
-import 'features/request/presentation/controller/request_demo_cubit.dart';
+import 'features/request/data/repo_imp/request_repo_imp.dart';
+import 'features/request/presentation/controller/request_cubit.dart';
 import 'firebase_options.dart';
 
 Size _getDesignSize({
