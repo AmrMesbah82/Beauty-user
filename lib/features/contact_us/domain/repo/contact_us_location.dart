@@ -5,7 +5,7 @@
 import 'dart:typed_data';
 
 
-import '../../data/model/contact_us_location_model.dart';
+import '../../data/models/contact_us_location_model.dart';
 
 abstract class ContactUsCmsRepo {
   /// Load the current Contact Us CMS data

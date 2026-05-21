@@ -19,7 +19,6 @@ class SendGridRepository {
     required bool   isArabic,
     required String preferredLanguage,
   }) async {
-    print('📧 [SendGridRepo] sendContactNotification → lang: $preferredLanguage');
     try {
       final callable = FirebaseFunctions.instance.httpsCallable('sendContactEmail');
       final result   = await callable.call({
@@ -32,12 +31,9 @@ class SendGridRepository {
         'isArabic':          isArabic,
         'preferredLanguage': preferredLanguage,
       });
-      print('✅ [SendGridRepo] sendContactNotification result: ${result.data}');
     } on FirebaseFunctionsException catch (e) {
-      print('❌ [SendGridRepo] sendContactNotification FunctionsException: ${e.code} - ${e.message}');
       rethrow;
     } catch (e) {
-      print('❌ [SendGridRepo] sendContactNotification error: $e');
       rethrow;
     }
   }
@@ -53,7 +49,6 @@ class SendGridRepository {
     required String preferredLanguage,
     required String gender,
   }) async {
-    print('📧 [SendGridRepo] sendContactConfirmation → lang: $preferredLanguage | gender: $gender');
     try {
       final callable = FirebaseFunctions.instance.httpsCallable('sendContactConfirmation');
       final result   = await callable.call({
@@ -65,12 +60,9 @@ class SendGridRepository {
         'preferredLanguage': preferredLanguage,
         'gender':            gender,
       });
-      print('✅ [SendGridRepo] sendContactConfirmation result: ${result.data}');
     } on FirebaseFunctionsException catch (e) {
-      print('❌ [SendGridRepo] sendContactConfirmation FunctionsException: ${e.code} - ${e.message}');
       rethrow;
     } catch (e) {
-      print('❌ [SendGridRepo] sendContactConfirmation error: $e');
       rethrow;
     }
   }

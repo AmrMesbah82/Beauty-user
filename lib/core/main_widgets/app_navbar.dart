@@ -24,7 +24,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 
 
-import '../../features/home/data/model/home_model.dart';
+import '../../features/home/data/models/home_model.dart';
 import '../../features/home/presentation/controller/gender_cubit.dart';
 import '../../features/home/presentation/controller/gender_state.dart';
 import '../../features/home/presentation/controller/home_cubit.dart';
@@ -77,7 +77,6 @@ const Map<String, String> _firebaseToClean = {
 
 void _navigate(BuildContext context, String route) {
   final cleanRoute = _firebaseToClean[route] ?? route;
-  print('🚀 _navigate called with route: $route → $cleanRoute');
   GoRouter.of(context).go(cleanRoute);
 }
 
@@ -671,7 +670,6 @@ class _BayanatzLogo extends StatelessWidget {
 
         return GestureDetector(
           onTap: () {
-            print('🖱️ Logo tapped - navigating to home');
             _navigate(context, '/');
           },
           child: MouseRegion(
@@ -750,7 +748,6 @@ class _NavItemState extends State<_NavItem> {
           cursor:  SystemMouseCursors.click,
           child: GestureDetector(
             onTap: () {
-              print('🖱️ Nav item tapped: ${widget.label} -> ${widget.route}');
               if (widget.onItemTap != null) {
                 widget.onItemTap!(widget.route);
               } else {

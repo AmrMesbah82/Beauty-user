@@ -26,7 +26,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../features/about_us/presentation/ui/pages/about_us_page.dart';
 import '../../features/contact_us/presentation/ui/pages/contact_us_page.dart';
-import '../../features/home/data/model/home_model.dart';
+import '../../features/home/data/models/home_model.dart';
 import '../../features/home/presentation/controller/gender_cubit.dart';
 import '../../features/home/presentation/controller/gender_state.dart';
 import '../../features/home/presentation/controller/home_cubit.dart';

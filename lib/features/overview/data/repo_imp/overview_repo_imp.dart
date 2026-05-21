@@ -20,7 +20,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 
 import '../../domain/repo/overview_repo.dart';
-import '../model/overview_model.dart';
+import '../models/overview_model.dart';
 
 
 class OverviewRepoImp implements OverviewRepo {
@@ -82,21 +82,17 @@ class OverviewRepoImp implements OverviewRepo {
   @override
   Future<OverviewPageModel> fetchOverviewPage(
       {required String gender}) async {
-    print('🟡 [OverviewRepoImp] fetchOverviewPage: gender=$gender');
     try {
       final snap = await _publishedRef(gender).get();
       if (snap.exists && snap.data() != null) {
         final data = snap.data() as Map<String, dynamic>;
-        print('🟢 [OverviewRepoImp] fetchOverviewPage: doc found');
         return OverviewPageModel.fromMap(data, docId: snap.id);
       }
-      print('🟡 [OverviewRepoImp] fetchOverviewPage: no doc — creating default');
       final defaultModel = OverviewPageModel(id: gender, gender: gender);
       final versionedDefault = _buildVersionedMap(defaultModel, {});
       await _publishedRef(gender).set(versionedDefault);
       return defaultModel;
     } catch (e, st) {
-      print('🔴 [OverviewRepoImp] fetchOverviewPage: ERROR $e\n$st');
       rethrow;
     }
   }
@@ -104,25 +100,19 @@ class OverviewRepoImp implements OverviewRepo {
   @override
   Future<void> saveOverviewPage(OverviewPageModel model) async {
     final docGender = model.gender.isEmpty ? 'female' : model.gender;
-    print('🟡 [OverviewRepoImp] saveOverviewPage: id=${model.id} '
-        'status=${model.status} gender=$docGender');
 
     try {
-      print('🟡 [OverviewRepoImp] saveOverviewPage → reading existing doc...');
       final existingSnap = await _publishedRef(docGender)
           .get(const GetOptions(source: Source.server));
       final ex =
           (existingSnap.exists ? existingSnap.data() : null)
           as Map<String, dynamic>? ??
               {};
-      print('   existing keys = ${ex.keys.toList()}');
 
       final versionedMap = _buildVersionedMap(model, ex);
 
       await _publishedRef(docGender).set(versionedMap, SetOptions(merge: false));
-      print('🟢 [OverviewRepoImp] saveOverviewPage: ✅ ALL keys versioned DONE');
     } catch (e, st) {
-      print('🔴 [OverviewRepoImp] saveOverviewPage: ERROR $e\n$st');
       rethrow;
     }
   }
@@ -133,18 +123,14 @@ class OverviewRepoImp implements OverviewRepo {
 
   @override
   Future<OverviewPageModel?> fetchDraft({required String gender}) async {
-    print('🟡 [OverviewRepoImp] fetchDraft: gender=$gender');
     try {
       final snap = await _draftRef(gender).get();
       if (snap.exists && snap.data() != null) {
         final data = snap.data() as Map<String, dynamic>;
-        print('🟢 [OverviewRepoImp] fetchDraft: draft found');
         return OverviewPageModel.fromMap(data, docId: gender);
       }
-      print('🟡 [OverviewRepoImp] fetchDraft: no draft exists');
       return null;
     } catch (e, st) {
-      print('🔴 [OverviewRepoImp] fetchDraft: ERROR $e\n$st');
       rethrow;
     }
   }
@@ -152,8 +138,6 @@ class OverviewRepoImp implements OverviewRepo {
   @override
   Future<void> saveDraft(OverviewPageModel model) async {
     final docGender = model.gender.isEmpty ? 'female' : model.gender;
-    print('🟡 [OverviewRepoImp] saveDraft: gender=$docGender '
-        'status=${model.status}');
 
     try {
       final existingSnap = await _draftRef(docGender).get();
@@ -165,46 +149,36 @@ class OverviewRepoImp implements OverviewRepo {
       final versionedMap = _buildVersionedMap(model, ex);
 
       await _draftRef(docGender).set(versionedMap, SetOptions(merge: false));
-      print('🟢 [OverviewRepoImp] saveDraft: ✅ ALL keys versioned DONE');
     } catch (e, st) {
-      print('🔴 [OverviewRepoImp] saveDraft: ERROR $e\n$st');
       rethrow;
     }
   }
 
   @override
   Future<void> deleteDraft({required String gender}) async {
-    print('🟡 [OverviewRepoImp] deleteDraft: gender=$gender');
     try {
       final ref = _draftRef(gender);
       final snap = await ref.get();
       if (snap.exists) {
         await ref.delete();
-        print('🟢 [OverviewRepoImp] deleteDraft: ✅ deleted');
       } else {
-        print('🟡 [OverviewRepoImp] deleteDraft: no draft to delete');
       }
     } catch (e, st) {
-      print('🔴 [OverviewRepoImp] deleteDraft: ERROR $e\n$st');
       rethrow;
     }
   }
 
   @override
   Future<void> promoteDraft({required String gender}) async {
-    print('🟡 [OverviewRepoImp] promoteDraft: gender=$gender');
     try {
       final draft = await fetchDraft(gender: gender);
       if (draft == null) {
-        print('🟡 [OverviewRepoImp] promoteDraft: no draft to promote');
         return;
       }
       final publishedModel = draft.copyWith(status: 'published');
       await saveOverviewPage(publishedModel);
       await deleteDraft(gender: gender);
-      print('🟢 [OverviewRepoImp] promoteDraft: ✅ DONE');
     } catch (e, st) {
-      print('🔴 [OverviewRepoImp] promoteDraft: ERROR $e\n$st');
       rethrow;
     }
   }
@@ -219,7 +193,6 @@ class OverviewRepoImp implements OverviewRepo {
     required Uint8List bytes,
     required String fileName,
   }) async {
-    print('🟡 [OverviewRepoImp] uploadImage: path=$path fileName=$fileName');
     try {
       final ref = _storage.ref().child(path).child(fileName);
       final ext = fileName.toLowerCase();
@@ -236,10 +209,8 @@ class OverviewRepoImp implements OverviewRepo {
       );
       await ref.putData(bytes, metadata);
       final url = await ref.getDownloadURL();
-      print('🟢 [OverviewRepoImp] uploadImage: ✅ url=$url');
       return url;
     } catch (e, st) {
-      print('🔴 [OverviewRepoImp] uploadImage: ERROR $e\n$st');
       rethrow;
     }
   }
@@ -247,12 +218,9 @@ class OverviewRepoImp implements OverviewRepo {
   @override
   Future<void> deleteImage(String url) async {
     if (url.isEmpty) return;
-    print('🟡 [OverviewRepoImp] deleteImage: $url');
     try {
       await _storage.refFromURL(url).delete();
-      print('🟢 [OverviewRepoImp] deleteImage: ✅ DONE');
     } catch (e) {
-      print('🔴 [OverviewRepoImp] deleteImage: $e (ignoring)');
     }
   }
 }

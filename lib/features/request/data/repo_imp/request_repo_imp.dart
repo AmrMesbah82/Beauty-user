@@ -13,7 +13,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 
 import '../../domain/repo/request_repo.dart';
-import '../model/request_model.dart';
+import '../models/request_model.dart';
 
 
 class RequestDemoRepoImp implements RequestDemoRepo {
@@ -33,7 +33,6 @@ class RequestDemoRepoImp implements RequestDemoRepo {
   // ─────────────────────────────────────────────────────────────────────────
   @override
   Future<RequestDemoPageModel> fetchPage({required String gender}) async {
-    print('🟡 [RequestDemoRepoImp] fetchPage: $gender');
     final snap = await _doc(gender).get();
     if (snap.exists && snap.data() != null) {
       final raw = Map<String, dynamic>.from(snap.data()! as Map);
@@ -50,7 +49,6 @@ class RequestDemoRepoImp implements RequestDemoRepo {
   // ─────────────────────────────────────────────────────────────────────────
   @override
   Future<void> savePage(RequestDemoPageModel model) async {
-    print('🟡 [RequestDemoRepoImp] savePage');
     final docRef = _doc(model.gender.isEmpty ? 'female' : model.gender);
 
     // 1. Read current Firestore state
@@ -74,7 +72,6 @@ class RequestDemoRepoImp implements RequestDemoRepo {
 
     // 4. Persist
     await docRef.set(update, SetOptions(merge: true));
-    print('🟢 [RequestDemoRepoImp] savePage ✅');
   }
 
   // ─────────────────────────────────────────────────────────────────────────

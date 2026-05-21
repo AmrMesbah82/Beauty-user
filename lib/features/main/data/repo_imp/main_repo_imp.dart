@@ -21,9 +21,9 @@ import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 
-import '../../../about_us/data/model/about_us_model.dart';
+import '../../../about_us/data/models/about_us_model.dart';
 import '../../domain/repo/main_repo.dart';
-import '../model/main_model.dart' hide Versioned;
+import '../models/main_model.dart' hide Versioned;
 
 
 class MasterRepoImp implements MasterRepo {
@@ -86,22 +86,15 @@ class MasterRepoImp implements MasterRepo {
   // ── Fetch published ────────────────────────────────────────────────────────
   @override
   Future<MasterPageModel> fetchMasterPage({required String gender}) async {
-    print('🟡 [MasterRepoImp] fetchMasterPage: gender=$gender');
     try {
       final snap = await _publishedRef(gender).get();
       if (snap.exists && snap.data() != null) {
         final data = snap.data() as Map<String, dynamic>;
-        print('🟢 [MasterRepoImp] fetchMasterPage: doc found');
         final model = MasterPageModel.fromMap(data, docId: snap.id);
-        print('   title active value     = ${model.title.en}');
-        print('   status active value    = ${model.status}');
-        print('   imageUrl active value  = ${model.imageUrl}');
-        print('   sections length        = ${model.sections.length}');
         return model;
       }
 
       // First time — create default doc
-      print('🟡 [MasterRepoImp] fetchMasterPage: no doc — creating default');
       final defaultModel = MasterPageModel(
         id:       gender,
         gender:   gender,
@@ -112,7 +105,6 @@ class MasterRepoImp implements MasterRepo {
       await _publishedRef(gender).set(versionedDefault);
       return defaultModel;
     } catch (e, st) {
-      print('🔴 [MasterRepoImp] fetchMasterPage: ERROR $e\n$st');
       rethrow;
     }
   }
@@ -121,28 +113,22 @@ class MasterRepoImp implements MasterRepo {
   @override
   Future<void> saveMasterPage(MasterPageModel model) async {
     final docGender = model.gender.isEmpty ? 'female' : model.gender;
-    print('🟡 [MasterRepoImp] saveMasterPage: id=${model.id} '
-        'status=${model.status} gender=$docGender');
 
     try {
       // ── Read existing ───────────────────────────────────────────────────
-      print('🟡 [MasterRepoImp] saveMasterPage → reading existing doc...');
       final existingSnap = await _publishedRef(docGender)
           .get(const GetOptions(source: Source.server));
       final ex =
           (existingSnap.exists ? existingSnap.data() : null)
           as Map<String, dynamic>? ??
               {};
-      print('   existing keys = ${ex.keys.toList()}');
 
       // ── Build & write versioned map ─────────────────────────────────────
       final versionedMap = _buildVersionedMap(model, ex);
 
       await _publishedRef(docGender).set(versionedMap, SetOptions(merge: false));
-      print('🟢 [MasterRepoImp] saveMasterPage: ✅ ALL keys versioned DONE');
 
     } catch (e, st) {
-      print('🔴 [MasterRepoImp] saveMasterPage: ERROR $e\n$st');
       rethrow;
     }
   }
@@ -154,18 +140,14 @@ class MasterRepoImp implements MasterRepo {
   // ── Fetch draft ────────────────────────────────────────────────────────────
   @override
   Future<MasterPageModel?> fetchDraft({required String gender}) async {
-    print('🟡 [MasterRepoImp] fetchDraft: gender=$gender');
     try {
       final snap = await _draftRef(gender).get();
       if (snap.exists && snap.data() != null) {
         final data = snap.data() as Map<String, dynamic>;
-        print('🟢 [MasterRepoImp] fetchDraft: draft found');
         return MasterPageModel.fromMap(data, docId: gender);
       }
-      print('🟡 [MasterRepoImp] fetchDraft: no draft exists');
       return null;
     } catch (e, st) {
-      print('🔴 [MasterRepoImp] fetchDraft: ERROR $e\n$st');
       rethrow;
     }
   }
@@ -174,8 +156,6 @@ class MasterRepoImp implements MasterRepo {
   @override
   Future<void> saveDraft(MasterPageModel model) async {
     final docGender = model.gender.isEmpty ? 'female' : model.gender;
-    print('🟡 [MasterRepoImp] saveDraft: gender=$docGender '
-        'status=${model.status}');
 
     try {
       // ── Read existing draft data ────────────────────────────────────────
@@ -189,9 +169,7 @@ class MasterRepoImp implements MasterRepo {
       final versionedMap = _buildVersionedMap(model, ex);
 
       await _draftRef(docGender).set(versionedMap, SetOptions(merge: false));
-      print('🟢 [MasterRepoImp] saveDraft: ✅ ALL keys versioned DONE');
     } catch (e, st) {
-      print('🔴 [MasterRepoImp] saveDraft: ERROR $e\n$st');
       rethrow;
     }
   }
@@ -199,18 +177,14 @@ class MasterRepoImp implements MasterRepo {
   // ── Delete draft ───────────────────────────────────────────────────────────
   @override
   Future<void> deleteDraft({required String gender}) async {
-    print('🟡 [MasterRepoImp] deleteDraft: gender=$gender');
     try {
       final ref = _draftRef(gender);
       final snap = await ref.get();
       if (snap.exists) {
         await ref.delete();
-        print('🟢 [MasterRepoImp] deleteDraft: ✅ deleted');
       } else {
-        print('🟡 [MasterRepoImp] deleteDraft: no draft to delete');
       }
     } catch (e, st) {
-      print('🔴 [MasterRepoImp] deleteDraft: ERROR $e\n$st');
       rethrow;
     }
   }
@@ -218,11 +192,9 @@ class MasterRepoImp implements MasterRepo {
   // ── Promote draft → published ──────────────────────────────────────────────
   @override
   Future<void> promoteDraft({required String gender}) async {
-    print('🟡 [MasterRepoImp] promoteDraft: gender=$gender');
     try {
       final draft = await fetchDraft(gender: gender);
       if (draft == null) {
-        print('🟡 [MasterRepoImp] promoteDraft: no draft to promote');
         return;
       }
 
@@ -232,9 +204,7 @@ class MasterRepoImp implements MasterRepo {
 
       // Delete the draft
       await deleteDraft(gender: gender);
-      print('🟢 [MasterRepoImp] promoteDraft: ✅ DONE');
     } catch (e, st) {
-      print('🔴 [MasterRepoImp] promoteDraft: ERROR $e\n$st');
       rethrow;
     }
   }
@@ -250,7 +220,6 @@ class MasterRepoImp implements MasterRepo {
     required Uint8List bytes,
     required String    fileName,
   }) async {
-    print('🟡 [MasterRepoImp] uploadImage: path=$path fileName=$fileName');
     try {
       final ref      = _storage.ref().child(path).child(fileName);
       final metadata = SettableMetadata(
@@ -259,10 +228,8 @@ class MasterRepoImp implements MasterRepo {
       );
       await ref.putData(bytes, metadata);
       final url = await ref.getDownloadURL();
-      print('🟢 [MasterRepoImp] uploadImage: ✅ url=$url');
       return url;
     } catch (e, st) {
-      print('🔴 [MasterRepoImp] uploadImage: ERROR $e\n$st');
       rethrow;
     }
   }
@@ -271,12 +238,9 @@ class MasterRepoImp implements MasterRepo {
   @override
   Future<void> deleteImage(String url) async {
     if (url.isEmpty) return;
-    print('🟡 [MasterRepoImp] deleteImage: $url');
     try {
       await _storage.refFromURL(url).delete();
-      print('🟢 [MasterRepoImp] deleteImage: ✅ DONE');
     } catch (e) {
-      print('🔴 [MasterRepoImp] deleteImage: $e (ignoring)');
     }
   }
 }

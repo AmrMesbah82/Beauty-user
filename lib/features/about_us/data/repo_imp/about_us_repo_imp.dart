@@ -11,7 +11,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 
 import '../../domain/repo/about_us_repo.dart';
-import '../model/about_us_model.dart';
+import '../models/about_us_model.dart';
 
 class AboutRepoImpl implements AboutRepo {
   static const String _aboutDoc    = 'aboutPage';
@@ -35,7 +35,6 @@ class AboutRepoImpl implements AboutRepo {
       }
       return AboutPageModel.fromMap(snap.data()!);
     } catch (e) {
-      _log('🔴 [AboutRepo] fetchAboutPage ERROR: $e');
       rethrow;
     }
   }
@@ -44,7 +43,6 @@ class AboutRepoImpl implements AboutRepo {
   @override
   Future<void> saveAboutPage(AboutPageModel model) async {
     try {
-      print('🟡 [AboutRepo] saveAboutPage → reading existing doc...');
       final existingSnap = await _docRef(_aboutDoc)
           .get(const GetOptions(source: Source.server));
       final ex = (existingSnap.exists ? existingSnap.data() : null) ?? {};
@@ -121,9 +119,7 @@ class AboutRepoImpl implements AboutRepo {
       };
 
       await _docRef(_aboutDoc).set(versionedMap, SetOptions(merge: true));
-      _log('🟢 [AboutRepo] saveAboutPage: ✅ ALL fields versioned DONE');
     } catch (e) {
-      _log('🔴 [AboutRepo] saveAboutPage ERROR: $e');
       rethrow;
     }
   }
@@ -139,7 +135,6 @@ class AboutRepoImpl implements AboutRepo {
       }
       return OurStrategyModel.fromMap(snap.data()!);
     } catch (e) {
-      _log('🔴 [AboutRepo] fetchStrategy ERROR: $e');
       rethrow;
     }
   }
@@ -148,7 +143,6 @@ class AboutRepoImpl implements AboutRepo {
   @override
   Future<void> saveStrategy(OurStrategyModel model) async {
     try {
-      print('🟡 [AboutRepo] saveStrategy → reading existing doc...');
       final existingSnap = await _docRef(_strategyDoc)
           .get(const GetOptions(source: Source.server));
       final ex = (existingSnap.exists ? existingSnap.data() : null) ?? {};
@@ -194,9 +188,7 @@ class AboutRepoImpl implements AboutRepo {
       };
 
       await _docRef(_strategyDoc).set(versionedMap, SetOptions(merge: true));
-      _log('🟢 [AboutRepo] saveStrategy: ✅ ALL fields versioned DONE');
     } catch (e) {
-      _log('🔴 [AboutRepo] saveStrategy ERROR: $e');
       rethrow;
     }
   }
@@ -212,7 +204,6 @@ class AboutRepoImpl implements AboutRepo {
       }
       return TermsOfServiceModel.fromMap(snap.data()!);
     } catch (e) {
-      _log('🔴 [AboutRepo] fetchTerms ERROR: $e');
       rethrow;
     }
   }
@@ -221,7 +212,6 @@ class AboutRepoImpl implements AboutRepo {
   @override
   Future<void> saveTerms(TermsOfServiceModel model) async {
     try {
-      print('🟡 [AboutRepo] saveTerms → reading existing doc...');
       final existingSnap = await _docRef(_termsDoc)
           .get(const GetOptions(source: Source.server));
       final ex = (existingSnap.exists ? existingSnap.data() : null) ?? {};
@@ -292,9 +282,7 @@ class AboutRepoImpl implements AboutRepo {
       };
 
       await _docRef(_termsDoc).set(versionedMap, SetOptions(merge: true));
-      _log('🟢 [AboutRepo] saveTerms: ✅ ALL fields versioned DONE');
     } catch (e) {
-      _log('🔴 [AboutRepo] saveTerms ERROR: $e');
       rethrow;
     }
   }
@@ -306,7 +294,6 @@ class AboutRepoImpl implements AboutRepo {
     required String storagePath,
   }) async {
     try {
-      _log('🔵 [AboutRepo] uploadImage → $storagePath');
       final timestamp = DateTime.now().millisecondsSinceEpoch;
       final extension = _detectExtension(bytes);
       final uniquePath = storagePath.contains('.')
@@ -317,10 +304,8 @@ class AboutRepoImpl implements AboutRepo {
       final ref = _storage.ref(uniquePath);
       await ref.putData(bytes, SettableMetadata(contentType: mime));
       final url = await ref.getDownloadURL();
-      _log('🟢 [AboutRepo] uploadImage → $url');
       return url;
     } catch (e) {
-      _log('🔴 [AboutRepo] uploadImage ERROR: $e');
       rethrow;
     }
   }
@@ -333,17 +318,14 @@ class AboutRepoImpl implements AboutRepo {
     required String fileName,
   }) async {
     try {
-      _log('🔵 [AboutRepo] uploadDocument → $storagePath/$fileName');
       final mime = fileName.toLowerCase().endsWith('.pdf')
           ? 'application/pdf'
           : 'application/octet-stream';
       final ref = _storage.ref('$storagePath/$fileName');
       await ref.putData(bytes, SettableMetadata(contentType: mime));
       final url = await ref.getDownloadURL();
-      _log('🟢 [AboutRepo] uploadDocument → $url');
       return url;
     } catch (e) {
-      _log('🔴 [AboutRepo] uploadDocument ERROR: $e');
       rethrow;
     }
   }
@@ -380,5 +362,4 @@ class AboutRepoImpl implements AboutRepo {
     return 'png';
   }
 
-  void _log(String msg) => print(msg);
 }

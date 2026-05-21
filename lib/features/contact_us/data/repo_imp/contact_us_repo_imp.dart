@@ -7,7 +7,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../domain/repo/contact_us_repo.dart';
 import '../../domain/repo/sendgrid_repository.dart';
-import '../model/contact_us_model.dart';
+import '../models/contact_us_model.dart';
 
 
 class ContactRepoImpl implements ContactRepo {
@@ -22,7 +22,6 @@ class ContactRepoImpl implements ContactRepo {
     final doc   = _col.doc();
     final saved = submission.copyWith(id: doc.id);
     await doc.set(saved.toMap());
-    print('🟢 [ContactRepoImpl] Saved to Firestore → ${doc.id}');
 
     final submitterName  = '${saved.firstName} ${saved.lastName}';
     final submitterPhone = '${saved.countryCode}${saved.phoneNumber}';
@@ -36,7 +35,6 @@ class ContactRepoImpl implements ContactRepo {
 
     // 2) Notify the company
     try {
-      print('📧 [ContactRepoImpl] Sending company notification...');
       await _sendGrid.sendContactNotification(
         toEmail:           'm.handousa@bayanatz.com',
         submitterName:     submitterName,
@@ -47,14 +45,11 @@ class ContactRepoImpl implements ContactRepo {
         isArabic:          isArabic,
         preferredLanguage: saved.preferredLanguage,
       );
-      print('✅ [ContactRepoImpl] Company email sent successfully');
     } catch (e) {
-      print('🔴 [ContactRepoImpl] Company email failed (non-fatal): $e');
     }
 
     // 3) Send confirmation to the submitter
     try {
-      print('📧 [ContactRepoImpl] Sending confirmation to submitter...');
       await _sendGrid.sendContactConfirmation(
         toEmail:           saved.email,
         submitterName:     submitterName,
@@ -64,9 +59,7 @@ class ContactRepoImpl implements ContactRepo {
         preferredLanguage: saved.preferredLanguage,
         gender:            gender,
       );
-      print('✅ [ContactRepoImpl] Confirmation email sent successfully');
     } catch (e) {
-      print('🔴 [ContactRepoImpl] Confirmation email failed (non-fatal): $e');
     }
   }
 

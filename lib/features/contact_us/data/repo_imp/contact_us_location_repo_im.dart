@@ -13,9 +13,9 @@ import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 
-import '../../../about_us/data/model/about_us_model.dart';
+import '../../../about_us/data/models/about_us_model.dart';
 import '../../domain/repo/contact_us_location.dart';
-import '../model/contact_us_location_model.dart' hide Versioned;
+import '../models/contact_us_location_model.dart' hide Versioned;
 
 class ContactUsCmsRepoImpl implements ContactUsCmsRepo {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -37,7 +37,6 @@ class ContactUsCmsRepoImpl implements ContactUsCmsRepo {
       }
       return ContactUsCmsModel.fromJson(doc.data()!);
     } catch (e) {
-      print('❌ ContactUsCmsRepo.load error: $e');
       rethrow;
     }
   }
@@ -56,7 +55,6 @@ class ContactUsCmsRepoImpl implements ContactUsCmsRepo {
 
       final updatedModel = _updateModelWithUrls(model, uploadedUrls);
 
-      print('🟡 [ContactCmsRepo] save → reading existing doc...');
       final existingSnap = await _docRef
           .get(const GetOptions(source: Source.server));
       final ex = (existingSnap.exists ? existingSnap.data() : null) ?? {};
@@ -124,11 +122,8 @@ class ContactUsCmsRepoImpl implements ContactUsCmsRepo {
         ),
       };
 
-      print('🟡 [ContactCmsRepo] save → writing versioned map...');
       await _docRef.set(versionedMap, SetOptions(merge: true));
-      print('✅ ContactUsCmsRepo.save: ALL fields versioned DONE');
     } catch (e) {
-      print('❌ ContactUsCmsRepo.save error: $e');
       rethrow;
     }
   }
@@ -149,7 +144,6 @@ class ContactUsCmsRepoImpl implements ContactUsCmsRepo {
     if (history.isNotEmpty) {
       final lastKey = 'v${history.length - 1}';
       if (jsonEncode(history[lastKey]) == jsonEncode(newValue)) {
-        print('   Social_Icons unchanged — skipping version bump');
         return history;
       }
     }
@@ -177,9 +171,7 @@ class ContactUsCmsRepoImpl implements ContactUsCmsRepo {
         final downloadUrl = await ref.getDownloadURL();
 
         urls[path] = downloadUrl;
-        print('✅ Uploaded: $path → $downloadUrl');
       } catch (e) {
-        print('❌ Failed to upload $path: $e');
       }
     }
 

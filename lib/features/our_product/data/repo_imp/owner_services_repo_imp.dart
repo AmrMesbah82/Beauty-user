@@ -11,7 +11,7 @@ import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import '../../domain/repo/owner_services_repo.dart';
-import '../model/owner_services_model.dart';
+import '../models/owner_services_model.dart';
 
 class OwnerServicesRepoImp implements OwnerServicesRepo {
   final FirebaseFirestore _firestore;
@@ -59,21 +59,17 @@ class OwnerServicesRepoImp implements OwnerServicesRepo {
   @override
   Future<OwnerServicesPageModel> fetchOwnerServicesPage(
       {required String gender}) async {
-    print('🟡 [OwnerServicesRepoImp] fetchOwnerServicesPage: gender=$gender');
     try {
       final snap = await _docRef(gender).get();
       if (snap.exists && snap.data() != null) {
         final data = snap.data() as Map<String, dynamic>;
-        print('🟢 [OwnerServicesRepoImp] fetchOwnerServicesPage: doc found');
         return OwnerServicesPageModel.fromMap(data, docId: snap.id);
       }
-      print('🟡 [OwnerServicesRepoImp] fetchOwnerServicesPage: no doc — creating default');
       final defaultModel = OwnerServicesPageModel(id: gender, gender: gender);
       final versionedDefault = _buildVersionedMap(defaultModel, {});
       await _docRef(gender).set(versionedDefault);
       return defaultModel;
     } catch (e, st) {
-      print('🔴 [OwnerServicesRepoImp] fetchOwnerServicesPage: ERROR $e\n$st');
       rethrow;
     }
   }
@@ -82,25 +78,19 @@ class OwnerServicesRepoImp implements OwnerServicesRepo {
   @override
   Future<void> saveOwnerServicesPage(OwnerServicesPageModel model) async {
     final docGender = model.gender.isEmpty ? 'female' : model.gender;
-    print('🟡 [OwnerServicesRepoImp] saveOwnerServicesPage: id=${model.id} '
-        'status=${model.status} gender=$docGender');
 
     try {
-      print('🟡 [OwnerServicesRepoImp] saveOwnerServicesPage → reading existing doc...');
       final existingSnap = await _docRef(docGender)
           .get(const GetOptions(source: Source.server));
       final ex =
           (existingSnap.exists ? existingSnap.data() : null)
           as Map<String, dynamic>? ??
               {};
-      print('   existing keys = ${ex.keys.toList()}');
 
       final versionedMap = _buildVersionedMap(model, ex);
 
       await _docRef(docGender).set(versionedMap, SetOptions(merge: false));
-      print('🟢 [OwnerServicesRepoImp] saveOwnerServicesPage: ✅ ALL keys versioned DONE');
     } catch (e, st) {
-      print('🔴 [OwnerServicesRepoImp] saveOwnerServicesPage: ERROR $e\n$st');
       rethrow;
     }
   }
@@ -112,7 +102,6 @@ class OwnerServicesRepoImp implements OwnerServicesRepo {
     required Uint8List bytes,
     required String fileName,
   }) async {
-    print('🟡 [OwnerServicesRepoImp] uploadImage: path=$path fileName=$fileName');
     try {
       final ref = _storage.ref().child(path).child(fileName);
       final ext = fileName.toLowerCase();
@@ -129,10 +118,8 @@ class OwnerServicesRepoImp implements OwnerServicesRepo {
       );
       await ref.putData(bytes, metadata);
       final url = await ref.getDownloadURL();
-      print('🟢 [OwnerServicesRepoImp] uploadImage: ✅ url=$url');
       return url;
     } catch (e, st) {
-      print('🔴 [OwnerServicesRepoImp] uploadImage: ERROR $e\n$st');
       rethrow;
     }
   }
@@ -141,12 +128,9 @@ class OwnerServicesRepoImp implements OwnerServicesRepo {
   @override
   Future<void> deleteImage(String url) async {
     if (url.isEmpty) return;
-    print('🟡 [OwnerServicesRepoImp] deleteImage: $url');
     try {
       await _storage.refFromURL(url).delete();
-      print('🟢 [OwnerServicesRepoImp] deleteImage: ✅ DONE');
     } catch (e) {
-      print('🔴 [OwnerServicesRepoImp] deleteImage: $e (ignoring)');
     }
   }
 }

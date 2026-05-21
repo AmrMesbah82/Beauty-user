@@ -1,4 +1,4 @@
-import '../../data/model/request_model.dart';
+import '../../data/models/request_model.dart';
 
 /// File Name: request_state.dart
 

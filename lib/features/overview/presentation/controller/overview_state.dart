@@ -4,7 +4,7 @@
 /// Created by: Amr Mesbah
 /// Last Update: 07/04/2026
 
-import '../../data/model/overview_model.dart';
+import '../../data/models/overview_model.dart';
 
 abstract class OverviewCmsState {}
 

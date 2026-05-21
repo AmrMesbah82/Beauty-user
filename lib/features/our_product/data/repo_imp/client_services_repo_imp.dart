@@ -11,7 +11,7 @@ import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import '../../domain/repo/client_services_repo.dart';
-import '../model/client_services_model.dart';
+import '../models/client_services_model.dart';
 
 
 class ClientServicesRepoImp implements ClientServicesRepo {
@@ -59,22 +59,18 @@ class ClientServicesRepoImp implements ClientServicesRepo {
   // ── Fetch ──────────────────────────────────────────────────────────────────
   @override
   Future<ClientServicesPageModel> fetchPage({required String gender}) async {
-    print('🟡 [ClientServicesRepoImp] fetchPage: gender=$gender');
     try {
       final snap = await _docRef(gender).get();
       if (snap.exists && snap.data() != null) {
-        print('🟢 [ClientServicesRepoImp] fetchPage: doc found');
         return ClientServicesPageModel.fromMap(
             snap.data() as Map<String, dynamic>,
             docId: snap.id);
       }
-      print('🟡 [ClientServicesRepoImp] fetchPage: no doc — creating default');
       final def = ClientServicesPageModel(id: gender, gender: gender);
       final versionedDefault = _buildVersionedMap(def, {});
       await _docRef(gender).set(versionedDefault);
       return def;
     } catch (e, st) {
-      print('🔴 [ClientServicesRepoImp] fetchPage: ERROR $e\n$st');
       rethrow;
     }
   }
@@ -83,25 +79,19 @@ class ClientServicesRepoImp implements ClientServicesRepo {
   @override
   Future<void> savePage(ClientServicesPageModel model) async {
     final docGender = model.gender.isEmpty ? 'female' : model.gender;
-    print('🟡 [ClientServicesRepoImp] savePage: id=${model.id} '
-        'status=${model.status} gender=$docGender');
 
     try {
-      print('🟡 [ClientServicesRepoImp] savePage → reading existing doc...');
       final existingSnap = await _docRef(docGender)
           .get(const GetOptions(source: Source.server));
       final ex =
           (existingSnap.exists ? existingSnap.data() : null)
           as Map<String, dynamic>? ??
               {};
-      print('   existing keys = ${ex.keys.toList()}');
 
       final versionedMap = _buildVersionedMap(model, ex);
 
       await _docRef(docGender).set(versionedMap, SetOptions(merge: false));
-      print('🟢 [ClientServicesRepoImp] savePage: ✅ ALL keys versioned DONE');
     } catch (e, st) {
-      print('🔴 [ClientServicesRepoImp] savePage: ERROR $e\n$st');
       rethrow;
     }
   }
@@ -113,7 +103,6 @@ class ClientServicesRepoImp implements ClientServicesRepo {
     required Uint8List bytes,
     required String fileName,
   }) async {
-    print('🟡 [ClientServicesRepoImp] uploadImage: $path/$fileName');
     try {
       final ref = _storage.ref().child(path).child(fileName);
       final ext = fileName.toLowerCase();
@@ -124,10 +113,8 @@ class ClientServicesRepoImp implements ClientServicesRepo {
           : 'application/octet-stream';
       await ref.putData(bytes, SettableMetadata(contentType: ct));
       final url = await ref.getDownloadURL();
-      print('🟢 [ClientServicesRepoImp] uploadImage: ✅ $url');
       return url;
     } catch (e, st) {
-      print('🔴 [ClientServicesRepoImp] uploadImage: ERROR $e\n$st');
       rethrow;
     }
   }
@@ -139,7 +126,6 @@ class ClientServicesRepoImp implements ClientServicesRepo {
     try {
       await _storage.refFromURL(url).delete();
     } catch (e) {
-      print('🔴 [ClientServicesRepoImp] deleteImage: $e (ignoring)');
     }
   }
 }

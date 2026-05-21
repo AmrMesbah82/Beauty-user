@@ -16,13 +16,11 @@ class GenderCubit extends Cubit<GenderState> {
 
   void setGender(String gender) {
     if (gender == state.gender) return;
-    print('🔄 [GenderCubit] setGender: ${state.gender} → $gender');
     emit(GenderState(gender: gender));
   }
 
   void toggle() {
     final next = state.isMale ? 'female' : 'male';
-    print('🔄 [GenderCubit] toggle: ${state.gender} → $next');
     emit(GenderState(gender: next));
   }
 }

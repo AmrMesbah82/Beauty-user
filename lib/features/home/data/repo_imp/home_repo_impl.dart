@@ -16,7 +16,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 
 import '../../domain/repo/home_repo.dart';
-import '../model/home_model.dart';
+import '../models/home_model.dart';
 
 class HomeRepositoryImpl implements HomeRepository {
   HomeRepositoryImpl({
@@ -38,24 +38,15 @@ class HomeRepositoryImpl implements HomeRepository {
 
   @override
   Future<HomePageModel> fetchHomePage() async {
-    print('🔵 [Repo] fetchHomePage() called (cache-first)');
     try {
       final snapshot = await _docRef.get();
-      print('   snapshot.exists               = ${snapshot.exists}');
-      print('   snapshot.metadata.isFromCache = ${snapshot.metadata.isFromCache}');
       if (!snapshot.exists || snapshot.data() == null) {
-        print('⚠️  [Repo] fetchHomePage() → no document, returning defaultModel');
         return HomePageModel.defaultModel;
       }
       final data = _sanitize(snapshot.data()!);
-      print('   sanitized keys = ${data.keys.toList()}');
       final model = HomePageModel.fromMap(data);
-      print('🟢 [Repo] fetchHomePage() → parsed OK');
-      print('   model.title.en = ${model.title.en}');
       return model;
     } catch (e, st) {
-      print('🔴 [Repo] fetchHomePage() ERROR: $e');
-      print('   StackTrace: $st');
       return HomePageModel.defaultModel;
     }
   }
@@ -64,39 +55,16 @@ class HomeRepositoryImpl implements HomeRepository {
 
   @override
   Future<HomePageModel> fetchHomePageFresh() async {
-    print('🔵 [Repo] fetchHomePageFresh() called (Source.server)');
     try {
       final snapshot = await _docRef.get(
           const GetOptions(source: Source.server));
-      print('   snapshot.exists               = ${snapshot.exists}');
-      print('   snapshot.metadata.isFromCache = ${snapshot.metadata.isFromCache}');
       if (!snapshot.exists || snapshot.data() == null) {
-        print('⚠️  [Repo] fetchHomePageFresh() → no document, returning defaultModel');
         return HomePageModel.defaultModel;
       }
       final data = _sanitize(snapshot.data()!);
-      print('   sanitized keys = ${data.keys.toList()}');
       final model = HomePageModel.fromMap(data);
-      print('🟢 [Repo] fetchHomePageFresh() → parsed OK');
-      print('   model.title.en                         = ${model.title.en}');
-      print('   model.sections length                  = ${model.sections.length}');
-      print('   model.branding.logoUrl                 = ${model.branding.logoUrl}');
-      print('   model.publishStatus                    = ${model.publishStatus}');
-      print('   model.headerItems length               = ${model.headerItems.length}');
-      print('   model.footerColumns length             = ${model.footerColumns.length}');
-      print('   model.navButtons length                = ${model.navButtons.length}');
-      print('   model.socialLinks length               = ${model.socialLinks.length}');
-      print('   model.appDownloadLinks.iosUrl           = ${model.appDownloadLinks.iosUrl}');
-      print('   model.appDownloadLinks.androidUrl       = ${model.appDownloadLinks.androidUrl}');
-      print('   model.appDownloadLinks.labelEn          = ${model.appDownloadLinks.labelEn}');
-      print('   model.appDownloadLinks.labelAr          = ${model.appDownloadLinks.labelAr}');
-      print('   model.appDownloadLinks.iosIconUrl       = ${model.appDownloadLinks.iosIconUrl}');
-      print('   model.appDownloadLinks.androidIconUrl   = ${model.appDownloadLinks.androidIconUrl}');
-      print('   model.appDownloadLinks.visibility       = ${model.appDownloadLinks.visibility}');
       return model;
     } catch (e, st) {
-      print('🔴 [Repo] fetchHomePageFresh() ERROR: $e');
-      print('   StackTrace: $st');
       return HomePageModel.defaultModel;
     }
   }
@@ -106,8 +74,6 @@ class HomeRepositoryImpl implements HomeRepository {
   Map<String, dynamic> _sanitize(Map<String, dynamic> data) {
     final copy = Map<String, dynamic>.from(data);
     copy.remove('Last_Updated_At');
-    print('   [Repo] _sanitize() → removed Last_Updated_At, '
-        'remaining keys = ${copy.keys.toList()}');
     return copy;
   }
 
@@ -128,20 +94,13 @@ class HomeRepositoryImpl implements HomeRepository {
 
   @override
   Future<void> saveHomePage(HomePageModel model) async {
-    print('🔵 [Repo] saveHomePage() called');
-    print('   model.title.en          = ${model.title.en}');
-    print('   model.sections length   = ${model.sections.length}');
-    print('   model.branding.logoUrl  = ${model.branding.logoUrl}');
-    print('   model.publishStatus     = ${model.publishStatus}');
 
     try {
       // ── Step 1: read existing raw Firestore data ────────────────────────
-      print('🔵 [Repo] saveHomePage() → reading existing Firestore doc...');
       final existingSnap = await _docRef.get(
           const GetOptions(source: Source.server));
       final ex =
           (existingSnap.exists ? existingSnap.data() : null) ?? {};
-      print('   existing keys = ${ex.keys.toList()}');
 
       // ── Step 2: plain map from model (flat primitives) ──────────────────
       final newMap = model.toMap();
@@ -165,12 +124,8 @@ class HomeRepositoryImpl implements HomeRepository {
 
       // ── Step 4: write to Firestore ──────────────────────────────────────
       await _docRef.set(versionedMap, SetOptions(merge: false));
-      print('🟢 [Repo] saveHomePage() → ALL keys versioned, '
-          'Firestore .set() completed ✅');
 
     } catch (e, st) {
-      print('🔴 [Repo] saveHomePage() ERROR: $e');
-      print('   StackTrace: $st');
       rethrow;
     }
   }
@@ -202,19 +157,14 @@ class HomeRepositoryImpl implements HomeRepository {
     required Uint8List bytes,
     required String    storagePath,
   }) async {
-    print('🔵 [Repo] uploadImage() storagePath=$storagePath bytes=${bytes.length}');
     try {
       final ref  = _storage.ref().child(storagePath);
       final mime = _detectMime(bytes);
-      print('   detected MIME = $mime');
       final task = await ref.putData(
           bytes, SettableMetadata(contentType: mime));
       final url  = await task.ref.getDownloadURL();
-      print('🟢 [Repo] uploadImage() → url=$url');
       return url;
     } catch (e, st) {
-      print('🔴 [Repo] uploadImage() ERROR: $e');
-      print('   StackTrace: $st');
       rethrow;
     }
   }
@@ -223,18 +173,13 @@ class HomeRepositoryImpl implements HomeRepository {
 
   @override
   Stream<HomePageModel> watchHomePage() {
-    print('🔵 [Repo] watchHomePage() stream created');
     return _docRef.snapshots().map((snap) {
-      print('📡 [Repo] watchHomePage() snapshot received');
-      print('   snap.exists               = ${snap.exists}');
-      print('   snap.metadata.isFromCache = ${snap.metadata.isFromCache}');
       if (!snap.exists || snap.data() == null) {
         return HomePageModel.defaultModel;
       }
       try {
         return HomePageModel.fromMap(snap.data()!);
       } catch (e) {
-        print('🔴 [Repo] watchHomePage() parse ERROR: $e');
         return HomePageModel.defaultModel;
       }
     });

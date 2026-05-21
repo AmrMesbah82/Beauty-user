@@ -5,7 +5,7 @@
 /// Last Update: 07/04/2026
 
 import 'dart:typed_data';
-import 'package:beauty_user/features/main/data/model/main_model.dart';
+import 'package:beauty_user/features/main/data/models/main_model.dart';
 import 'package:beauty_user/features/main/domain/repo/main_repo.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -25,15 +25,12 @@ class MasterCmsCubit extends Cubit<MasterCmsState> {
 
   // ── Load ───────────────────────────────────────────────────────────────────
   Future<void> load({String gender = 'female'}) async {
-    print('🟡 [MasterCmsCubit] load: gender=$gender');
     _activeGender = gender;
     emit(MasterCmsLoading());
     try {
       _current = await _repo.fetchMasterPage(gender: gender);
-      print('🟢 [MasterCmsCubit] load: ✅ sections=${_current.sections.length}');
       emit(MasterCmsLoaded(_current));
     } catch (e) {
-      print('🔴 [MasterCmsCubit] load: ERROR $e');
       emit(MasterCmsError(e.toString()));
     }
   }
@@ -167,17 +164,14 @@ class MasterCmsCubit extends Cubit<MasterCmsState> {
 
   // ── Save ───────────────────────────────────────────────────────────────────
   Future<void> save({String publishStatus = 'published'}) async {
-    print('🟡 [MasterCmsCubit] save: status=$publishStatus');
     try {
       _current = _current.copyWith(
         status: publishStatus,
         lastUpdated: DateTime.now(),
       );
       await _repo.saveMasterPage(_current);
-      print('🟢 [MasterCmsCubit] save: ✅ DONE');
       emit(MasterCmsSaved(_current));
     } catch (e) {
-      print('🔴 [MasterCmsCubit] save: ERROR $e');
       emit(MasterCmsError(e.toString()));
     }
   }

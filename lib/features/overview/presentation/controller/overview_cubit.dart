@@ -10,7 +10,7 @@
 import 'dart:typed_data';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../data/model/overview_model.dart';
+import '../../data/models/overview_model.dart';
 import '../../domain/repo/overview_repo.dart';
 
 import 'overview_state.dart';
@@ -28,15 +28,12 @@ class OverviewCmsCubit extends Cubit<OverviewCmsState> {
 
   // ── Load ───────────────────────────────────────────────────────────────────
   Future<void> load({String gender = 'female'}) async {
-    print('🟡 [OverviewCmsCubit] load: gender=$gender');
     _activeGender = gender;
     emit(OverviewCmsLoading());
     try {
       _current = await _repo.fetchOverviewPage(gender: gender);
-      print('🟢 [OverviewCmsCubit] load: ✅');
       emit(OverviewCmsLoaded(_current));
     } catch (e) {
-      print('🔴 [OverviewCmsCubit] load: ERROR $e');
       emit(OverviewCmsError(e.toString()));
     }
   }
@@ -282,17 +279,14 @@ class OverviewCmsCubit extends Cubit<OverviewCmsState> {
   // SAVE
   // ═══════════════════════════════════════════════════════════════════════════
   Future<void> save({String publishStatus = 'published'}) async {
-    print('🟡 [OverviewCmsCubit] save: status=$publishStatus');
     try {
       _current = _current.copyWith(
         status: publishStatus,
         lastUpdated: DateTime.now(),
       );
       await _repo.saveOverviewPage(_current);
-      print('🟢 [OverviewCmsCubit] save: ✅ DONE');
       emit(OverviewCmsSaved(_current));
     } catch (e) {
-      print('🔴 [OverviewCmsCubit] save: ERROR $e');
       emit(OverviewCmsError(e.toString()));
     }
   }

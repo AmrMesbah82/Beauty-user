@@ -9,7 +9,7 @@
 /// UPDATED: Added draft lifecycle methods (fetch, save, delete, promote) ✅
 
 import 'dart:typed_data';
-import '../../data/model/main_model.dart';
+import '../../data/models/main_model.dart';
 
 abstract class MasterRepo {
   // ── Published document ───────────────────────────────────────────────────
