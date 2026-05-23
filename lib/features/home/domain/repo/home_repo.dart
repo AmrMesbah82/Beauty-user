@@ -11,6 +11,9 @@ abstract class HomeRepository {
   /// Fetch from Firestore (may use local cache).
   Future<HomePageModel> fetchHomePage();
 
+
+  // amr
+
   /// Fetch directly from Firestore server — bypasses local IndexedDB cache.
   /// Always use this after a save() to guarantee reading the written data.
   Future<HomePageModel> fetchHomePageFresh();
