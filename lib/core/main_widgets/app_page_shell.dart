@@ -12,10 +12,11 @@ import 'app_footer.dart';
 import 'app_navbar.dart';
 
 Color _parseColor(String hex, {required Color fallback}) {
-  try {
-    final h = hex.replaceAll('#', '');
-    if (h.length == 6) return Color(int.parse('FF$h', radix: 16));
-  } catch (_) {}
+  final h = hex.replaceAll('#', '');
+  if (h.length == 6) {
+    final value = int.tryParse('FF$h', radix: 16);
+    if (value != null) return Color(value);
+  }
   return fallback;
 }
 

@@ -1,28 +1,28 @@
 /// ******************* FILE INFO *******************
 /// File Name: client_services_state.dart
-/// Description: States for ClientServicesCmsCubit.
+/// Description: States for ClientServicesCubit.
 /// Created by: Amr Mesbah
 /// Last Update: 08/04/2026
 
 import '../../data/models/client_services_model.dart';
 
-abstract class ClientServicesCmsState {}
+abstract class ClientServicesState {}
 
-class ClientServicesCmsInitial extends ClientServicesCmsState {}
+class ClientServicesInitial extends ClientServicesState {}
 
-class ClientServicesCmsLoading extends ClientServicesCmsState {}
+class ClientServicesLoading extends ClientServicesState {}
 
-class ClientServicesCmsLoaded extends ClientServicesCmsState {
+class ClientServicesLoaded extends ClientServicesState {
   final ClientServicesPageModel data;
-  ClientServicesCmsLoaded(this.data);
+  ClientServicesLoaded(this.data);
 }
 
-class ClientServicesCmsSaved extends ClientServicesCmsState {
+class ClientServicesSaved extends ClientServicesState {
   final ClientServicesPageModel data;
-  ClientServicesCmsSaved(this.data);
+  ClientServicesSaved(this.data);
 }
 
-class ClientServicesCmsError extends ClientServicesCmsState {
+class ClientServicesError extends ClientServicesState {
   final String message;
-  ClientServicesCmsError(this.message);
+  ClientServicesError(this.message);
 }

@@ -12,14 +12,14 @@ import 'dart:typed_data';
 import 'package:beauty_user/features/our_product/data/models/owner_services_model.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../domain/repo/owner_services_repo.dart';
+import '../../domain/base_repository/owner_services_repo.dart';
 
 import 'owner_services_state.dart';
 
-class OwnerServicesCmsCubit extends Cubit<OwnerServicesCmsState> {
+class OwnerServicesCubit extends Cubit<OwnerServicesState> {
   final OwnerServicesRepo _repo;
 
-  OwnerServicesCmsCubit(this._repo) : super(OwnerServicesCmsInitial());
+  OwnerServicesCubit(this._repo) : super(OwnerServicesInitial());
 
   OwnerServicesPageModel _current = const OwnerServicesPageModel();
   OwnerServicesPageModel get current => _current;
@@ -30,13 +30,13 @@ class OwnerServicesCmsCubit extends Cubit<OwnerServicesCmsState> {
   // ── Load ───────────────────────────────────────────────────────────────────
   Future<void> load({String gender = 'female'}) async {
     _activeGender = gender;
-    emit(OwnerServicesCmsLoading());
+    emit(OwnerServicesLoading());
     try {
       _current =
       await _repo.fetchOwnerServicesPage(gender: gender);
-      emit(OwnerServicesCmsLoaded(_current));
+      emit(OwnerServicesLoaded(_current));
     } catch (e) {
-      emit(OwnerServicesCmsError(e.toString()));
+      emit(OwnerServicesError(e.toString()));
     }
   }
 
@@ -197,9 +197,9 @@ class OwnerServicesCmsCubit extends Cubit<OwnerServicesCmsState> {
         lastUpdated: DateTime.now(),
       );
       await _repo.saveOwnerServicesPage(_current);
-      emit(OwnerServicesCmsSaved(_current));
+      emit(OwnerServicesSaved(_current));
     } catch (e) {
-      emit(OwnerServicesCmsError(e.toString()));
+      emit(OwnerServicesError(e.toString()));
     }
   }
 }

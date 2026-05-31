@@ -35,7 +35,7 @@ import '../../features/home/presentation/controller/lang_state.dart';
 import '../../features/our_product/presentation/ui/pages/our_products_page.dart';
 import '../../features/overview/presentation/ui/pages/overview_page.dart';
 import '../../features/terms_of_services/presentation/ui/pages/terms_of_service_page.dart';
-import '../theme/app_wight.dart';
+import '../theme/app_weight.dart';
 import '../theme/appcolors.dart';
 import '../theme/new_theme.dart';
 
@@ -176,10 +176,11 @@ String _bi(BiText b, bool isRtl) {
 }
 
 Color _hexColor(String hex, Color fallback) {
-  try {
-    final clean = hex.replaceAll('#', '');
-    if (clean.length == 6) return Color(int.parse('FF$clean', radix: 16));
-  } catch (_) {}
+  final clean = hex.replaceAll('#', '');
+  if (clean.length == 6) {
+    final value = int.tryParse('FF$clean', radix: 16);
+    if (value != null) return Color(value);
+  }
   return fallback;
 }
 

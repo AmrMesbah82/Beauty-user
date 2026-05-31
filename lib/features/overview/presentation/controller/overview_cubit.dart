@@ -11,7 +11,7 @@ import 'dart:typed_data';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../data/models/overview_model.dart';
-import '../../domain/repo/overview_repo.dart';
+import '../../domain/base_repository/overview_repo.dart';
 
 import 'overview_state.dart';
 

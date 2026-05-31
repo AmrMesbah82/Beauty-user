@@ -749,7 +749,8 @@ class HomePageModel {
   static DateTime? _parseDateTime(dynamic value) {
     if (value == null) return null;
     if (value.runtimeType.toString().contains('Timestamp')) {
-      try { return (value as dynamic).toDate() as DateTime; } catch (_) {}
+      final dt = (value as dynamic).toDate();
+      if (dt is DateTime) return dt;
     }
     if (value is String) return DateTime.tryParse(value);
     return null;

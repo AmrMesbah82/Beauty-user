@@ -17,8 +17,8 @@
 import 'dart:html' as html;
 import 'dart:typed_data';
 
-import 'package:beauty_user/core/widget/format.dart';
-import 'package:beauty_user/core/widget/navigator.dart';
+import 'package:beauty_user/core/widgets/format.dart';
+import 'package:beauty_user/core/widgets/navigator.dart';
 import 'package:beauty_user/features/our_product/presentation/ui/pages/our_products_page.dart' hide FormatHelper;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -40,30 +40,31 @@ import '../../../data/models/overview_model.dart';
 import '../../controller/overview_cubit.dart';
 import '../../controller/overview_state.dart';
 
-part '../widget/overview_page/reveal_coordinator.dart';
-part '../widget/overview_page/reveal_coordinator_widget.dart';
-part '../widget/overview_page/reveal.dart';
-part '../widget/overview_page/svg_pulse_loader.dart';
-part '../widget/overview_page/overview_page_view.dart';
-part '../widget/overview_page/overview_section.dart';
-part '../widget/overview_page/top_services_section.dart';
-part '../widget/overview_page/service_card.dart';
-part '../widget/overview_page/gallery_section.dart';
-part '../widget/overview_page/testimonials_section.dart';
-part '../widget/overview_page/arrow_btn.dart';
-part '../widget/overview_page/testimonial_card.dart';
-part '../widget/overview_page/download_now_section.dart';
-part '../widget/overview_page/store_badge.dart';
+part '../widgets/overview_page/reveal_coordinator.dart';
+part '../widgets/overview_page/reveal_coordinator_widget.dart';
+part '../widgets/overview_page/reveal.dart';
+part '../widgets/overview_page/svg_pulse_loader.dart';
+part '../widgets/overview_page/overview_page_view.dart';
+part '../widgets/overview_page/overview_section.dart';
+part '../widgets/overview_page/top_services_section.dart';
+part '../widgets/overview_page/service_card.dart';
+part '../widgets/overview_page/gallery_section.dart';
+part '../widgets/overview_page/testimonials_section.dart';
+part '../widgets/overview_page/arrow_btn.dart';
+part '../widgets/overview_page/testimonial_card.dart';
+part '../widgets/overview_page/download_now_section.dart';
+part '../widgets/overview_page/store_badge.dart';
 
 // ══════════════════════════════════════════════════════════════════════════════
 // Helper — parse hex color from branding
 // ══════════════════════════════════════════════════════════════════════════════
 
 Color _parseHex(String hex, {required Color fallback}) {
-  try {
-    final h = hex.replaceAll('#', '');
-    if (h.length == 6) return Color(int.parse('FF$h', radix: 16));
-  } catch (_) {}
+  final h = hex.replaceAll('#', '');
+  if (h.length == 6) {
+    final value = int.tryParse('FF$h', radix: 16);
+    if (value != null) return Color(value);
+  }
   return fallback;
 }
 
@@ -83,20 +84,16 @@ final Map<String, Future<Uint8List>> _globalUrlCache = {};
 
 Future<Uint8List> _xhrLoad(String url, {bool isSvg = false}) {
   return _globalUrlCache.putIfAbsent(url, () async {
-    try {
-      final response = await html.HttpRequest.request(
-        url,
-        method: 'GET',
-        responseType: 'arraybuffer',
-        mimeType: isSvg ? 'image/svg+xml' : null,
-      );
-      if (response.status == 200 && response.response != null) {
-        return (response.response as ByteBuffer).asUint8List();
-      }
-      throw Exception('HTTP ${response.status}');
-    } catch (e) {
-      throw Exception('XHR failed: $e');
+    final response = await html.HttpRequest.request(
+      url,
+      method: 'GET',
+      responseType: 'arraybuffer',
+      mimeType: isSvg ? 'image/svg+xml' : null,
+    );
+    if (response.status == 200 && response.response != null) {
+      return (response.response as ByteBuffer).asUint8List();
     }
+    throw Exception('HTTP ${response.status}');
   });
 }
 

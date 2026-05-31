@@ -1,6 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../domain/repo/twailio_repo.dart';
+import '../../domain/base_repository/twilio_repo.dart';
 import 'contact_us_otp_state.dart';
 
 class ContactOtpCubit extends Cubit<ContactOtpState> {

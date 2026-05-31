@@ -7,7 +7,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../features/home/presentation/controller/home_cubit.dart';
 import '../../features/home/presentation/controller/home_state.dart';
 
-import '../theme/app_wight.dart';
+import '../theme/app_weight.dart';
 import '../theme/appcolors.dart';
 
 class _BP {
@@ -35,10 +35,11 @@ Color _navbarBgFromState(HomeCmsState state) {
 }
 
 Color _hexColor(String hex, Color fallback) {
-  try {
-    final clean = hex.replaceAll('#', '');
-    if (clean.length == 6) return Color(int.parse('FF$clean', radix: 16));
-  } catch (_) {}
+  final clean = hex.replaceAll('#', '');
+  if (clean.length == 6) {
+    final value = int.tryParse('FF$clean', radix: 16);
+    if (value != null) return Color(value);
+  }
   return fallback;
 }
 

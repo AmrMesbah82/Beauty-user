@@ -2,8 +2,8 @@
 /// File Name: our_products_page.dart
 /// Description: "Our Products" page for the Beauty App (Bayanatz).
 ///              Two tabs: Client Service & Owner Service.
-///              Client Service tab → ClientServicesCmsCubit (clientServicesPages collection).
-///              Owner Service tab  → OwnerServicesCmsCubit  (ownerServicesPages collection).
+///              Client Service tab → ClientServicesCubit (clientServicesPages collection).
+///              Owner Service tab  → OwnerServicesCubit  (ownerServicesPages collection).
 ///              Each tab renders: Header hero → Download bar → Mockups.
 ///              ALL data is DYNAMIC from Firebase. No static data in this file.
 /// Created by: Amr Mesbah
@@ -30,8 +30,8 @@ import 'dart:html' as html;
 import 'dart:typed_data';
 import 'dart:ui_web' as ui_web;
 
-import 'package:beauty_user/core/widget/button.dart';
-import 'package:beauty_user/core/widget/navigator.dart';
+import 'package:beauty_user/core/widgets/button.dart';
+import 'package:beauty_user/core/widgets/navigator.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -58,22 +58,22 @@ import '../../controller/client_services_state.dart';
 import '../../controller/owner_services_cubit.dart';
 import '../../controller/owner_services_state.dart';
 
-part '../widget/our_products_page/reveal_coordinator.dart';
-part '../widget/our_products_page/reveal_coordinator_widget.dart';
-part '../widget/our_products_page/reveal.dart';
-part '../widget/our_products_page/svg_pulse_loader.dart';
-part '../widget/our_products_page/products_tab_bar.dart';
-part '../widget/our_products_page/client_service_tab.dart';
-part '../widget/our_products_page/owner_service_tab.dart';
-part '../widget/our_products_page/client_header_hero.dart';
-part '../widget/our_products_page/owner_header_hero.dart';
-part '../widget/our_products_page/client_mockup_section_widget.dart';
-part '../widget/our_products_page/owner_mockup_section_widget.dart';
-part '../widget/our_products_page/download_now_bar.dart';
-part '../widget/our_products_page/mini_store_badge.dart';
-part '../widget/our_products_page/center_layout.dart';
-part '../widget/our_products_page/side_by_side_layout.dart';
-part '../widget/our_products_page/stacked_fallback.dart';
+part '../widgets/our_products_page/reveal_coordinator.dart';
+part '../widgets/our_products_page/reveal_coordinator_widget.dart';
+part '../widgets/our_products_page/reveal.dart';
+part '../widgets/our_products_page/svg_pulse_loader.dart';
+part '../widgets/our_products_page/products_tab_bar.dart';
+part '../widgets/our_products_page/client_service_tab.dart';
+part '../widgets/our_products_page/owner_service_tab.dart';
+part '../widgets/our_products_page/client_header_hero.dart';
+part '../widgets/our_products_page/owner_header_hero.dart';
+part '../widgets/our_products_page/client_mockup_section_widget.dart';
+part '../widgets/our_products_page/owner_mockup_section_widget.dart';
+part '../widgets/our_products_page/download_now_bar.dart';
+part '../widgets/our_products_page/mini_store_badge.dart';
+part '../widgets/our_products_page/center_layout.dart';
+part '../widgets/our_products_page/side_by_side_layout.dart';
+part '../widgets/our_products_page/stacked_fallback.dart';
 
 // ══════════════════════════════════════════════════════════════════════════════
 // TEXT FORMATTING HELPER
@@ -295,9 +295,9 @@ class _OurProductsPageState extends State<OurProductsPage> {
 
     // ── Load cubit for whichever tab is initially selected ───────────────────
     if (_selectedTabIndex == 0) {
-      context.read<ClientServicesCmsCubit>().load(gender: gender);
+      context.read<ClientServicesCubit>().load(gender: gender);
     } else {
-      context.read<OwnerServicesCmsCubit>().load(gender: gender);
+      context.read<OwnerServicesCubit>().load(gender: gender);
     }
 
     // ── Priority 2: GoRouter query param (only if constructor was empty) ─────
@@ -316,9 +316,9 @@ class _OurProductsPageState extends State<OurProductsPage> {
               _preloadStarted = false;
             });
             if (index == 1) {
-              context.read<OwnerServicesCmsCubit>().load(gender: _lastGender);
+              context.read<OwnerServicesCubit>().load(gender: _lastGender);
             } else {
-              context.read<ClientServicesCmsCubit>().load(gender: _lastGender);
+              context.read<ClientServicesCubit>().load(gender: _lastGender);
             }
             Future.delayed(const Duration(seconds: 12), () {
               if (mounted && _showLoader) setState(() => _showLoader = false);
@@ -341,9 +341,9 @@ class _OurProductsPageState extends State<OurProductsPage> {
     setState(() => _showLoader = true);
 
     if (_selectedTabIndex == 0) {
-      context.read<ClientServicesCmsCubit>().switchGender(newGender);
+      context.read<ClientServicesCubit>().switchGender(newGender);
     } else {
-      context.read<OwnerServicesCmsCubit>().switchGender(newGender);
+      context.read<OwnerServicesCubit>().switchGender(newGender);
     }
   }
 
@@ -362,9 +362,9 @@ class _OurProductsPageState extends State<OurProductsPage> {
     });
 
     if (index == 0) {
-      context.read<ClientServicesCmsCubit>().load(gender: _lastGender);
+      context.read<ClientServicesCubit>().load(gender: _lastGender);
     } else {
-      context.read<OwnerServicesCmsCubit>().load(gender: _lastGender);
+      context.read<OwnerServicesCubit>().load(gender: _lastGender);
     }
 
     Future.delayed(const Duration(seconds: 12), () {
@@ -373,15 +373,15 @@ class _OurProductsPageState extends State<OurProductsPage> {
   }
 
   bool _isActiveTabReady(
-      ClientServicesCmsState clientState,
-      OwnerServicesCmsState ownerState,
+      ClientServicesState clientState,
+      OwnerServicesState ownerState,
       ) {
     if (_selectedTabIndex == 0) {
-      return clientState is ClientServicesCmsLoaded ||
-          clientState is ClientServicesCmsSaved;
+      return clientState is ClientServicesLoaded ||
+          clientState is ClientServicesSaved;
     } else {
-      return ownerState is OwnerServicesCmsLoaded ||
-          ownerState is OwnerServicesCmsSaved;
+      return ownerState is OwnerServicesLoaded ||
+          ownerState is OwnerServicesSaved;
     }
   }
 
@@ -406,9 +406,9 @@ class _OurProductsPageState extends State<OurProductsPage> {
       },
       child: BlocBuilder<HomeCmsCubit, HomeCmsState>(
         builder: (context, homeState) {
-          return BlocBuilder<ClientServicesCmsCubit, ClientServicesCmsState>(
+          return BlocBuilder<ClientServicesCubit, ClientServicesState>(
             builder: (context, clientState) {
-              return BlocBuilder<OwnerServicesCmsCubit, OwnerServicesCmsState>(
+              return BlocBuilder<OwnerServicesCubit, OwnerServicesState>(
                 builder: (context, ownerState) {
                   final homeData = switch (homeState) {
                     HomeCmsLoaded(:final data) => data,
@@ -443,14 +443,14 @@ class _OurProductsPageState extends State<OurProductsPage> {
 
                   final ClientServicesPageModel? clientData =
                   switch (clientState) {
-                    ClientServicesCmsLoaded(:final data) => data,
-                    ClientServicesCmsSaved(:final data) => data,
+                    ClientServicesLoaded(:final data) => data,
+                    ClientServicesSaved(:final data) => data,
                     _ => null,
                   };
                   final OwnerServicesPageModel? ownerData =
                   switch (ownerState) {
-                    OwnerServicesCmsLoaded(:final data) => data,
-                    OwnerServicesCmsSaved(:final data) => data,
+                    OwnerServicesLoaded(:final data) => data,
+                    OwnerServicesSaved(:final data) => data,
                     _ => null,
                   };
 

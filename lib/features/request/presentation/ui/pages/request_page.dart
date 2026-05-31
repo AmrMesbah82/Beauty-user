@@ -15,9 +15,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
-import 'package:beauty_user/core/widget/circle_progress.dart';
-import 'package:beauty_user/core/widget/custom_dropdwon.dart';
-import 'package:beauty_user/core/widget/textfield.dart';
+import 'package:beauty_user/core/widgets/circle_progress.dart';
+import 'package:beauty_user/core/widgets/custom_dropdown.dart';
+import 'package:beauty_user/core/widgets/textfield.dart';
 
 import '../../../../../core/main_widgets/app_page_shell.dart';
 import '../../../../../core/theme/new_theme.dart';
@@ -30,17 +30,17 @@ import '../../../data/models/request_model.dart';
 import '../../controller/request_cubit.dart';
 import '../../controller/request_state.dart';
 
-part '../widget/request_page/submit_state.dart';
-part '../widget/request_page/submit_initial.dart';
-part '../widget/request_page/submit_loading.dart';
-part '../widget/request_page/submit_success.dart';
-part '../widget/request_page/submit_error.dart';
-part '../widget/request_page/submit_cubit.dart';
-part '../widget/request_page/c.dart';
-part '../widget/request_page/s.dart';
-part '../widget/request_page/inner.dart';
-part '../widget/request_page/form_screen.dart';
-part '../widget/request_page/confirm_screen.dart';
+part '../widgets/request_page/submit_state.dart';
+part '../widgets/request_page/submit_initial.dart';
+part '../widgets/request_page/submit_loading.dart';
+part '../widgets/request_page/submit_success.dart';
+part '../widgets/request_page/submit_error.dart';
+part '../widgets/request_page/submit_cubit.dart';
+part '../widgets/request_page/c.dart';
+part '../widgets/request_page/s.dart';
+part '../widgets/request_page/inner.dart';
+part '../widgets/request_page/form_screen.dart';
+part '../widgets/request_page/confirm_screen.dart';
 
 // ════════════════════════════════════════════════════════════════════════════
 // SUBMIT — STATE

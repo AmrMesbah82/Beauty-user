@@ -8,15 +8,15 @@
 
 import 'dart:typed_data';
 import 'package:beauty_user/features/our_product/data/models/client_services_model.dart';
-import 'package:beauty_user/features/our_product/domain/repo/client_services_repo.dart';
+import 'package:beauty_user/features/our_product/domain/base_repository/client_services_repo.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'client_services_state.dart';
 
-class ClientServicesCmsCubit extends Cubit<ClientServicesCmsState> {
+class ClientServicesCubit extends Cubit<ClientServicesState> {
   final ClientServicesRepo _repo;
 
-  ClientServicesCmsCubit(this._repo) : super(ClientServicesCmsInitial());
+  ClientServicesCubit(this._repo) : super(ClientServicesInitial());
 
   ClientServicesPageModel _current = const ClientServicesPageModel();
   ClientServicesPageModel get current => _current;
@@ -27,12 +27,12 @@ class ClientServicesCmsCubit extends Cubit<ClientServicesCmsState> {
   // ── Load ───────────────────────────────────────────────────────────────────
   Future<void> load({String gender = 'female'}) async {
     _activeGender = gender;
-    emit(ClientServicesCmsLoading());
+    emit(ClientServicesLoading());
     try {
       _current = await _repo.fetchPage(gender: gender);
-      emit(ClientServicesCmsLoaded(_current));
+      emit(ClientServicesLoaded(_current));
     } catch (e) {
-      emit(ClientServicesCmsError(e.toString()));
+      emit(ClientServicesError(e.toString()));
     }
   }
 
@@ -174,9 +174,9 @@ class ClientServicesCmsCubit extends Cubit<ClientServicesCmsState> {
         lastUpdated: DateTime.now(),
       );
       await _repo.savePage(_current);
-      emit(ClientServicesCmsSaved(_current));
+      emit(ClientServicesSaved(_current));
     } catch (e) {
-      emit(ClientServicesCmsError(e.toString()));
+      emit(ClientServicesError(e.toString()));
     }
   }
 }

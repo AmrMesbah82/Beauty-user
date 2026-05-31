@@ -10,8 +10,8 @@ import 'dart:html' as html;
 import 'dart:typed_data';
 import 'dart:ui_web' as ui_web;
 
-import 'package:beauty_user/core/widget/format.dart';
-import 'package:beauty_user/core/widget/navigator.dart';
+import 'package:beauty_user/core/widgets/format.dart';
+import 'package:beauty_user/core/widgets/navigator.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -30,17 +30,17 @@ import '../../controller/home_cubit.dart';
 import '../../controller/home_state.dart';
 import '../../controller/lang_state.dart';
 
-part '../widget/home_page/reveal_coordinator.dart';
-part '../widget/home_page/reveal_coordinator_widget.dart';
-part '../widget/home_page/reveal.dart';
-part '../widget/home_page/svg_pulse_loader.dart';
-part '../widget/home_page/home_page_view.dart';
-part '../widget/home_page/hero_section.dart';
-part '../widget/home_page/hero_text.dart';
-part '../widget/home_page/about_us_section.dart';
-part '../widget/home_page/download_app_section.dart';
-part '../widget/home_page/download_text_content.dart';
-part '../widget/home_page/store_badge.dart';
+part '../widgets/home_page/reveal_coordinator.dart';
+part '../widgets/home_page/reveal_coordinator_widget.dart';
+part '../widgets/home_page/reveal.dart';
+part '../widgets/home_page/svg_pulse_loader.dart';
+part '../widgets/home_page/home_page_view.dart';
+part '../widgets/home_page/hero_section.dart';
+part '../widgets/home_page/hero_text.dart';
+part '../widgets/home_page/about_us_section.dart';
+part '../widgets/home_page/download_app_section.dart';
+part '../widgets/home_page/download_text_content.dart';
+part '../widgets/home_page/store_badge.dart';
 
 final RouteObserver<ModalRoute> routeObserver = RouteObserver<ModalRoute>();
 
@@ -63,10 +63,11 @@ Color _resolvePrimaryColor({
 }
 
 Color _parseHex(String hex, {required Color fallback}) {
-  try {
-    final h = hex.replaceAll('#', '');
-    if (h.length == 6) return Color(int.parse('FF$h', radix: 16));
-  } catch (_) {}
+  final h = hex.replaceAll('#', '');
+  if (h.length == 6) {
+    final value = int.tryParse('FF$h', radix: 16);
+    if (value != null) return Color(value);
+  }
   return fallback;
 }
 
@@ -75,20 +76,16 @@ final Map<String, Future<Uint8List>> _globalUrlCache = {};
 
 Future<Uint8List> _xhrLoad(String url, {bool isSvg = false}) {
   return _globalUrlCache.putIfAbsent(url, () async {
-    try {
-      final response = await html.HttpRequest.request(
-        url,
-        method: 'GET',
-        responseType: 'arraybuffer',
-        mimeType: isSvg ? 'image/svg+xml' : null,
-      );
-      if (response.status == 200 && response.response != null) {
-        return (response.response as ByteBuffer).asUint8List();
-      }
-      throw Exception('HTTP ${response.status}');
-    } catch (e) {
-      throw Exception('XHR failed: $e');
+    final response = await html.HttpRequest.request(
+      url,
+      method: 'GET',
+      responseType: 'arraybuffer',
+      mimeType: isSvg ? 'image/svg+xml' : null,
+    );
+    if (response.status == 200 && response.response != null) {
+      return (response.response as ByteBuffer).asUint8List();
     }
+    throw Exception('HTTP ${response.status}');
   });
 }
 

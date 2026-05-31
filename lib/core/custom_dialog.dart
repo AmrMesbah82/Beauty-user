@@ -16,7 +16,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:beauty_user/core/custom_svg.dart';
-import 'package:beauty_user/core/widget/textfield.dart';
+import 'package:beauty_user/core/widgets/textfield.dart';
 
 
 // ─────────────────────────────────────────────
@@ -867,17 +867,10 @@ class _PublishConfirmDialogState extends State<_PublishConfirmDialog> {
   Future<void> _handleConfirm() async {
     if (_loading) return;
     setState(() => _loading = true);
-    try {
-      // Directly await the async _save() — no microtask wrapper
-      await widget.onConfirm?.call();
-    } catch (e) {
-      // _save() handles its own error logging; we just ensure loading resets
-      debugPrint('[PublishConfirmDialog] onConfirm error: $e');
-    } finally {
-      if (mounted) {
-        setState(() => _loading = false);
-        Navigator.of(context).pop();
-      }
+    await widget.onConfirm?.call();
+    if (mounted) {
+      setState(() => _loading = false);
+      Navigator.of(context).pop();
     }
   }
 

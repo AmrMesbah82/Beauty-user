@@ -6,7 +6,7 @@
 
 import 'dart:typed_data';
 import 'package:beauty_user/features/main/data/models/main_model.dart';
-import 'package:beauty_user/features/main/domain/repo/main_repo.dart';
+import 'package:beauty_user/features/main/domain/base_repository/main_repo.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'main_state.dart';

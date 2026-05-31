@@ -2,7 +2,7 @@
 import 'dart:typed_data';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../data/models/request_model.dart';
-import '../../domain/repo/request_repo.dart';
+import '../../domain/base_repository/request_repo.dart';
 
 import 'request_state.dart';
 

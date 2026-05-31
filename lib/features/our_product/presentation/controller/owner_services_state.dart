@@ -1,28 +1,28 @@
 /// ******************* FILE INFO *******************
 /// File Name: owner_services_state.dart
-/// Description: States for OwnerServicesCmsCubit.
+/// Description: States for OwnerServicesCubit.
 /// Created by: Amr Mesbah
 /// Last Update: 10/04/2026
 
 import '../../data/models/owner_services_model.dart';
 
-abstract class OwnerServicesCmsState {}
+abstract class OwnerServicesState {}
 
-class OwnerServicesCmsInitial extends OwnerServicesCmsState {}
+class OwnerServicesInitial extends OwnerServicesState {}
 
-class OwnerServicesCmsLoading extends OwnerServicesCmsState {}
+class OwnerServicesLoading extends OwnerServicesState {}
 
-class OwnerServicesCmsLoaded extends OwnerServicesCmsState {
+class OwnerServicesLoaded extends OwnerServicesState {
   final OwnerServicesPageModel data;
-  OwnerServicesCmsLoaded(this.data);
+  OwnerServicesLoaded(this.data);
 }
 
-class OwnerServicesCmsSaved extends OwnerServicesCmsState {
+class OwnerServicesSaved extends OwnerServicesState {
   final OwnerServicesPageModel data;
-  OwnerServicesCmsSaved(this.data);
+  OwnerServicesSaved(this.data);
 }
 
-class OwnerServicesCmsError extends OwnerServicesCmsState {
+class OwnerServicesError extends OwnerServicesState {
   final String message;
-  OwnerServicesCmsError(this.message);
+  OwnerServicesError(this.message);
 }
