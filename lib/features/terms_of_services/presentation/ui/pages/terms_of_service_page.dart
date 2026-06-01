@@ -21,6 +21,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:beauty_user/core/custom_svg.dart';
 
+import '../../../../../core/constants/color.dart';
 import '../../../../../core/main_widgets/app_footer.dart';
 import '../../../../../core/main_widgets/app_navbar.dart';
 import '../../../../../core/theme/app_colors.dart';
@@ -49,12 +50,6 @@ part '../widgets/terms_of_service_page/desktop_top_tab_item.dart';
 part '../widgets/terms_of_service_page/terms_body_mobile.dart';
 part '../widgets/terms_of_service_page/mobile_top_tab_item.dart';
 part '../widgets/terms_of_service_page/mobile_doc_panel.dart';
-
-const Color _kDefaultGreen = Color(0xFFD16F9A);
-const Color _kGreenLight = Color(0xFFE8F5EE);
-const Color _kSurface = Color(0xFFFFFFFF);
-const Color _kDivider = Color(0xFFDDE8DD);
-const Color _kLoaderNeutral = Color(0xFFF5F5F5);
 
 class TermsOfServicePage extends StatelessWidget {
   final String initialTab;

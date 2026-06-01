@@ -37,6 +37,7 @@ import '../../features/overview/presentation/ui/pages/overview_page.dart';
 import '../../features/terms_of_services/presentation/ui/pages/terms_of_service_page.dart';
 import '../theme/app_font_style.dart';
 import '../theme/app_font_weight.dart';
+import '../constants/color.dart';
 import '../theme/app_colors.dart';
 
 // ── Page registry ─────────────────────────────────────────────────────────────
@@ -149,8 +150,6 @@ class _BP {
   static const double tablet = 1024;
 }
 
-const Color _kFallbackPrimary = Color(0xFF008037);
-const Color _kFallbackFooterBg = Color(0xFFF5F5F5);
 
 List<FooterColumnModel> _syncedFooterColumns(HomePageModel model) {
   final navByRoute = <String, NavButtonModel>{
@@ -200,7 +199,7 @@ Color _resolvePrimary(HomePageModel model, bool isMale) {
   final hex = isMale
       ? model.branding.malePrimaryColor
       : model.branding.primaryColor;
-  return _hexColor(hex, _kFallbackPrimary);
+  return _hexColor(hex, ColorPick.activeColor);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -220,7 +219,7 @@ class AppFooter extends StatelessWidget {
         };
 
         final Color footerBg =
-        _hexColor(model.branding.headerFooterColor, _kFallbackFooterBg);
+        _hexColor(model.branding.headerFooterColor, const Color(0xFFF5F5F5));
         final List<FooterColumnModel> columns = _syncedFooterColumns(model);
 
         // ✅ GenderCubit MUST wrap BEFORE primary is computed

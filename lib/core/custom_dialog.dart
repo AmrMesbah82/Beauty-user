@@ -17,6 +17,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:beauty_user/core/custom_svg.dart';
 import 'package:beauty_user/core/widgets/textfield.dart';
+import 'package:beauty_user/core/constants/color.dart';
 
 
 // ─────────────────────────────────────────────
@@ -684,7 +685,7 @@ class _UploadDialogState extends State<_UploadDialog> {
         width: double.infinity,
         height: 150.h,
         decoration: BoxDecoration(
-          color: lightMode ? const Color(0xFFF1F2ED) : AppColors.background,
+          color: lightMode ? ColorPick.background : AppColors.background,
           borderRadius: BorderRadius.circular(4.r),
           border: Border.all(
             color: Colors.grey.withOpacity(0.3),
@@ -933,7 +934,7 @@ class _PublishConfirmDialogState extends State<_PublishConfirmDialog> {
                 child: _loading
                     ? const Center(
                   child: CircularProgressIndicator(
-                    color: Color(0xFF008037),
+                    color: ColorPick.activeColor,
                     strokeWidth: 2.5,
                   ),
                 )
@@ -970,7 +971,7 @@ class _PublishConfirmDialogState extends State<_PublishConfirmDialog> {
                         child: Container(
                           height: 48.h,
                           decoration: BoxDecoration(
-                            color: const Color(0xFF008037),
+                            color: ColorPick.activeColor,
                             borderRadius: BorderRadius.circular(8.r),
                           ),
                           child: Center(
@@ -1051,7 +1052,7 @@ class _ConfirmGreenBtn extends StatelessWidget {
       child: Container(
         height: 48.h,
         decoration: BoxDecoration(
-          color: const Color(0xFF008037),
+          color: ColorPick.activeColor,
           borderRadius: BorderRadius.circular(8.r),
         ),
         child: Center(
@@ -1069,7 +1070,7 @@ class _ConfirmGreenBtn extends StatelessWidget {
 class _PersonIllustrationPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
-    final green  = Paint()..color = const Color(0xFF008037);
+    final green  = Paint()..color = ColorPick.activeColor;
     final skin   = Paint()..color = const Color(0xFFFFCC99);
     final dark   = Paint()..color = const Color(0xFF3E2723);
     final white  = Paint()..color = Colors.white;

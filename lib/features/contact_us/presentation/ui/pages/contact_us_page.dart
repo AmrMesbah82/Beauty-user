@@ -43,6 +43,7 @@ import 'package:beauty_user/core/widgets/circle_progress.dart';
 import 'package:beauty_user/core/widgets/custom_dropdown.dart';
 import 'package:beauty_user/core/widgets/textfield.dart';
 
+import '../../../../../core/constants/color.dart';
 import '../../../../../core/constants/constant.dart';
 import '../../../../../core/custom_tab.dart';
 import '../../../../../core/main_widgets/app_footer.dart';
@@ -89,9 +90,6 @@ part '../widgets/contact_us_page/mobile_icon_dropdown.dart';
 part '../widgets/contact_us_page/demo_style_mobile_phone_field.dart';
 part '../widgets/contact_us_page/social_media_section.dart';
 part '../widgets/contact_us_page/social_icon_widget.dart';
-
-const Color _kDefaultPink = Color(0xFFBE6A7A);
-const Color _kLoaderNeutral = Color(0xFFF5F5F5);
 
 class ContactPage extends StatelessWidget {
   const ContactPage({super.key});

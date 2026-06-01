@@ -209,7 +209,7 @@ class _ContactPageViewState extends State<_ContactPageView> {
             data.branding.backgroundColor,
             fallback: AppColors.background,
           ),
-          _ => _kLoaderNeutral,
+          _ => const Color(0xFFF5F5F5),
         };
 
         final bool homeReady =

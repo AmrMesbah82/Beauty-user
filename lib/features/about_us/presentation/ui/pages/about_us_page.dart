@@ -27,6 +27,7 @@ import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
 import 'package:beauty_user/core/custom_svg.dart';
 
+import '../../../../../core/constants/color.dart';
 import '../../../../../core/main_widgets/app_footer.dart';
 import '../../../../../core/main_widgets/app_navbar.dart';
 import '../../../../../core/theme/app_colors.dart';
@@ -64,12 +65,6 @@ part '../widgets/about_us_page/mobile_about_us_content.dart';
 part '../widgets/about_us_page/mobile_tab_data.dart';
 part '../widgets/about_us_page/mobile_accordion_item.dart';
 part '../widgets/about_us_page/values_grid_mobile.dart';
-
-const Color _kDefaultGreen = Color(0xFFD16F9A);
-const Color _kGreenLight = Color(0xFFE8F5EE);
-const Color _kSurface = Color(0xFFFFFFFF);
-const Color _kDivider = Color(0xFFDDE8DD);
-const Color _kLoaderNeutral = Color(0xFFF5F5F5);
 
 class AboutPage extends StatelessWidget {
   final String initialTab;

@@ -32,6 +32,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../features/home/presentation/controller/home_cubit.dart';
 import '../theme/app_font_style.dart';
+import 'package:beauty_user/core/constants/color.dart';
 
 class AdminSubNavBar extends StatelessWidget {
   final int activeIndex;

@@ -7,6 +7,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../theme/app_colors.dart';
 import '../theme/app_font_style.dart';
+import 'package:beauty_user/core/constants/color.dart';
 
 class CustomDropdownFormFieldInvMaster extends StatefulWidget {
   final String? selectedValue;
@@ -173,7 +174,7 @@ class _CustomDropdownFormFieldInvMasterState
         height:  fieldHeight.h,
         padding: EdgeInsets.symmetric(horizontal: 8.w),
         decoration: BoxDecoration(
-          color:        widget.dropdownColor ?? const Color(0xFFF1F2ED),
+          color:        widget.dropdownColor ?? ColorPick.background,
           borderRadius: BorderRadius.circular(widget.borderRadius.r),
           border:       Border.all(color: Colors.transparent),
         ),
@@ -332,7 +333,7 @@ class _CustomDropdownFormFieldInvMasterState
                       padding: EdgeInsets.symmetric(horizontal: 8.w),
                       decoration: BoxDecoration(
                         color: widget.dropdownColor ??
-                            const Color(0xFFF1F2ED),
+                            ColorPick.background,
                         borderRadius:
                         BorderRadius.circular(widget.borderRadius.r),
                         border: Border.all(color: Colors.transparent),

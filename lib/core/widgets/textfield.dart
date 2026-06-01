@@ -14,6 +14,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 
 import '../theme/app_colors.dart';
 import '../theme/app_font_style.dart';
+import 'package:beauty_user/core/constants/color.dart';
 
 class CustomValidatedTextFieldMaster extends StatefulWidget {
   final String? label;
@@ -237,7 +238,7 @@ class _CustomValidatedTextFieldMasterState
     final bool showCounter = widget.showCharCount && !showError;
 
     final Color resolvedFill = widget.fillColor ??
-        (lightMode ? const Color(0xFFF1F2ED) : AppColors.background);
+        (lightMode ? ColorPick.background : AppColors.background);
 
     final List<TextInputFormatter> formatters = [
       if (widget.onlyDigits) FilteringTextInputFormatter.digitsOnly,

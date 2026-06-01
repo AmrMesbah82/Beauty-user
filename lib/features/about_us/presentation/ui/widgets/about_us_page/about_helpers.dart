@@ -37,7 +37,7 @@ Color _resolvePrimaryColor({
 }) {
   final hex = isMale ? malePrimaryColorHex : primaryColorHex;
   return _parseHex(hex,
-      fallback: isMale ? const Color(0xFF1565C0) : _kDefaultGreen);
+      fallback: isMale ? const Color(0xFF1565C0) : const Color(0xFFD16F9A));
 }
 
 ({int topTab, int subTab}) _resolveTabParam(String? raw) {

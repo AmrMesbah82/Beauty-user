@@ -85,13 +85,13 @@ class _TermsOfServicePageViewState extends State<_TermsOfServicePageView> {
         final Color secondaryColor = switch (homeState) {
           HomeCmsLoaded(:final data) => _parseHex(
             data.branding.secondaryColor,
-            fallback: _kGreenLight,
+            fallback: const Color(0xFFE8F5EE),
           ),
           HomeCmsSaved(:final data) => _parseHex(
             data.branding.secondaryColor,
-            fallback: _kGreenLight,
+            fallback: const Color(0xFFE8F5EE),
           ),
-          _ => _kGreenLight,
+          _ => const Color(0xFFE8F5EE),
         };
         final Color backgroundColor = switch (homeState) {
           HomeCmsLoaded(:final data) => _parseHex(
@@ -148,7 +148,7 @@ class _TermsOfServicePageViewState extends State<_TermsOfServicePageView> {
                 data.branding.backgroundColor,
                 fallback: AppColors.background,
               ),
-              _ => _kLoaderNeutral,
+              _ => const Color(0xFFF5F5F5),
             };
             if (_showLoader || !allReady)
               return _SvgPulseLoader(

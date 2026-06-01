@@ -6,6 +6,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:beauty_user/core/constants/color.dart';
 
 class FunnelChartItem {
   final String label;
@@ -68,7 +69,7 @@ class FunnelChartWidget extends StatelessWidget {
                   height: 26.sp,
                   decoration: const BoxDecoration(
                     shape: BoxShape.circle,
-                    color: Color(0xFF008037),
+                    color: ColorPick.activeColor,
                   ),
                   child: Center(
                     child: SvgPicture.asset(

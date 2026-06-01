@@ -113,7 +113,7 @@ Color _resolvePrimaryColor({
 }) {
   final hex = isMale ? malePrimaryColorHex : primaryColorHex;
   return _parseHex(hex,
-      fallback: isMale ? const Color(0xFF1565C0) : _kDefaultPink);
+      fallback: isMale ? const Color(0xFF1565C0) : ColorPick.preview);
 }
 
 String _t(BuildContext context, {required String en, required String ar}) {

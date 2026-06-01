@@ -124,7 +124,7 @@ class _AboutBodyMobileState extends State<_AboutBodyMobile> {
                               width: double.infinity,
                               padding: EdgeInsets.all(12.r),
                               decoration: BoxDecoration(
-                                color: _kSurface,
+                                color: ColorPick.white,
                                 borderRadius: BorderRadius.circular(12.r),
                               ),
                               child: Center(
@@ -157,7 +157,7 @@ class _AboutBodyMobileState extends State<_AboutBodyMobile> {
                                   width: double.infinity,
                                   padding: EdgeInsets.all(12.r),
                                   decoration: BoxDecoration(
-                                    color: _kSurface,
+                                    color: ColorPick.white,
                                     borderRadius: BorderRadius.circular(12.r),
                                   ),
                                   child: Center(
@@ -176,7 +176,7 @@ class _AboutBodyMobileState extends State<_AboutBodyMobile> {
                               width: double.infinity,
                               padding: EdgeInsets.all(12.r),
                               decoration: BoxDecoration(
-                                color: _kSurface,
+                                color: ColorPick.white,
                                 borderRadius: BorderRadius.circular(12.r),
                               ),
                               child: Center(

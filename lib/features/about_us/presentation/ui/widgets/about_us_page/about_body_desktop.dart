@@ -212,7 +212,7 @@ class _AboutBodyDesktopState extends State<_AboutBodyDesktop> {
                               width: double.infinity,
                               padding: EdgeInsets.all(16.r),
                               decoration: BoxDecoration(
-                                color: _kSurface,
+                                color: ColorPick.white,
                                 borderRadius: BorderRadius.circular(12.r),
                               ),
                               child: Center(
@@ -263,7 +263,7 @@ class _AboutBodyDesktopState extends State<_AboutBodyDesktop> {
                               width: double.infinity,
                               padding: EdgeInsets.all(16.r),
                               decoration: BoxDecoration(
-                                color: _kSurface,
+                                color: ColorPick.white,
                                 borderRadius: BorderRadius.circular(12.r),
                               ),
                               child: Center(

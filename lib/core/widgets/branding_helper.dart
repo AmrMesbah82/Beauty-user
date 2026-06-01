@@ -7,17 +7,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-
-
+import '../constants/color.dart';
 import '../../features/home/presentation/controller/home_cubit.dart';
 import '../../features/home/presentation/controller/home_state.dart';
 
-// ── Default fallback colors (used before CMS loads) ──────────────────────────
-const Color _kDefaultPrimary   = Color(0xFF008037);
-const Color _kDefaultSecondary = Color(0xFF4049B9);
-
 // ── Parse hex string → Color ──────────────────────────────────────────────────
-Color hexToColor(String hex, {Color fallback = _kDefaultPrimary}) {
+Color hexToColor(String hex, {Color fallback = ColorPick.activeColor}) {
   final clean = hex.replaceAll('#', '');
   if (clean.length == 6) {
     final value = int.tryParse('FF$clean', radix: 16);
@@ -40,8 +35,8 @@ extension HomeCmsStateX on HomeCmsState {
     _                          => '',
   };
 
-  Color get primaryColor   => hexToColor(_primaryHex,   fallback: _kDefaultPrimary);
-  Color get secondaryColor => hexToColor(_secondaryHex, fallback: _kDefaultSecondary);
+  Color get primaryColor   => hexToColor(_primaryHex,   fallback: ColorPick.activeColor);
+  Color get secondaryColor => hexToColor(_secondaryHex, fallback: const Color(0xFF4049B9));
 }
 
 // ── Read directly from BuildContext (no BlocBuilder needed) ──────────────────
