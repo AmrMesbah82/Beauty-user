@@ -13,7 +13,7 @@ import 'package:flutter_svg/svg.dart';
 import 'package:beauty_user/core/widgets/format.dart';
 
 
-import '../theme/appcolors.dart';
+import '../theme/app_colors.dart';
 import '../theme/new_theme.dart';
 
 

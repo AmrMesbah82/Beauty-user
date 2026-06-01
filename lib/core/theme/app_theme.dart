@@ -3,13 +3,13 @@
 // Last update: 20/8/2024
 // Objectives: This file is responsible for providing the app themes that is used in the app.
 
-import 'package:beauty_user/core/theme/text.dart';
+import 'package:beauty_user/core/theme/app_font_style.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 
-import 'appcolors.dart';
+import 'app_colors.dart';
 
 
 
@@ -17,7 +17,8 @@ import 'appcolors.dart';
 abstract class AppTheme {
   static bool isDark = false;
 
-  static final ThemeData lightTheme = ThemeData.light().copyWith(
+  static final ThemeData lightTheme = ThemeData.light().
+  copyWith(
     textTheme: TextTheme(
       headlineMedium: AppTextStyles.font20BlackCairoMedium,
       headlineSmall: AppTextStyles.font16BlackMediumCairo,

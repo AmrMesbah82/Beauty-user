@@ -18,8 +18,8 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../../../core/main_widgets/app_page_shell.dart';
-import '../../../../../core/theme/appcolors.dart';
-import '../../../../../core/theme/text.dart';
+import '../../../../../core/theme/app_colors.dart';
+import '../../../../../core/theme/app_font_style.dart';
 import '../../../../about_us/presentation/ui/pages/about_us_page.dart';
 import '../../../../main/data/models/main_model.dart';
 import '../../../../main/presentation/controller/main_cubit.dart';

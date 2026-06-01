@@ -9,7 +9,7 @@
 /// Last Update: 08/3/2026
 
 
-import 'package:beauty_user/core/theme/appcolors.dart';
+import 'package:beauty_user/core/theme/app_colors.dart';
 import 'package:beauty_user/core/theme/new_theme.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';

@@ -23,7 +23,7 @@ import 'package:beauty_user/core/custom_svg.dart';
 
 import '../../../../../core/main_widgets/app_footer.dart';
 import '../../../../../core/main_widgets/app_navbar.dart';
-import '../../../../../core/theme/appcolors.dart';
+import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/theme/new_theme.dart';
 
 import '../../../../about_us/data/models/about_us_model.dart';

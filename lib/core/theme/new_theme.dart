@@ -3,12 +3,12 @@
 // It redirects old names to the new theme system
 
 
-import 'package:beauty_user/core/theme/text.dart';
+import 'package:beauty_user/core/theme/app_font_style.dart';
 import 'package:flutter/material.dart';
 
 
 import 'app_theme.dart';
-import 'appcolors.dart';
+import 'app_colors.dart';
 
 void updateButtonTextStyleContrast() {
   final isPrimaryDark = AppColors.primary.computeLuminance() < 0.5;

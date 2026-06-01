@@ -28,8 +28,8 @@ import 'dart:ui_web' as ui_web;
 import 'dart:convert';
 
 import '../../../../../core/main_widgets/app_page_shell.dart';
-import '../../../../../core/theme/appcolors.dart';
-import '../../../../../core/theme/text.dart';
+import '../../../../../core/theme/app_colors.dart';
+import '../../../../../core/theme/app_font_style.dart';
 import '../../../../home/data/models/home_model.dart';
 import '../../../../home/presentation/controller/gender_cubit.dart';
 import '../../../../home/presentation/controller/gender_state.dart';

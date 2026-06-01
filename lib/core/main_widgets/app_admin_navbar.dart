@@ -7,8 +7,8 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../features/home/presentation/controller/home_cubit.dart';
 import '../../features/home/presentation/controller/home_state.dart';
 
-import '../theme/app_weight.dart';
-import '../theme/appcolors.dart';
+import '../theme/app_font_weight.dart';
+import '../theme/app_colors.dart';
 
 class _BP {
   static const double mobile = 600;
