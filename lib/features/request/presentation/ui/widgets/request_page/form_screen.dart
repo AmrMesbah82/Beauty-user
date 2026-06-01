@@ -123,13 +123,13 @@ class _FormScreenState extends State<_FormScreen> {
   Widget _hint(_S str) => Text(
     str.chooseHere,
     textDirection: str.td,
-    style: StyleText.fontSize12Weight400.copyWith(color: _C.hint),
+    style: StyleText.fontSize12Weight400.copyWith(color: const Color(0xFFAAAAAA)),
   );
 
   Widget _cityHint(_S str) => Text(
     _country == null ? str.selectCountry : str.chooseHere,
     textDirection: str.td,
-    style: StyleText.fontSize12Weight400.copyWith(color: _C.hint),
+    style: StyleText.fontSize12Weight400.copyWith(color: const Color(0xFFAAAAAA)),
   );
 
   @override
@@ -148,7 +148,7 @@ class _FormScreenState extends State<_FormScreen> {
     final employees   = _localise(_kEmployeesRaw, isAr);
 
     return Scaffold(
-      backgroundColor: _C.back,
+      backgroundColor: const Color(0xFFF5F5F5),
       body: AppPageShell(
         currentRoute: 'our products',
         body: SingleChildScrollView(
@@ -513,7 +513,7 @@ class _FormScreenState extends State<_FormScreen> {
                     value:   _phoneCode,
                     isDense: true,
                     style:   StyleText.fontSize12Weight400
-                        .copyWith(color: _C.label),
+                        .copyWith(color: const Color(0xFF333333)),
                     items: _kPhoneCodes
                         .map((e) => DropdownMenuItem(
                       value: e['key'],
@@ -534,11 +534,11 @@ class _FormScreenState extends State<_FormScreen> {
                     controller:   _phoneNumber,
                     keyboardType: TextInputType.phone,
                     style: StyleText.fontSize12Weight400
-                        .copyWith(color: _C.label),
+                        .copyWith(color: const Color(0xFF333333)),
                     decoration: InputDecoration(
                       hintText:  str.phoneNumber,
                       hintStyle: StyleText.fontSize12Weight400
-                          .copyWith(color: _C.hint),
+                          .copyWith(color: const Color(0xFFAAAAAA)),
                       contentPadding: EdgeInsets.symmetric(
                           horizontal: 8.w, vertical: 16.h),
                       filled:    true,
@@ -547,7 +547,7 @@ class _FormScreenState extends State<_FormScreen> {
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(4.r),
                         borderSide: BorderSide(
-                            color: isEmpty ? _C.error : Colors.transparent),
+                            color: isEmpty ? const Color(0xFFE53935) : Colors.transparent),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(4.r),
@@ -664,7 +664,7 @@ class _FormScreenState extends State<_FormScreen> {
           hint:             Text(
             str.chooseHere,
             textDirection: str.td,
-            style: StyleText.fontSize12Weight400.copyWith(color: _C.hint),
+            style: StyleText.fontSize12Weight400.copyWith(color: const Color(0xFFAAAAAA)),
           ),
           selectedValue:    _answers[q.id] as String?,
           items:            dropItems,
@@ -703,7 +703,7 @@ class _FormScreenState extends State<_FormScreen> {
     style: TextStyle(
       fontSize:   10.sp,
       fontWeight: FontWeight.w700,
-      color:      _C.error,
+      color:      const Color(0xFFE53935),
     ),
   );
 }

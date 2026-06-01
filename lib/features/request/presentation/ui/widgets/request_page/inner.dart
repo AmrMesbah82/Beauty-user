@@ -27,7 +27,7 @@ class _Inner extends StatelessWidget {
                     malePrimaryColorHex: data.branding.malePrimaryColor,
                     isMale: isMale,
                   ),
-                  _ => isMale ? _C.primaryMale : _C.primaryFemale,
+                  _ => isMale ? const Color(0xFF1565C0) : const Color(0xFFD16F9A),
                 };
 
                 final Color mainWidgetColor = _resolveMainWidgetColor(homeState);
@@ -37,18 +37,18 @@ class _Inner extends StatelessWidget {
                     if (cmsState is RequestDemoCmsInitial ||
                         cmsState is RequestDemoCmsLoading) {
                       return Scaffold(
-                        backgroundColor: _C.back,
+                        backgroundColor: const Color(0xFFF5F5F5),
                         body: Center(
                             child: CircularProgressIndicator(color: primaryColor)),
                       );
                     }
                     if (cmsState is RequestDemoCmsError) {
                       return Scaffold(
-                        backgroundColor: _C.back,
+                        backgroundColor: const Color(0xFFF5F5F5),
                         body: Center(
                           child: Text(cmsState.message,
                               style: StyleText.fontSize14Weight600
-                                  .copyWith(color: _C.error)),
+                                  .copyWith(color: const Color(0xFFE53935))),
                         ),
                       );
                     }
@@ -63,7 +63,7 @@ class _Inner extends StatelessWidget {
                         if (s is _SubmitError) {
                           ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
                             content: Text(_S(isAr).submitError),
-                            backgroundColor: _C.error,
+                            backgroundColor: const Color(0xFFE53935),
                           ));
                         }
                       },

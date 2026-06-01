@@ -28,7 +28,7 @@ class _ConfirmScreen extends StatelessWidget {
         : str.confirmDesc;
 
     return Scaffold(
-      backgroundColor: _C.back,
+      backgroundColor: const Color(0xFFF5F5F5),
       body: Center(
         child: ConstrainedBox(
           constraints: BoxConstraints(maxWidth: 600.w),
@@ -69,7 +69,7 @@ class _ConfirmScreen extends StatelessWidget {
                   Text(desc,
                       textAlign: TextAlign.center,
                       style: StyleText.fontSize12Weight400
-                          .copyWith(color: _C.label, height: 1.6)),
+                          .copyWith(color: const Color(0xFF333333), height: 1.6)),
 
                   SizedBox(height: 32.h),
 

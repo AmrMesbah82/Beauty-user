@@ -1,16 +1,4 @@
 part of '../../pages/request_page.dart';
-
-class _C {
-  static const Color primaryFemale = Color(0xFFD16F9A);
-  static const Color primaryMale   = Color(0xFF1565C0);
-  static const Color back          = Color(0xFFF5F5F5);
-  static const Color label         = Color(0xFF333333);
-  static const Color hint          = Color(0xFFAAAAAA);
-  static const Color card          = Color(0xFFFFFFFF);
-  static const Color error         = Color(0xFFE53935);
-  static const Color section       = Color(0xFF555555);
-}
-
 const double _kDesktopBreak = 600;
 const double _kFieldHeight  = 46; // ← +10 from original 36
 
@@ -34,7 +22,7 @@ Color _resolvePrimaryColor({
 }) {
   final hex = isMale ? malePrimaryColorHex : primaryColorHex;
   return _parseHex(hex,
-      fallback: isMale ? _C.primaryMale : _C.primaryFemale);
+      fallback: isMale ? const Color(0xFF1565C0) : const Color(0xFFD16F9A));
 }
 
 Color _resolveMainWidgetColor(HomeCmsState homeState) {
