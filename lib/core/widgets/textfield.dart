@@ -13,7 +13,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 
 
 import '../theme/app_colors.dart';
-import '../theme/new_theme.dart';
+import '../theme/app_font_style.dart';
 
 class CustomValidatedTextFieldMaster extends StatefulWidget {
   final String? label;
@@ -296,9 +296,7 @@ class _CustomValidatedTextFieldMasterState
                 hintText:    widget.hint,
                 hintStyle: widget.hintStyle ??
                     StyleText.fontSize12Weight400.copyWith(
-                      color: lightMode
-                          ? ColorAppLight.grayTextSla
-                          : ColorAppDark.titleKey,
+                      color: AppColors.secondaryText,
                     ),
                 filled:      true,
                 fillColor:   resolvedFill,
@@ -323,12 +321,12 @@ class _CustomValidatedTextFieldMasterState
                 errorBorder: OutlineInputBorder(
                   borderRadius: borderRadius,
                   borderSide:
-                  BorderSide(color: ColorAppLight.redColor, width: 1),
+                  BorderSide(color: Colors.red, width: 1),
                 ),
                 focusedErrorBorder: OutlineInputBorder(
                   borderRadius: borderRadius,
                   borderSide:
-                  BorderSide(color: ColorAppLight.redColor, width: 1.5),
+                  BorderSide(color: Colors.red, width: 1.5),
                 ),
               ),
             ),
@@ -347,7 +345,7 @@ class _CustomValidatedTextFieldMasterState
                 fontSize:   10.sp,
                 fontWeight: FontWeight.w700,
                 height:     1.1,
-                color:      ColorAppLight.redColor,
+                color:      Colors.red,
               ),
             ),
           )

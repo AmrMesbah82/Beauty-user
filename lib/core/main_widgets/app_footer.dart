@@ -35,9 +35,9 @@ import '../../features/home/presentation/controller/lang_state.dart';
 import '../../features/our_product/presentation/ui/pages/our_products_page.dart';
 import '../../features/overview/presentation/ui/pages/overview_page.dart';
 import '../../features/terms_of_services/presentation/ui/pages/terms_of_service_page.dart';
+import '../theme/app_font_style.dart';
 import '../theme/app_font_weight.dart';
 import '../theme/app_colors.dart';
-import '../theme/new_theme.dart';
 
 // ── Page registry ─────────────────────────────────────────────────────────────
 // Import your existing pages here

@@ -48,7 +48,7 @@ import '../../../../../core/custom_tab.dart';
 import '../../../../../core/main_widgets/app_footer.dart';
 import '../../../../../core/main_widgets/app_navbar.dart';
 import '../../../../../core/theme/app_colors.dart';
-import '../../../../../core/theme/new_theme.dart';
+import '../../../../../core/theme/app_font_style.dart';
 import '../../../../home/presentation/controller/gender_cubit.dart';
 import '../../../../home/presentation/controller/gender_state.dart';
 import '../../../../home/presentation/controller/home_cubit.dart';

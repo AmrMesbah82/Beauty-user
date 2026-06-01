@@ -18,6 +18,7 @@ import 'dart:html' as html;
 import 'dart:typed_data';
 import 'dart:ui_web' as ui_web;
 
+import 'package:beauty_user/core/theme/app_font_style.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -29,7 +30,6 @@ import 'package:beauty_user/core/custom_svg.dart';
 import '../../../../../core/main_widgets/app_footer.dart';
 import '../../../../../core/main_widgets/app_navbar.dart';
 import '../../../../../core/theme/app_colors.dart';
-import '../../../../../core/theme/new_theme.dart';
 
 import '../../../../home/data/models/home_model.dart';
 import '../../../../home/presentation/controller/gender_cubit.dart';

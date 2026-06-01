@@ -31,7 +31,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../features/home/presentation/controller/home_cubit.dart';
-import '../theme/new_theme.dart';
+import '../theme/app_font_style.dart';
 
 class AdminSubNavBar extends StatelessWidget {
   final int activeIndex;

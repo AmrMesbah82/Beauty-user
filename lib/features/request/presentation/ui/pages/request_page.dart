@@ -20,7 +20,7 @@ import 'package:beauty_user/core/widgets/custom_dropdown.dart';
 import 'package:beauty_user/core/widgets/textfield.dart';
 
 import '../../../../../core/main_widgets/app_page_shell.dart';
-import '../../../../../core/theme/new_theme.dart';
+import '../../../../../core/theme/app_font_style.dart';
 import '../../../../home/presentation/controller/gender_cubit.dart';
 import '../../../../home/presentation/controller/gender_state.dart';
 import '../../../../home/presentation/controller/home_cubit.dart';

@@ -10,7 +10,7 @@
 
 
 import 'package:beauty_user/core/theme/app_colors.dart';
-import 'package:beauty_user/core/theme/new_theme.dart';
+import 'package:beauty_user/core/theme/app_font_style.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
